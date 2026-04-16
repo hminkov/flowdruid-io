@@ -1,0 +1,19 @@
+{
+  "name": "flowdruid",
+  "private": true,
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "db:migrate": "pnpm --filter @flowdruid/api exec prisma migrate dev",
+    "db:generate": "pnpm --filter @flowdruid/api exec prisma generate",
+    "db:push": "pnpm --filter @flowdruid/api exec prisma db push"
+  },
+  "devDependencies": {
+    "turbo": "^2.3.0"
+  },
+  "packageManager": "pnpm@9.15.0",
+  "engines": {
+    "node": ">=20"
+  }
+}

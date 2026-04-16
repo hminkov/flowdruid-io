@@ -1,0 +1,196 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  TEAM_LEAD
+  DEVELOPER
+}
+
+enum LeaveType {
+  ANNUAL
+  PARTIAL_AM
+  PARTIAL_PM
+  REMOTE
+  SICK
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  DENIED
+}
+
+enum TicketStatus {
+  TODO
+  IN_PROGRESS
+  IN_REVIEW
+  DONE
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum TicketSource {
+  INTERNAL
+  JIRA
+}
+
+enum AvailabilityStatus {
+  AVAILABLE
+  BUSY
+  REMOTE
+  ON_LEAVE
+}
+
+model Organisation {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  teams       Team[]
+  users       User[]
+  slackConfig SlackConfig?
+  jiraConfig  JiraConfig?
+}
+
+model Team {
+  id             String   @id @default(cuid())
+  name           String
+  orgId          String
+  slackChannelId String?
+  createdAt      DateTime @default(now())
+
+  org      Organisation @relation(fields: [orgId], references: [id])
+  members  User[]
+  tickets  Ticket[]
+  standups Standup[]
+}
+
+model User {
+  id           String             @id @default(cuid())
+  email        String             @unique
+  name         String
+  initials     String             @db.VarChar(3)
+  passwordHash String
+  role         Role               @default(DEVELOPER)
+  orgId        String
+  teamId       String?
+  availability AvailabilityStatus @default(AVAILABLE)
+  active       Boolean            @default(true)
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  org             Organisation       @relation(fields: [orgId], references: [id])
+  team            Team?              @relation(fields: [teamId], references: [id])
+  leaveRequests   LeaveRequest[]
+  standups        Standup[]
+  assignedTickets TicketAssignment[]
+  refreshTokens   RefreshToken[]
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model LeaveRequest {
+  id          String      @id @default(cuid())
+  userId      String
+  type        LeaveType
+  status      LeaveStatus @default(PENDING)
+  startDate   DateTime
+  endDate     DateTime
+  note        String?
+  reviewedBy  String?
+  reviewedAt  DateTime?
+  notifySlack Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model Ticket {
+  id          String         @id @default(cuid())
+  source      TicketSource   @default(INTERNAL)
+  jiraKey     String?        @unique
+  jiraId      String?        @unique
+  title       String
+  description String?
+  status      TicketStatus   @default(TODO)
+  priority    TicketPriority @default(MEDIUM)
+  teamId      String
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  syncedAt    DateTime?
+
+  team      Team               @relation(fields: [teamId], references: [id])
+  assignees TicketAssignment[]
+}
+
+model TicketAssignment {
+  ticketId String
+  userId   String
+
+  ticket Ticket @relation(fields: [ticketId], references: [id])
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@id([ticketId, userId])
+}
+
+model Standup {
+  id          String   @id @default(cuid())
+  userId      String
+  teamId      String
+  yesterday   String
+  today       String
+  blockers    String?
+  capacityPct Int      @default(50)
+  postedAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+  team Team @relation(fields: [teamId], references: [id])
+}
+
+model SlackConfig {
+  id              String  @id @default(cuid())
+  orgId           String  @unique
+  botToken        String
+  signingSecret   String
+  notifyStandup   Boolean @default(true)
+  notifyLeave     Boolean @default(true)
+  notifyBlocker   Boolean @default(true)
+  notifyDone      Boolean @default(false)
+  notifyBroadcast Boolean @default(true)
+
+  org Organisation @relation(fields: [orgId], references: [id])
+}
+
+model JiraConfig {
+  id           String    @id @default(cuid())
+  orgId        String    @unique
+  baseUrl      String
+  email        String
+  apiToken     String
+  projectKeys  String[]
+  syncInterval Int       @default(15)
+  lastSyncAt   DateTime?
+
+  org Organisation @relation(fields: [orgId], references: [id])
+}

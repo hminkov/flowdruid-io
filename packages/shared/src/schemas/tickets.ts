@@ -1,0 +1,35 @@
+import { z } from 'zod';
+
+export const createTicketSchema = z.object({
+  title: z.string().min(1).max(500),
+  description: z.string().optional(),
+  priority: z.enum(['LOW', 'MEDIUM', 'HIGH']).default('MEDIUM'),
+  teamId: z.string(),
+  assigneeIds: z.array(z.string()).optional(),
+});
+
+export const updateTicketSchema = z.object({
+  ticketId: z.string(),
+  title: z.string().min(1).max(500).optional(),
+  description: z.string().nullable().optional(),
+  status: z.enum(['TODO', 'IN_PROGRESS', 'IN_REVIEW', 'DONE']).optional(),
+  priority: z.enum(['LOW', 'MEDIUM', 'HIGH']).optional(),
+});
+
+export const listTicketsSchema = z.object({
+  teamId: z.string().optional(),
+  status: z.enum(['TODO', 'IN_PROGRESS', 'IN_REVIEW', 'DONE']).optional(),
+  source: z.enum(['INTERNAL', 'JIRA']).optional(),
+  assigneeId: z.string().optional(),
+});
+
+export const assignTicketSchema = z.object({
+  ticketId: z.string(),
+  userId: z.string(),
+  action: z.enum(['assign', 'unassign']),
+});
+
+export type CreateTicketInput = z.infer<typeof createTicketSchema>;
+export type UpdateTicketInput = z.infer<typeof updateTicketSchema>;
+export type ListTicketsInput = z.infer<typeof listTicketsSchema>;
+export type AssignTicketInput = z.infer<typeof assignTicketSchema>;
