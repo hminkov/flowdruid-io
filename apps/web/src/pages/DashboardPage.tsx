@@ -16,16 +16,25 @@ export function DashboardPage() {
     status: 'IN_PROGRESS',
   });
 
+  const firstName = user?.name?.split(' ')[0];
+
   return (
-    <div>
-      <h1 className="mb-6 text-2xl font-bold">Dashboard</h1>
+    <div className="mx-auto max-w-7xl">
+      <header className="mb-8">
+        <h1 className="text-2xl font-bold text-gray-900">
+          {firstName ? `Welcome back, ${firstName}` : 'Dashboard'}
+        </h1>
+        <p className="mt-1 text-sm text-gray-500">
+          Here's what's happening across your teams today.
+        </p>
+      </header>
 
       {/* Team Availability */}
       <section className="mb-8">
-        <h2 className="mb-3 text-lg font-semibold">Team Availability</h2>
+        <h2 className="mb-3 text-lg font-semibold text-gray-800">Team Availability</h2>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {teamsQuery.data?.map((team) => (
-            <div key={team.id} className="rounded-lg border bg-white p-4 shadow-sm">
+            <div key={team.id} className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm transition hover:border-primary-200 hover:shadow-md">
               <h3 className="mb-3 font-medium">{team.name}</h3>
               <div className="space-y-2">
                 {team.members.map((member) => (
@@ -52,13 +61,13 @@ export function DashboardPage() {
 
       {/* Active Tasks */}
       <section>
-        <h2 className="mb-3 text-lg font-semibold">Active Tasks</h2>
-        <div className="rounded-lg border bg-white shadow-sm">
+        <h2 className="mb-3 text-lg font-semibold text-gray-800">Active Tasks</h2>
+        <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
           {ticketsQuery.data?.length === 0 && (
             <p className="p-4 text-sm text-gray-400">No tasks in progress</p>
           )}
           {ticketsQuery.data?.map((ticket) => (
-            <div key={ticket.id} className="flex items-center justify-between border-b p-4 last:border-b-0">
+            <div key={ticket.id} className="flex items-center justify-between border-b border-gray-100 p-4 transition last:border-b-0 hover:bg-gray-50">
               <div className="flex items-center gap-3">
                 <span className={`rounded px-2 py-0.5 text-xs font-mono font-medium ${
                   ticket.source === 'JIRA' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'
