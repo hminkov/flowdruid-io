@@ -1,5 +1,21 @@
 import { useState, type FormEvent } from 'react';
 import { trpc } from '../lib/trpc';
+import {
+  CheckIcon,
+  KeyIcon,
+  PlusIcon,
+  ShieldIcon,
+  TrashIcon,
+  UserIcon,
+} from '../components/icons';
+
+const roleTones: Record<string, string> = {
+  ADMIN: 'bg-accent-bg text-accent-text',
+  TEAM_LEAD: 'bg-info-bg text-info-text',
+  DEVELOPER: 'bg-neutral-bg text-neutral-text',
+};
+
+const roleIcon = (r: string) => (r === 'ADMIN' ? ShieldIcon : r === 'TEAM_LEAD' ? KeyIcon : UserIcon);
 
 export function UsersRolesPage() {
   const [showInvite, setShowInvite] = useState(false);
@@ -38,123 +54,187 @@ export function UsersRolesPage() {
   };
 
   return (
-    <div>
-      <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Users & Roles</h1>
+    <div className="mx-auto max-w-content">
+      <header className="mb-6 flex items-center justify-between">
+        <div>
+          <h1>Users & roles</h1>
+          <p className="mt-1 text-base text-text-secondary">
+            Manage members, roles, and team assignments.
+          </p>
+        </div>
         <button
           onClick={() => { setShowInvite(true); setTempPass(''); }}
-          className="rounded bg-brand-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-800"
+          className="flex min-h-input items-center gap-1.5 rounded bg-brand-600 px-3 text-base text-white transition-all duration-fast hover:bg-brand-800 active:scale-[0.98]"
         >
-          Invite User
+          <PlusIcon className="h-4 w-4" />
+          Invite user
         </button>
-      </div>
+      </header>
 
-      {/* Users table */}
-      <div className="rounded-lg border bg-white shadow-sm">
-        <table className="w-full text-sm">
-          <thead className="border-b bg-gray-50">
+      <div className="overflow-hidden rounded-lg border border-border bg-surface-primary">
+        <table className="w-full text-base">
+          <thead className="border-b border-border bg-surface-secondary">
             <tr>
-              <th className="p-3 text-left font-medium text-gray-600">Name</th>
-              <th className="p-3 text-left font-medium text-gray-600">Email</th>
-              <th className="p-3 text-left font-medium text-gray-600">Role</th>
-              <th className="p-3 text-left font-medium text-gray-600">Team</th>
-              <th className="p-3 text-left font-medium text-gray-600">Actions</th>
+              <th className="p-3 text-left text-sm text-text-tertiary">Name</th>
+              <th className="p-3 text-left text-sm text-text-tertiary">Email</th>
+              <th className="p-3 text-left text-sm text-text-tertiary">Role</th>
+              <th className="p-3 text-left text-sm text-text-tertiary">Team</th>
+              <th className="p-3 text-left text-sm text-text-tertiary"></th>
             </tr>
           </thead>
           <tbody>
-            {usersQuery.data?.map((u) => (
-              <tr key={u.id} className="border-b last:border-b-0">
-                <td className="p-3">
-                  <div className="flex items-center gap-2">
-                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-brand-100 text-xs font-medium text-brand-800">
-                      {u.initials}
-                    </span>
-                    {u.name}
-                  </div>
-                </td>
-                <td className="p-3 text-gray-500">{u.email}</td>
-                <td className="p-3">
-                  <select
-                    value={u.role}
-                    onChange={(e) =>
-                      updateMutation.mutate({
-                        userId: u.id,
-                        role: e.target.value as 'ADMIN' | 'TEAM_LEAD' | 'DEVELOPER',
-                      })
-                    }
-                    className="rounded border px-2 py-1 text-xs"
-                  >
-                    <option value="DEVELOPER">Developer</option>
-                    <option value="TEAM_LEAD">Team Lead</option>
-                    <option value="ADMIN">Admin</option>
-                  </select>
-                </td>
-                <td className="p-3">
-                  <select
-                    value={u.teamId ?? ''}
-                    onChange={(e) =>
-                      updateMutation.mutate({
-                        userId: u.id,
-                        teamId: e.target.value || null,
-                      })
-                    }
-                    className="rounded border px-2 py-1 text-xs"
-                  >
-                    <option value="">No team</option>
-                    {teamsQuery.data?.map((t) => (
-                      <option key={t.id} value={t.id}>{t.name}</option>
-                    ))}
-                  </select>
-                </td>
-                <td className="p-3">
-                  <button
-                    onClick={() => deactivateMutation.mutate({ userId: u.id })}
-                    className="text-xs text-red-600 hover:text-red-800"
-                  >
-                    Deactivate
-                  </button>
-                </td>
-              </tr>
-            ))}
+            {usersQuery.data?.map((u) => {
+              const RoleIcon = roleIcon(u.role);
+              return (
+                <tr key={u.id} className="border-b border-border last:border-b-0">
+                  <td className="p-3">
+                    <div className="flex items-center gap-2">
+                      <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--avatar-1-bg)] text-xs text-[var(--avatar-1-text)]">
+                        {u.initials}
+                      </span>
+                      <span className="text-text-primary">{u.name}</span>
+                    </div>
+                  </td>
+                  <td className="p-3 text-text-secondary">{u.email}</td>
+                  <td className="p-3">
+                    <div className="flex items-center gap-2">
+                      <span className={`inline-flex h-5 w-5 items-center justify-center rounded ${roleTones[u.role]}`}>
+                        <RoleIcon className="h-3 w-3" />
+                      </span>
+                      <select
+                        value={u.role}
+                        onChange={(e) =>
+                          updateMutation.mutate({
+                            userId: u.id,
+                            role: e.target.value as 'ADMIN' | 'TEAM_LEAD' | 'DEVELOPER',
+                          })
+                        }
+                        className="rounded border border-border bg-surface-primary px-2 py-1 text-sm text-text-primary"
+                      >
+                        <option value="DEVELOPER">Developer</option>
+                        <option value="TEAM_LEAD">Team lead</option>
+                        <option value="ADMIN">Admin</option>
+                      </select>
+                    </div>
+                  </td>
+                  <td className="p-3">
+                    <select
+                      value={u.teamId ?? ''}
+                      onChange={(e) =>
+                        updateMutation.mutate({
+                          userId: u.id,
+                          teamId: e.target.value || null,
+                        })
+                      }
+                      className="rounded border border-border bg-surface-primary px-2 py-1 text-sm text-text-primary"
+                    >
+                      <option value="">No team</option>
+                      {teamsQuery.data?.map((t) => (
+                        <option key={t.id} value={t.id}>{t.name}</option>
+                      ))}
+                    </select>
+                  </td>
+                  <td className="p-3 text-right">
+                    <button
+                      onClick={() => deactivateMutation.mutate({ userId: u.id })}
+                      title="Deactivate"
+                      className="inline-flex h-7 w-7 items-center justify-center rounded text-text-tertiary transition-colors duration-fast hover:bg-danger-bg hover:text-danger-text"
+                    >
+                      <TrashIcon className="h-4 w-4" />
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
 
-      {/* Invite modal */}
       {showInvite && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-lg">
-            <h2 className="mb-4 text-lg font-semibold">Invite User</h2>
+        <div
+          className="fixed inset-0 z-modal flex items-center justify-center bg-[var(--overlay-backdrop)]"
+          onClick={() => setShowInvite(false)}
+        >
+          <div
+            className="w-full max-w-modal rounded-lg bg-surface-primary p-5 shadow-float animate-modal-in"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="mb-4">Invite user</h2>
             {tempPass ? (
               <div>
-                <p className="mb-2 text-sm">User created. Temporary password:</p>
-                <code className="block rounded bg-gray-100 p-3 text-sm font-mono">{tempPass}</code>
+                <div className="mb-3 flex items-center gap-2 rounded border border-success-text/20 bg-success-bg p-2 text-sm text-success-text">
+                  <CheckIcon className="h-4 w-4" />
+                  User created. Share the temporary password with them.
+                </div>
+                <code className="block rounded border border-border bg-surface-secondary p-3 font-mono text-base text-text-primary">
+                  {tempPass}
+                </code>
                 <button
                   onClick={() => { setShowInvite(false); setEmail(''); setName(''); setInitials(''); }}
-                  className="mt-4 rounded bg-brand-600 px-3 py-1.5 text-sm text-white"
+                  className="mt-4 min-h-input rounded bg-brand-600 px-3 text-base text-white hover:bg-brand-800"
                 >
                   Done
                 </button>
               </div>
             ) : (
               <form onSubmit={handleInvite} className="space-y-3">
-                <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Full name" required className="w-full rounded border px-3 py-2 text-sm" />
-                <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" placeholder="Email" required className="w-full rounded border px-3 py-2 text-sm" />
-                <input value={initials} onChange={(e) => setInitials(e.target.value)} placeholder="Initials (e.g. JD)" maxLength={3} required className="w-full rounded border px-3 py-2 text-sm" />
-                <select value={role} onChange={(e) => setRole(e.target.value as typeof role)} className="w-full rounded border px-3 py-2 text-sm">
+                <input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Full name"
+                  required
+                  autoFocus
+                  className="min-h-input w-full rounded border border-border bg-surface-primary px-3 text-base text-text-primary placeholder:text-text-tertiary"
+                />
+                <input
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  type="email"
+                  placeholder="you@cloudruid.com"
+                  required
+                  className="min-h-input w-full rounded border border-border bg-surface-primary px-3 text-base text-text-primary placeholder:text-text-tertiary"
+                />
+                <input
+                  value={initials}
+                  onChange={(e) => setInitials(e.target.value)}
+                  placeholder="Initials (e.g. JD)"
+                  maxLength={3}
+                  required
+                  className="min-h-input w-full rounded border border-border bg-surface-primary px-3 text-base text-text-primary placeholder:text-text-tertiary"
+                />
+                <select
+                  value={role}
+                  onChange={(e) => setRole(e.target.value as typeof role)}
+                  className="min-h-input w-full rounded border border-border bg-surface-primary px-3 text-base text-text-primary"
+                >
                   <option value="DEVELOPER">Developer</option>
-                  <option value="TEAM_LEAD">Team Lead</option>
+                  <option value="TEAM_LEAD">Team lead</option>
                   <option value="ADMIN">Admin</option>
                 </select>
-                <select value={teamId} onChange={(e) => setTeamId(e.target.value)} className="w-full rounded border px-3 py-2 text-sm">
+                <select
+                  value={teamId}
+                  onChange={(e) => setTeamId(e.target.value)}
+                  className="min-h-input w-full rounded border border-border bg-surface-primary px-3 text-base text-text-primary"
+                >
                   <option value="">No team</option>
                   {teamsQuery.data?.map((t) => (
                     <option key={t.id} value={t.id}>{t.name}</option>
                   ))}
                 </select>
                 <div className="flex justify-end gap-2">
-                  <button type="button" onClick={() => setShowInvite(false)} className="rounded px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100">Cancel</button>
-                  <button type="submit" className="rounded bg-brand-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-800">Invite</button>
+                  <button
+                    type="button"
+                    onClick={() => setShowInvite(false)}
+                    className="min-h-input rounded px-3 text-base text-text-secondary hover:bg-surface-secondary"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="min-h-input rounded bg-brand-600 px-3 text-base text-white hover:bg-brand-800"
+                  >
+                    Invite
+                  </button>
                 </div>
               </form>
             )}
