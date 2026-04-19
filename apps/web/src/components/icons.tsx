@@ -32,6 +32,18 @@ export const ArrowRightIcon = (p: P) => (
   </svg>
 );
 
+export const ChevronLeftIcon = (p: P) => (
+  <svg {...base(p)}>
+    <path d="m15 18-6-6 6-6" />
+  </svg>
+);
+
+export const ChevronRightIcon = (p: P) => (
+  <svg {...base(p)}>
+    <path d="m9 18 6-6-6-6" />
+  </svg>
+);
+
 export const CheckIcon = (p: P) => (
   <svg {...base(p)}>
     <polyline points="20 6 9 17 4 12" />

@@ -1,6 +1,13 @@
 import { useState, useMemo } from 'react';
 import { trpc } from '../lib/trpc';
-import { CalendarIcon, HomeIcon } from '../components/icons';
+import { useUserDetail } from '../hooks/useUserDetail';
+import {
+  CalendarIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  HomeIcon,
+  PlaneIcon,
+} from '../components/icons';
 
 const leaveTypeTones: Record<string, string> = {
   ANNUAL: 'bg-brand-50 text-brand-600',
@@ -10,13 +17,53 @@ const leaveTypeTones: Record<string, string> = {
   SICK: 'bg-danger-bg text-danger-text',
 };
 
+const leaveTypeLabel: Record<string, string> = {
+  ANNUAL: 'Annual',
+  PARTIAL_AM: 'Partial AM',
+  PARTIAL_PM: 'Partial PM',
+  REMOTE: 'Remote',
+  SICK: 'Sick',
+};
+
+const avatarPalettes = [
+  { bg: 'var(--avatar-1-bg)', text: 'var(--avatar-1-text)' },
+  { bg: 'var(--avatar-2-bg)', text: 'var(--avatar-2-text)' },
+  { bg: 'var(--avatar-3-bg)', text: 'var(--avatar-3-text)' },
+  { bg: 'var(--avatar-4-bg)', text: 'var(--avatar-4-text)' },
+  { bg: 'var(--avatar-5-bg)', text: 'var(--avatar-5-text)' },
+  { bg: 'var(--avatar-6-bg)', text: 'var(--avatar-6-text)' },
+];
+
+const paletteFor = (id: string) => {
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) | 0;
+  return avatarPalettes[Math.abs(hash) % avatarPalettes.length]!;
+};
+
+const MONTH_NAMES = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+];
+
 export function LeaveCalendarPage() {
+  const { openUser } = useUserDetail();
   const [month, setMonth] = useState(() => {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   });
   const [teamFilter, setTeamFilter] = useState<string>('');
   const [viewMode, setViewMode] = useState<'calendar' | 'list'>('calendar');
+  const [expandedDay, setExpandedDay] = useState<number | null>(null);
 
   const teamsQuery = trpc.teams.list.useQuery();
 
@@ -33,11 +80,13 @@ export function LeaveCalendarPage() {
   const daysInMonth = new Date(year, mon, 0).getDate();
   const firstDayOfWeek = new Date(year, mon - 1, 1).getDay();
   const todayDate = new Date();
-  const isCurrentMonth = todayDate.getFullYear() === year && todayDate.getMonth() + 1 === mon;
+  const isCurrentMonth =
+    todayDate.getFullYear() === year && todayDate.getMonth() + 1 === mon;
 
   const calendarDays = useMemo(() => {
     const days: (number | null)[] = Array(firstDayOfWeek).fill(null);
     for (let d = 1; d <= daysInMonth; d++) days.push(d);
+    while (days.length % 7 !== 0) days.push(null);
     return days;
   }, [firstDayOfWeek, daysInMonth]);
 
@@ -53,20 +102,37 @@ export function LeaveCalendarPage() {
     });
   };
 
+  const shiftMonth = (delta: number) => {
+    const d = new Date(year, mon - 1 + delta, 1);
+    setMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+    setExpandedDay(null);
+  };
+
+  const jumpToToday = () => {
+    const now = new Date();
+    setMonth(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`);
+    setExpandedDay(null);
+  };
+
+  const monthLabel = `${MONTH_NAMES[mon - 1]} ${year}`;
+  const totalLeaves = calendarQuery.data?.length ?? 0;
+
   return (
     <div className="mx-auto max-w-content">
-      <header className="mb-6 flex items-center justify-between">
+      <header className="mb-6 flex items-start justify-between gap-3">
         <div>
           <h1>Leave calendar</h1>
           <p className="mt-1 text-base text-text-secondary">
-            See who's away across the team.
+            See who's away or remote at a glance — click any name to open their profile.
           </p>
         </div>
         <div className="flex gap-1 rounded border border-border bg-surface-primary p-0.5">
           <button
             onClick={() => setViewMode('calendar')}
             className={`flex items-center gap-1.5 rounded px-3 py-1 text-sm transition-colors duration-fast ${
-              viewMode === 'calendar' ? 'bg-brand-50 text-brand-600' : 'text-text-secondary hover:text-text-primary'
+              viewMode === 'calendar'
+                ? 'bg-brand-50 text-brand-600'
+                : 'text-text-secondary hover:text-text-primary'
             }`}
           >
             <CalendarIcon className="h-3.5 w-3.5" />
@@ -75,7 +141,9 @@ export function LeaveCalendarPage() {
           <button
             onClick={() => setViewMode('list')}
             className={`flex items-center gap-1.5 rounded px-3 py-1 text-sm transition-colors duration-fast ${
-              viewMode === 'list' ? 'bg-brand-50 text-brand-600' : 'text-text-secondary hover:text-text-primary'
+              viewMode === 'list'
+                ? 'bg-brand-50 text-brand-600'
+                : 'text-text-secondary hover:text-text-primary'
             }`}
           >
             List
@@ -83,13 +151,35 @@ export function LeaveCalendarPage() {
         </div>
       </header>
 
-      <div className="mb-4 flex gap-3">
-        <input
-          type="month"
-          value={month}
-          onChange={(e) => setMonth(e.target.value)}
-          className="min-h-input rounded border border-border bg-surface-primary px-3 text-base text-text-primary"
-        />
+      {/* Month toolbar */}
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-1 rounded border border-border bg-surface-primary p-0.5">
+          <button
+            onClick={() => shiftMonth(-1)}
+            aria-label="Previous month"
+            className="flex h-7 w-7 items-center justify-center rounded text-text-secondary hover:bg-surface-secondary hover:text-text-primary"
+          >
+            <ChevronLeftIcon className="h-4 w-4" />
+          </button>
+          <div className="min-w-[9rem] px-2 text-center text-base text-text-primary">
+            {monthLabel}
+          </div>
+          <button
+            onClick={() => shiftMonth(1)}
+            aria-label="Next month"
+            className="flex h-7 w-7 items-center justify-center rounded text-text-secondary hover:bg-surface-secondary hover:text-text-primary"
+          >
+            <ChevronRightIcon className="h-4 w-4" />
+          </button>
+        </div>
+
+        <button
+          onClick={jumpToToday}
+          className="rounded border border-border bg-surface-primary px-3 py-1 text-sm text-text-secondary hover:bg-surface-secondary hover:text-text-primary"
+        >
+          Today
+        </button>
+
         <select
           value={teamFilter}
           onChange={(e) => setTeamFilter(e.target.value)}
@@ -97,78 +187,204 @@ export function LeaveCalendarPage() {
         >
           <option value="">All teams</option>
           {teamsQuery.data?.map((t) => (
-            <option key={t.id} value={t.id}>{t.name}</option>
+            <option key={t.id} value={t.id}>
+              {t.name}
+            </option>
           ))}
         </select>
+
+        <span className="ml-auto text-xs text-text-tertiary">
+          {totalLeaves} {totalLeaves === 1 ? 'leave' : 'leaves'} this month
+        </span>
+      </div>
+
+      {/* Legend */}
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        {(['ANNUAL', 'SICK', 'PARTIAL_AM', 'REMOTE'] as const).map((t) => (
+          <span
+            key={t}
+            className={`inline-flex items-center gap-1.5 rounded-pill px-2 py-0.5 text-xs ${leaveTypeTones[t]}`}
+          >
+            <span className="h-1.5 w-1.5 rounded-full bg-current opacity-70" />
+            {leaveTypeLabel[t]}
+          </span>
+        ))}
       </div>
 
       {viewMode === 'calendar' ? (
-        <div className="overflow-hidden rounded-lg border border-border bg-surface-primary">
-          <div className="grid grid-cols-7 border-b border-border bg-surface-secondary">
-            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => (
-              <div key={d} className="p-2 text-center text-xs text-text-tertiary">{d}</div>
-            ))}
-          </div>
-          <div className="grid grid-cols-7">
-            {calendarDays.map((day, i) => {
-              const isToday = day !== null && isCurrentMonth && todayDate.getDate() === day;
-              return (
-                <div
-                  key={i}
-                  className={`min-h-[72px] border-b border-r border-border p-1 ${
-                    isToday ? 'bg-brand-50' : ''
-                  }`}
-                >
-                  {day && (
-                    <>
-                      <span className={`text-xs ${isToday ? 'text-brand-600' : 'text-text-tertiary'}`}>{day}</span>
-                      <div className="mt-1 space-y-0.5">
-                        {leavesForDay(day).slice(0, 3).map((leave) => (
-                          <div
-                            key={leave.id}
-                            title={`${leave.user.name} — ${leave.type.replace('_', ' ').toLowerCase()}`}
-                            className={`truncate rounded px-1 text-[10px] ${leaveTypeTones[leave.type]}`}
+        <>
+          <div className="overflow-hidden rounded-lg border border-border bg-surface-primary">
+            <div className="grid grid-cols-7 border-b border-border bg-surface-secondary">
+              {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => (
+                <div key={d} className="p-2 text-center text-xs text-text-tertiary">
+                  {d}
+                </div>
+              ))}
+            </div>
+            <div className="grid grid-cols-7">
+              {calendarDays.map((day, i) => {
+                const isToday = day !== null && isCurrentMonth && todayDate.getDate() === day;
+                const dayLeaves = day ? leavesForDay(day) : [];
+                const visible = dayLeaves.slice(0, 3);
+                const overflow = dayLeaves.length - visible.length;
+                return (
+                  <div
+                    key={i}
+                    className={`min-h-[96px] border-b border-r border-border p-1.5 ${
+                      isToday ? 'bg-brand-50' : day === null ? 'bg-surface-secondary/40' : ''
+                    }`}
+                  >
+                    {day && (
+                      <>
+                        <div className="mb-1 flex items-center justify-between">
+                          <span
+                            className={`inline-flex h-5 w-5 items-center justify-center rounded-full text-xs ${
+                              isToday
+                                ? 'bg-brand-600 text-white'
+                                : 'text-text-tertiary'
+                            }`}
                           >
-                            {leave.user.initials} · {leave.type.replace('_', ' ').toLowerCase()}
-                          </div>
-                        ))}
-                        {leavesForDay(day).length > 3 && (
-                          <div className="text-[10px] text-text-tertiary">
-                            +{leavesForDay(day).length - 3} more
-                          </div>
-                        )}
-                      </div>
-                    </>
-                  )}
-                </div>
-              );
-            })}
+                            {day}
+                          </span>
+                          {dayLeaves.length > 0 && (
+                            <span className="text-[10px] text-text-tertiary">
+                              {dayLeaves.length}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="space-y-0.5">
+                          {visible.map((leave) => (
+                            <button
+                              key={leave.id}
+                              type="button"
+                              onClick={() => openUser(leave.user.id)}
+                              title={`${leave.user.name} — ${leaveTypeLabel[leave.type]}`}
+                              className={`flex w-full items-center gap-1 truncate rounded px-1 py-0.5 text-[10px] transition-opacity duration-fast hover:opacity-80 ${leaveTypeTones[leave.type]}`}
+                            >
+                              {leave.type === 'REMOTE' ? (
+                                <HomeIcon className="h-2.5 w-2.5 shrink-0" />
+                              ) : leave.type === 'ANNUAL' ? (
+                                <PlaneIcon className="h-2.5 w-2.5 shrink-0" />
+                              ) : (
+                                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-current opacity-70" />
+                              )}
+                              <span className="truncate">
+                                {leave.user.initials} · {leaveTypeLabel[leave.type]}
+                              </span>
+                            </button>
+                          ))}
+                          {overflow > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => setExpandedDay(day)}
+                              className="w-full text-left text-[10px] text-text-tertiary hover:text-text-primary"
+                            >
+                              +{overflow} more
+                            </button>
+                          )}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
-        </div>
-      ) : (
-        <div className="space-y-2">
-          {calendarQuery.data?.map((leave) => (
-            <div key={leave.id} className="flex items-center justify-between rounded border border-border bg-surface-primary p-3">
-              <div className="flex items-center gap-3">
-                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--avatar-1-bg)] text-xs text-[var(--avatar-1-text)]">
-                  {leave.user.initials}
-                </span>
-                <div>
-                  <div className="text-md text-text-primary">{leave.user.name}</div>
-                  <div className="text-xs text-text-tertiary">{leave.user.team?.name ?? 'No team'}</div>
+
+          {/* Expanded day modal */}
+          {expandedDay !== null && (
+            <div
+              className="fixed inset-0 z-modal flex items-center justify-center bg-[var(--overlay-backdrop)]"
+              onClick={() => setExpandedDay(null)}
+            >
+              <div
+                className="w-full max-w-card rounded-lg bg-surface-primary p-5 shadow-float animate-modal-in"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="mb-3 flex items-center justify-between">
+                  <h2>
+                    {monthLabel.split(' ')[0]} {expandedDay}
+                  </h2>
+                  <span className="text-xs text-text-tertiary">
+                    {leavesForDay(expandedDay).length} on leave
+                  </span>
                 </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className={`rounded-pill px-2 py-0.5 text-xs ${leaveTypeTones[leave.type]}`}>
-                  {leave.type.replace('_', ' ').toLowerCase()}
-                </span>
-                <span className="flex items-center gap-1 text-sm text-text-secondary">
-                  <CalendarIcon className="h-3.5 w-3.5" />
-                  {new Date(leave.startDate).toLocaleDateString()} — {new Date(leave.endDate).toLocaleDateString()}
-                </span>
+                <div className="space-y-1.5">
+                  {leavesForDay(expandedDay).map((leave) => {
+                    const palette = paletteFor(leave.user.id);
+                    return (
+                      <button
+                        key={leave.id}
+                        type="button"
+                        onClick={() => {
+                          openUser(leave.user.id);
+                          setExpandedDay(null);
+                        }}
+                        className="flex w-full items-center justify-between rounded border border-border bg-surface-primary p-2 text-left hover:bg-surface-secondary"
+                      >
+                        <div className="flex items-center gap-2">
+                          <span
+                            className="flex h-6 w-6 items-center justify-center rounded-full text-xs"
+                            style={{ background: palette.bg, color: palette.text }}
+                          >
+                            {leave.user.initials}
+                          </span>
+                          <span className="text-sm text-text-primary">{leave.user.name}</span>
+                        </div>
+                        <span
+                          className={`rounded-pill px-2 py-0.5 text-xs ${leaveTypeTones[leave.type]}`}
+                        >
+                          {leaveTypeLabel[leave.type]}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
-          ))}
+          )}
+        </>
+      ) : (
+        <div className="space-y-2">
+          {calendarQuery.data?.map((leave) => {
+            const palette = paletteFor(leave.user.id);
+            return (
+              <button
+                key={leave.id}
+                type="button"
+                onClick={() => openUser(leave.user.id)}
+                className="flex w-full items-center justify-between rounded border border-border bg-surface-primary p-3 text-left transition-colors duration-fast hover:border-border-strong hover:bg-surface-secondary"
+              >
+                <div className="flex items-center gap-3">
+                  <span
+                    className="flex h-7 w-7 items-center justify-center rounded-full text-xs"
+                    style={{ background: palette.bg, color: palette.text }}
+                  >
+                    {leave.user.initials}
+                  </span>
+                  <div>
+                    <div className="text-md text-text-primary">{leave.user.name}</div>
+                    <div className="text-xs text-text-tertiary">
+                      {leave.user.team?.name ?? 'No team'}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span
+                    className={`rounded-pill px-2 py-0.5 text-xs ${leaveTypeTones[leave.type]}`}
+                  >
+                    {leaveTypeLabel[leave.type]}
+                  </span>
+                  <span className="flex items-center gap-1 text-sm text-text-secondary">
+                    <CalendarIcon className="h-3.5 w-3.5" />
+                    {new Date(leave.startDate).toLocaleDateString()} —{' '}
+                    {new Date(leave.endDate).toLocaleDateString()}
+                  </span>
+                </div>
+              </button>
+            );
+          })}
           {calendarQuery.data?.length === 0 && (
             <div className="rounded-lg border border-dashed border-border bg-surface-primary p-6 text-center">
               <HomeIcon className="mx-auto mb-2 h-6 w-6 text-text-tertiary" />
