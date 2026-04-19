@@ -84,11 +84,12 @@ async function main() {
     { name: 'Borislav Iliev', email: 'borislav.iliev@cloudruid.com', role: 'DEVELOPER', teamId: depositTeam.id, availability: 'BUSY' },
     { name: 'Dimitar Dimitrov', email: 'dimitar.dimitrov@cloudruid.com', role: 'DEVELOPER', teamId: depositTeam.id, availability: 'AVAILABLE' },
     { name: 'Ivan', email: 'ivan@cloudruid.com', role: 'DEVELOPER', teamId: depositTeam.id, availability: 'REMOTE' },
+    { name: 'Elitsa Stancheva', email: 'elitsa.stancheva@cloudruid.com', role: 'DEVELOPER', teamId: depositTeam.id, availability: 'AVAILABLE' },
 
     // Exchange
     { name: 'Ivaylo Hadzhiyski', email: 'ivaylo.hadzhiyski@cloudruid.com', role: 'TEAM_LEAD', teamId: exchangeTeam.id, availability: 'AVAILABLE' },
     { name: 'Panayot', email: 'panayot@cloudruid.com', role: 'DEVELOPER', teamId: exchangeTeam.id, availability: 'AVAILABLE' },
-    { name: 'Elitsa', email: 'elitsa@cloudruid.com', role: 'DEVELOPER', teamId: exchangeTeam.id, availability: 'BUSY' },
+    { name: 'Ralitsa Stancheva', email: 'ralitsa.stancheva@cloudruid.com', role: 'DEVELOPER', teamId: exchangeTeam.id, availability: 'BUSY' },
 
     // Account
     { name: 'Svetli', email: 'svetli@cloudruid.com', role: 'TEAM_LEAD', teamId: accountTeam.id, availability: 'AVAILABLE' },
@@ -129,7 +130,8 @@ async function main() {
   const ivan = id('ivan@cloudruid.com');
   const ivayloH = id('ivaylo.hadzhiyski@cloudruid.com');
   const panayot = id('panayot@cloudruid.com');
-  const elitsa = id('elitsa@cloudruid.com');
+  const elitsa = id('elitsa.stancheva@cloudruid.com');
+  const ralitsa = id('ralitsa.stancheva@cloudruid.com');
   const svetli = id('svetli@cloudruid.com');
   const ivayloI = id('ivaylo.iliev@cloudruid.com');
   const todor = id('todor.kanev@cloudruid.com');
@@ -227,7 +229,7 @@ async function main() {
       syncedAt: hoursAgo(1),
     },
   });
-  await prisma.ticketAssignment.create({ data: { ticketId: ex2.id, userId: elitsa } });
+  await prisma.ticketAssignment.create({ data: { ticketId: ex2.id, userId: ralitsa } });
 
   // ─── TICKETS — Account ──────────────────────────────────────────────────
   const ac1 = await prisma.ticket.create({

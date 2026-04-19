@@ -8,6 +8,7 @@ import {
   SendIcon,
   SpinnerIcon,
   TeamsIcon,
+  ZapIcon,
 } from '../components/icons';
 
 const availabilityTones: Record<string, string> = {
@@ -40,6 +41,22 @@ export function AllTeamsPage() {
 
   const utils = trpc.useUtils();
   const teamsQuery = trpc.teams.list.useQuery();
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const standupsTodayQuery = trpc.standups.list.useQuery({ date: todayIso });
+
+  const teamCapacity = (teamId: string): { avg: number | null; posted: number } => {
+    const teamStandups = (standupsTodayQuery.data ?? []).filter((s) => s.teamId === teamId);
+    if (teamStandups.length === 0) return { avg: null, posted: 0 };
+    return {
+      avg: Math.round(
+        teamStandups.reduce((sum, s) => sum + s.capacityPct, 0) / teamStandups.length
+      ),
+      posted: teamStandups.length,
+    };
+  };
+
+  const capacityTone = (pct: number) =>
+    pct >= 90 ? 'bg-capacity-full' : pct >= 70 ? 'bg-capacity-high' : 'bg-capacity-normal';
   const broadcastMutation = trpc.integrations.broadcastSlack.useMutation({
     onSuccess: () => setBroadcastMsg(''),
   });
@@ -109,7 +126,9 @@ export function AllTeamsPage() {
       )}
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {teamsQuery.data?.map((team) => (
+        {teamsQuery.data?.map((team) => {
+          const cap = teamCapacity(team.id);
+          return (
           <div key={team.id} className="rounded-lg border border-border bg-surface-primary p-4">
             <div className="mb-3 flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -121,6 +140,26 @@ export function AllTeamsPage() {
               <span className="text-xs text-text-tertiary">
                 {team.members.length} {team.members.length === 1 ? 'member' : 'members'}
               </span>
+            </div>
+
+            <div className="mb-3 rounded border border-border bg-surface-secondary p-2.5">
+              <div className="mb-1.5 flex items-center justify-between text-xs text-text-tertiary">
+                <span className="flex items-center gap-1">
+                  <ZapIcon className="h-3 w-3" />
+                  Team capacity
+                </span>
+                <span>{cap.posted}/{team.members.length} posted</span>
+              </div>
+              {cap.avg === null ? (
+                <p className="text-xs text-text-tertiary">No standups today.</p>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-primary">
+                    <div className={`h-full ${capacityTone(cap.avg)}`} style={{ width: `${cap.avg}%` }} />
+                  </div>
+                  <span className="text-xs tabular-nums text-text-tertiary">{cap.avg}%</span>
+                </div>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -152,7 +191,8 @@ export function AllTeamsPage() {
               {team._count.tickets} {team._count.tickets === 1 ? 'ticket' : 'tickets'}
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
 
       {showCreateTeam && (
