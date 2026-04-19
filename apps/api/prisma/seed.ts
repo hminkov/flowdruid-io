@@ -1,8 +1,8 @@
 // apps/api/prisma/seed.ts
 //
 // Seed data for Flowdruid — Cloudruid internal team.
+// Four business teams: Deposit/Withdrawal, Exchange, Account, QA.
 // All user passwords are "Password123!" (hashed with bcryptjs cost 10).
-// Dates are dynamically computed relative to "today" so the demo stays live.
 
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
@@ -34,7 +34,6 @@ const initialsOf = (name: string): string => {
 async function main() {
   console.log('Seeding Cloudruid workspace...');
 
-  // Wipe existing data in reverse dependency order
   await prisma.ticketAssignment.deleteMany();
   await prisma.ticket.deleteMany();
   await prisma.standup.deleteMany();
@@ -48,23 +47,23 @@ async function main() {
 
   const passwordHash = await bcrypt.hash('Password123!', 10);
 
-  // ─── ORG ─────────────────────────────────────────────────────────────────
   const org = await prisma.organisation.create({
     data: { name: 'Cloudruid', slug: 'cloudruid' },
   });
 
-  // ─── TEAMS ───────────────────────────────────────────────────────────────
-  const devTeam = await prisma.team.create({
-    data: { name: 'Dev', orgId: org.id, slackChannelId: 'C01DEV00001' },
+  const depositTeam = await prisma.team.create({
+    data: { name: 'Deposit / Withdrawal', orgId: org.id, slackChannelId: 'C01DEP00001' },
   });
-  const designTeam = await prisma.team.create({
-    data: { name: 'Design', orgId: org.id, slackChannelId: 'C01DES00002' },
+  const exchangeTeam = await prisma.team.create({
+    data: { name: 'Exchange', orgId: org.id, slackChannelId: 'C01EXC00002' },
   });
-  const opsTeam = await prisma.team.create({
-    data: { name: 'Ops', orgId: org.id, slackChannelId: 'C01OPS00003' },
+  const accountTeam = await prisma.team.create({
+    data: { name: 'Account', orgId: org.id, slackChannelId: 'C01ACC00003' },
+  });
+  const qaTeam = await prisma.team.create({
+    data: { name: 'QA', orgId: org.id, slackChannelId: 'C01QA000004' },
   });
 
-  // ─── USERS ───────────────────────────────────────────────────────────────
   type Seed = {
     name: string;
     email: string;
@@ -74,54 +73,37 @@ async function main() {
   };
 
   const seeds: Seed[] = [
-    // Admin — Hristo
-    { name: 'Hristo Minkov', email: 'hristo.minkov@cloudruid.com', role: 'ADMIN', teamId: null, availability: 'AVAILABLE' },
+    // CEO
+    { name: 'Borislav Shekerov', email: 'borislav.shekerov@cloudruid.com', role: 'ADMIN', teamId: null, availability: 'AVAILABLE' },
 
-    // Dev team
-    { name: 'Krasimir Gizdov', email: 'krasimir.gizdov@cloudruid.com', role: 'TEAM_LEAD', teamId: devTeam.id, availability: 'AVAILABLE' },
-    { name: 'Aleksandar Angelov', email: 'aleksandar.angelov@cloudruid.com', role: 'DEVELOPER', teamId: devTeam.id, availability: 'AVAILABLE' },
-    { name: 'Borislav Iliev', email: 'borislav.iliev@cloudruid.com', role: 'DEVELOPER', teamId: devTeam.id, availability: 'BUSY' },
-    { name: 'Dimitar Dimitrov', email: 'dimitar.dimitrov@cloudruid.com', role: 'DEVELOPER', teamId: devTeam.id, availability: 'AVAILABLE' },
-    { name: 'Dimitar Kolev', email: 'dimitar.kolev@cloudruid.com', role: 'DEVELOPER', teamId: devTeam.id, availability: 'AVAILABLE' },
-    { name: 'Dimitar Piskov', email: 'dimitar.piskov@cloudruid.com', role: 'DEVELOPER', teamId: devTeam.id, availability: 'REMOTE' },
-    { name: 'Dimitar Tagarev', email: 'dimitar.tagarev@cloudruid.com', role: 'DEVELOPER', teamId: devTeam.id, availability: 'AVAILABLE' },
-    { name: 'Gabriel Mindev', email: 'gabriel.mindev@cloudruid.com', role: 'DEVELOPER', teamId: devTeam.id, availability: 'AVAILABLE' },
-    { name: 'Ivan', email: 'ivan@cloudruid.com', role: 'DEVELOPER', teamId: devTeam.id, availability: 'REMOTE' },
-    { name: 'Ivan Borisov', email: 'ivan.borisov@cloudruid.com', role: 'DEVELOPER', teamId: devTeam.id, availability: 'AVAILABLE' },
-    { name: 'Ivaylo Hadzhiyski', email: 'ivaylo.hadzhiyski@cloudruid.com', role: 'DEVELOPER', teamId: devTeam.id, availability: 'BUSY' },
-    { name: 'Ivaylo Iliev', email: 'ivaylo.iliev@cloudruid.com', role: 'DEVELOPER', teamId: devTeam.id, availability: 'AVAILABLE' },
-    { name: 'Lazar', email: 'lazar@cloudruid.com', role: 'DEVELOPER', teamId: devTeam.id, availability: 'AVAILABLE' },
-    { name: 'Marian Valchinov', email: 'marian.valchinov@cloudruid.com', role: 'DEVELOPER', teamId: devTeam.id, availability: 'AVAILABLE' },
-    { name: 'Martin Iliev', email: 'martin.iliev@cloudruid.com', role: 'DEVELOPER', teamId: devTeam.id, availability: 'AVAILABLE' },
-    { name: 'Momchil Dimitrov', email: 'momchil.dimitrov@cloudruid.com', role: 'DEVELOPER', teamId: devTeam.id, availability: 'AVAILABLE' },
-    { name: 'Nikola Valchinov', email: 'nikola.valchinov@cloudruid.com', role: 'DEVELOPER', teamId: devTeam.id, availability: 'BUSY' },
-    { name: 'Panayot', email: 'panayot@cloudruid.com', role: 'DEVELOPER', teamId: devTeam.id, availability: 'AVAILABLE' },
-    { name: 'Radoslav Dimitrov', email: 'radoslav.dimitrov@cloudruid.com', role: 'DEVELOPER', teamId: devTeam.id, availability: 'AVAILABLE' },
-    { name: 'Renal Ahmedov', email: 'renal.ahmedov@cloudruid.com', role: 'DEVELOPER', teamId: devTeam.id, availability: 'REMOTE' },
-    { name: 'Teodor Karakashev', email: 'teodor.karakashev@cloudruid.com', role: 'DEVELOPER', teamId: devTeam.id, availability: 'AVAILABLE' },
-    { name: 'Tihomir Evgeniev', email: 'tihomir.evgeniev@cloudruid.com', role: 'DEVELOPER', teamId: devTeam.id, availability: 'AVAILABLE' },
-    { name: 'Todor Kanev', email: 'todor.kanev@cloudruid.com', role: 'DEVELOPER', teamId: devTeam.id, availability: 'AVAILABLE' },
-    { name: 'Veso', email: 'veso@cloudruid.com', role: 'DEVELOPER', teamId: devTeam.id, availability: 'AVAILABLE' },
-    { name: 'Viktor', email: 'viktor@cloudruid.com', role: 'DEVELOPER', teamId: devTeam.id, availability: 'BUSY' },
-    { name: 'Boris', email: 'boris@cloudruid.com', role: 'DEVELOPER', teamId: devTeam.id, availability: 'ON_LEAVE' },
+    // Admin (user)
+    { name: 'Hristo Minkov', email: 'hristo.minkov@cloudruid.com', role: 'ADMIN', teamId: depositTeam.id, availability: 'AVAILABLE' },
 
-    // Design team
-    { name: 'Svetli', email: 'svetli@cloudruid.com', role: 'TEAM_LEAD', teamId: designTeam.id, availability: 'AVAILABLE' },
-    { name: 'Diana Demireva', email: 'diana.demireva@cloudruid.com', role: 'DEVELOPER', teamId: designTeam.id, availability: 'AVAILABLE' },
-    { name: 'Ivelina Georgieva', email: 'ivelina.georgieva@cloudruid.com', role: 'DEVELOPER', teamId: designTeam.id, availability: 'BUSY' },
-    { name: 'Veronika Kashaykova', email: 'veronika.kashaykova@cloudruid.com', role: 'DEVELOPER', teamId: designTeam.id, availability: 'AVAILABLE' },
-    { name: 'Yuliia', email: 'yuliia@cloudruid.com', role: 'DEVELOPER', teamId: designTeam.id, availability: 'REMOTE' },
+    // Deposit / Withdrawal
+    { name: 'Krasimir Gizdov', email: 'krasimir.gizdov@cloudruid.com', role: 'TEAM_LEAD', teamId: depositTeam.id, availability: 'AVAILABLE' },
+    { name: 'Borislav Iliev', email: 'borislav.iliev@cloudruid.com', role: 'DEVELOPER', teamId: depositTeam.id, availability: 'BUSY' },
+    { name: 'Dimitar Dimitrov', email: 'dimitar.dimitrov@cloudruid.com', role: 'DEVELOPER', teamId: depositTeam.id, availability: 'AVAILABLE' },
+    { name: 'Ivan', email: 'ivan@cloudruid.com', role: 'DEVELOPER', teamId: depositTeam.id, availability: 'REMOTE' },
 
-    // Ops team
-    { name: 'HR', email: 'hr@cloudruid.com', role: 'TEAM_LEAD', teamId: opsTeam.id, availability: 'AVAILABLE' },
-    { name: 'Ekaterina', email: 'ekaterina@cloudruid.com', role: 'DEVELOPER', teamId: opsTeam.id, availability: 'AVAILABLE' },
-    { name: 'Elitsa', email: 'elitsa@cloudruid.com', role: 'DEVELOPER', teamId: opsTeam.id, availability: 'AVAILABLE' },
-    { name: 'Martin Panayotov', email: 'martin.panayotov@cloudruid.com', role: 'DEVELOPER', teamId: opsTeam.id, availability: 'AVAILABLE' },
-    { name: 'Radoslav Ivanov', email: 'radoslav.ivanov@cloudruid.com', role: 'DEVELOPER', teamId: opsTeam.id, availability: 'AVAILABLE' },
-    { name: 'Ralitsa', email: 'ralitsa@cloudruid.com', role: 'DEVELOPER', teamId: opsTeam.id, availability: 'ON_LEAVE' },
+    // Exchange
+    { name: 'Ivaylo Hadzhiyski', email: 'ivaylo.hadzhiyski@cloudruid.com', role: 'TEAM_LEAD', teamId: exchangeTeam.id, availability: 'AVAILABLE' },
+    { name: 'Panayot', email: 'panayot@cloudruid.com', role: 'DEVELOPER', teamId: exchangeTeam.id, availability: 'AVAILABLE' },
+    { name: 'Elitsa', email: 'elitsa@cloudruid.com', role: 'DEVELOPER', teamId: exchangeTeam.id, availability: 'BUSY' },
+
+    // Account
+    { name: 'Svetli', email: 'svetli@cloudruid.com', role: 'TEAM_LEAD', teamId: accountTeam.id, availability: 'AVAILABLE' },
+    { name: 'Ivaylo Iliev', email: 'ivaylo.iliev@cloudruid.com', role: 'DEVELOPER', teamId: accountTeam.id, availability: 'AVAILABLE' },
+    { name: 'Todor Kanev', email: 'todor.kanev@cloudruid.com', role: 'DEVELOPER', teamId: accountTeam.id, availability: 'REMOTE' },
+
+    // QA
+    { name: 'Ivelina Georgieva', email: 'ivelina.georgieva@cloudruid.com', role: 'TEAM_LEAD', teamId: qaTeam.id, availability: 'AVAILABLE' },
+    { name: 'Diana Demireva', email: 'diana.demireva@cloudruid.com', role: 'DEVELOPER', teamId: qaTeam.id, availability: 'AVAILABLE' },
+    { name: 'Veronika Kashaykova', email: 'veronika.kashaykova@cloudruid.com', role: 'DEVELOPER', teamId: qaTeam.id, availability: 'AVAILABLE' },
+    { name: 'Yuliia', email: 'yuliia@cloudruid.com', role: 'DEVELOPER', teamId: qaTeam.id, availability: 'ON_LEAVE' },
+    { name: 'Momchil Dimitrov', email: 'momchil.dimitrov@cloudruid.com', role: 'DEVELOPER', teamId: qaTeam.id, availability: 'AVAILABLE' },
   ];
 
-  const users: Record<string, { id: string; name: string; email: string }> = {};
+  const users: Record<string, { id: string; name: string }> = {};
   for (const s of seeds) {
     const u = await prisma.user.create({
       data: {
@@ -138,175 +120,197 @@ async function main() {
     users[s.email] = u;
   }
 
-  const byEmail = (e: string) => users[e]!.id;
+  const id = (email: string) => users[email]!.id;
 
-  const hristo = byEmail('hristo.minkov@cloudruid.com');
-  const krasimir = byEmail('krasimir.gizdov@cloudruid.com');
-  const borislav = byEmail('borislav.iliev@cloudruid.com');
-  const dimitar = byEmail('dimitar.dimitrov@cloudruid.com');
-  const ivan = byEmail('ivan@cloudruid.com');
-  const nikola = byEmail('nikola.valchinov@cloudruid.com');
-  const teodor = byEmail('teodor.karakashev@cloudruid.com');
-  const gabriel = byEmail('gabriel.mindev@cloudruid.com');
-  const momchil = byEmail('momchil.dimitrov@cloudruid.com');
-  const boris = byEmail('boris@cloudruid.com');
-  const ivaylo = byEmail('ivaylo.hadzhiyski@cloudruid.com');
-  const elitsa = byEmail('elitsa@cloudruid.com');
-  const svetli = byEmail('svetli@cloudruid.com');
-  const veronika = byEmail('veronika.kashaykova@cloudruid.com');
-  const diana = byEmail('diana.demireva@cloudruid.com');
-  const hrUser = byEmail('hr@cloudruid.com');
-  const ralitsa = byEmail('ralitsa@cloudruid.com');
-  const martinPanayotov = byEmail('martin.panayotov@cloudruid.com');
+  const hristo = id('hristo.minkov@cloudruid.com');
+  const krasimir = id('krasimir.gizdov@cloudruid.com');
+  const borislav = id('borislav.iliev@cloudruid.com');
+  const dimitar = id('dimitar.dimitrov@cloudruid.com');
+  const ivan = id('ivan@cloudruid.com');
+  const ivayloH = id('ivaylo.hadzhiyski@cloudruid.com');
+  const panayot = id('panayot@cloudruid.com');
+  const elitsa = id('elitsa@cloudruid.com');
+  const svetli = id('svetli@cloudruid.com');
+  const ivayloI = id('ivaylo.iliev@cloudruid.com');
+  const todor = id('todor.kanev@cloudruid.com');
+  const ivelina = id('ivelina.georgieva@cloudruid.com');
+  const diana = id('diana.demireva@cloudruid.com');
+  const veronika = id('veronika.kashaykova@cloudruid.com');
+  const yuliia = id('yuliia@cloudruid.com');
+  const momchil = id('momchil.dimitrov@cloudruid.com');
 
-  // ─── TICKETS — Dev team ──────────────────────────────────────────────────
-  const t1 = await prisma.ticket.create({
+  // ─── TICKETS — Deposit / Withdrawal ─────────────────────────────────────
+  const dw1 = await prisma.ticket.create({
     data: {
       source: 'JIRA',
-      jiraKey: 'CR-041',
+      jiraKey: 'DW-041',
       jiraId: '10041',
-      title: 'Auth service — refresh token rotation',
-      description: 'Rotate refresh tokens on every use and persist the family id for revocation.',
+      title: 'SEPA withdrawal — retry on bank timeout',
+      description: 'Outbound SEPA calls time out occasionally; implement exponential backoff with idempotency.',
       status: 'IN_PROGRESS',
       priority: 'HIGH',
-      teamId: devTeam.id,
+      teamId: depositTeam.id,
       syncedAt: hoursAgo(1),
     },
   });
-  await prisma.ticketAssignment.create({ data: { ticketId: t1.id, userId: borislav } });
-  await prisma.ticketAssignment.create({ data: { ticketId: t1.id, userId: dimitar } });
+  await prisma.ticketAssignment.create({ data: { ticketId: dw1.id, userId: borislav } });
+  await prisma.ticketAssignment.create({ data: { ticketId: dw1.id, userId: dimitar } });
 
-  const t2 = await prisma.ticket.create({
+  const dw2 = await prisma.ticket.create({
     data: {
       source: 'JIRA',
-      jiraKey: 'CR-042',
+      jiraKey: 'DW-042',
       jiraId: '10042',
-      title: 'Client build — publish v2.3.0',
-      description: 'Urgent: publish latest changes to the client repo. Blocking QA.',
+      title: 'Crypto deposit — confirmations below threshold',
+      description: 'Edge: deposits credited before required confirmations when node reports stale head.',
       status: 'IN_PROGRESS',
       priority: 'HIGH',
-      teamId: devTeam.id,
+      teamId: depositTeam.id,
       syncedAt: hoursAgo(1),
     },
   });
-  await prisma.ticketAssignment.create({ data: { ticketId: t2.id, userId: krasimir } });
+  await prisma.ticketAssignment.create({ data: { ticketId: dw2.id, userId: krasimir } });
 
-  const t3 = await prisma.ticket.create({
+  const dw3 = await prisma.ticket.create({
     data: {
       source: 'JIRA',
-      jiraKey: 'CR-038',
+      jiraKey: 'DW-038',
       jiraId: '10038',
-      title: 'Migrate logging to OpenTelemetry',
-      description: 'Replace the bespoke logger with OTel SDK + collector.',
+      title: 'Withdrawal limits — daily cap per currency',
+      description: 'Apply per-currency daily caps and surface the remaining amount in the UI.',
       status: 'IN_REVIEW',
       priority: 'MEDIUM',
-      teamId: devTeam.id,
+      teamId: depositTeam.id,
       syncedAt: hoursAgo(1),
     },
   });
-  await prisma.ticketAssignment.create({ data: { ticketId: t3.id, userId: ivan } });
-
-  const t4 = await prisma.ticket.create({
-    data: {
-      source: 'JIRA',
-      jiraKey: 'CR-039',
-      jiraId: '10039',
-      title: 'Release pipeline — staging deploy flake',
-      description: 'Staging deploy step fails intermittently on first run after a cold cache.',
-      status: 'IN_PROGRESS',
-      priority: 'MEDIUM',
-      teamId: devTeam.id,
-      syncedAt: hoursAgo(1),
-    },
-  });
-  await prisma.ticketAssignment.create({ data: { ticketId: t4.id, userId: nikola } });
+  await prisma.ticketAssignment.create({ data: { ticketId: dw3.id, userId: ivan } });
 
   await prisma.ticket.create({
     data: {
       source: 'INTERNAL',
-      title: 'Update staging environment docs',
-      description: 'Internal: staging setup guide is outdated since the Redis migration.',
+      title: 'Runbook — stuck deposit remediation',
+      description: 'Document the triage and manual-credit flow for stuck deposits.',
       status: 'TODO',
       priority: 'LOW',
-      teamId: devTeam.id,
+      teamId: depositTeam.id,
     },
   });
 
-  const t6 = await prisma.ticket.create({
+  // ─── TICKETS — Exchange ─────────────────────────────────────────────────
+  const ex1 = await prisma.ticket.create({
     data: {
       source: 'JIRA',
-      jiraKey: 'CR-033',
-      jiraId: '10033',
-      title: 'Edge case — refresh token mid-request returns 500',
-      description: 'Refresh token expires between auth middleware and resolver; should be 401 not 500.',
-      status: 'DONE',
-      priority: 'LOW',
-      teamId: devTeam.id,
-      syncedAt: hoursAgo(24),
-    },
-  });
-  await prisma.ticketAssignment.create({ data: { ticketId: t6.id, userId: momchil } });
-
-  const t7 = await prisma.ticket.create({
-    data: {
-      source: 'INTERNAL',
-      title: 'Refactor email templates to MJML',
-      description: 'Current templates use inline HTML — move to MJML for maintainability.',
-      status: 'TODO',
-      priority: 'MEDIUM',
-      teamId: devTeam.id,
-    },
-  });
-  await prisma.ticketAssignment.create({ data: { ticketId: t7.id, userId: gabriel } });
-
-  // ─── TICKETS — Design team ──────────────────────────────────────────────
-  const d1 = await prisma.ticket.create({
-    data: {
-      source: 'JIRA',
-      jiraKey: 'DES-012',
-      jiraId: '20012',
-      title: 'Onboarding flow redesign',
-      description: 'New onboarding screens for enterprise customers.',
+      jiraKey: 'EX-017',
+      jiraId: '20017',
+      title: 'Order book — partial fill UX',
+      description: 'Show partial fills as they happen instead of only on order close.',
       status: 'IN_PROGRESS',
       priority: 'HIGH',
-      teamId: designTeam.id,
+      teamId: exchangeTeam.id,
       syncedAt: hoursAgo(1),
     },
   });
-  await prisma.ticketAssignment.create({ data: { ticketId: d1.id, userId: veronika } });
+  await prisma.ticketAssignment.create({ data: { ticketId: ex1.id, userId: ivayloH } });
+  await prisma.ticketAssignment.create({ data: { ticketId: ex1.id, userId: panayot } });
 
-  await prisma.ticket.create({
-    data: {
-      source: 'INTERNAL',
-      title: 'Component library audit',
-      status: 'TODO',
-      priority: 'LOW',
-      teamId: designTeam.id,
-    },
-  });
-
-  // ─── TICKETS — Ops team ─────────────────────────────────────────────────
-  const o1 = await prisma.ticket.create({
+  const ex2 = await prisma.ticket.create({
     data: {
       source: 'JIRA',
-      jiraKey: 'OPS-007',
-      jiraId: '30007',
-      title: 'Postgres 16 upgrade on staging',
-      status: 'IN_REVIEW',
+      jiraKey: 'EX-018',
+      jiraId: '20018',
+      title: 'Pair listings — config hot reload',
+      description: 'Reload pair configuration without a service restart.',
+      status: 'TODO',
       priority: 'MEDIUM',
-      teamId: opsTeam.id,
+      teamId: exchangeTeam.id,
       syncedAt: hoursAgo(1),
     },
   });
-  await prisma.ticketAssignment.create({ data: { ticketId: o1.id, userId: martinPanayotov } });
+  await prisma.ticketAssignment.create({ data: { ticketId: ex2.id, userId: elitsa } });
 
-  // ─── STANDUPS — today (Dev team) ─────────────────────────────────────────
+  // ─── TICKETS — Account ──────────────────────────────────────────────────
+  const ac1 = await prisma.ticket.create({
+    data: {
+      source: 'JIRA',
+      jiraKey: 'AC-022',
+      jiraId: '30022',
+      title: 'KYC refresh — expiring documents reminder',
+      description: 'Email users 14 days before their document expires; retry at 7 and 1 days.',
+      status: 'IN_PROGRESS',
+      priority: 'MEDIUM',
+      teamId: accountTeam.id,
+      syncedAt: hoursAgo(1),
+    },
+  });
+  await prisma.ticketAssignment.create({ data: { ticketId: ac1.id, userId: svetli } });
+
+  const ac2 = await prisma.ticket.create({
+    data: {
+      source: 'JIRA',
+      jiraKey: 'AC-023',
+      jiraId: '30023',
+      title: '2FA recovery flow rewrite',
+      description: 'Replace the current recovery email flow with signed recovery codes.',
+      status: 'IN_REVIEW',
+      priority: 'HIGH',
+      teamId: accountTeam.id,
+      syncedAt: hoursAgo(1),
+    },
+  });
+  await prisma.ticketAssignment.create({ data: { ticketId: ac2.id, userId: ivayloI } });
+  await prisma.ticketAssignment.create({ data: { ticketId: ac2.id, userId: todor } });
+
+  // ─── TICKETS — QA ───────────────────────────────────────────────────────
+  const qa1 = await prisma.ticket.create({
+    data: {
+      source: 'JIRA',
+      jiraKey: 'QA-015',
+      jiraId: '40015',
+      title: 'Regression suite — flaky withdrawal tests',
+      description: '3 tests flake intermittently when the worker queue is saturated.',
+      status: 'IN_PROGRESS',
+      priority: 'MEDIUM',
+      teamId: qaTeam.id,
+      syncedAt: hoursAgo(1),
+    },
+  });
+  await prisma.ticketAssignment.create({ data: { ticketId: qa1.id, userId: ivelina } });
+
+  const qa2 = await prisma.ticket.create({
+    data: {
+      source: 'JIRA',
+      jiraKey: 'QA-016',
+      jiraId: '40016',
+      title: 'Exchange — load test 10× current peak',
+      description: 'Simulate 10× peak order volume and record p95/p99 latencies.',
+      status: 'TODO',
+      priority: 'HIGH',
+      teamId: qaTeam.id,
+      syncedAt: hoursAgo(1),
+    },
+  });
+  await prisma.ticketAssignment.create({ data: { ticketId: qa2.id, userId: diana } });
+  await prisma.ticketAssignment.create({ data: { ticketId: qa2.id, userId: momchil } });
+
+  const qa3 = await prisma.ticket.create({
+    data: {
+      source: 'INTERNAL',
+      title: 'Smoke tests — add to CI main branch',
+      status: 'IN_REVIEW',
+      priority: 'LOW',
+      teamId: qaTeam.id,
+    },
+  });
+  await prisma.ticketAssignment.create({ data: { ticketId: qa3.id, userId: veronika } });
+
+  // ─── STANDUPS — today ───────────────────────────────────────────────────
   await prisma.standup.create({
     data: {
       userId: krasimir,
-      teamId: devTeam.id,
-      yesterday: 'Release planning, coordinated client publish with Borislav and Dimitar.',
-      today: 'Working on release pipeline. Available for questions.',
+      teamId: depositTeam.id,
+      yesterday: 'Release planning, coordinated SEPA retry spec with Borislav and Dimitar.',
+      today: 'DW-042 triage. Available for questions.',
       blockers: null,
       capacityPct: 60,
       postedAt: hoursAgo(6),
@@ -316,9 +320,9 @@ async function main() {
   await prisma.standup.create({
     data: {
       userId: borislav,
-      teamId: devTeam.id,
-      yesterday: 'Refresh token rotation, repo coordination.',
-      today: 'Continuing CR-041. Full day — no capacity for new tasks.',
+      teamId: depositTeam.id,
+      yesterday: 'Idempotency keys for SEPA retries.',
+      today: 'Continuing DW-041. Full day — no capacity for new tasks.',
       blockers: 'Need staging DB dump refreshed — @Krasimir',
       capacityPct: 95,
       postedAt: hoursAgo(5),
@@ -327,22 +331,10 @@ async function main() {
 
   await prisma.standup.create({
     data: {
-      userId: nikola,
-      teamId: devTeam.id,
-      yesterday: 'Pipeline investigation, staging config review.',
-      today: 'Finishing release fix this morning. Free this afternoon.',
-      blockers: null,
-      capacityPct: 45,
-      postedAt: hoursAgo(4),
-    },
-  });
-
-  await prisma.standup.create({
-    data: {
       userId: dimitar,
-      teamId: devTeam.id,
-      yesterday: 'Closed CR-033 (refresh token edge case).',
-      today: 'Pairing with Borislav on CR-041. Some capacity for reviews.',
+      teamId: depositTeam.id,
+      yesterday: 'SEPA retry PR reviewed; added test coverage.',
+      today: 'Pairing with Borislav on DW-041. Some capacity for reviews.',
       blockers: null,
       capacityPct: 70,
       postedAt: hoursAgo(4),
@@ -352,84 +344,93 @@ async function main() {
   await prisma.standup.create({
     data: {
       userId: ivan,
-      teamId: devTeam.id,
-      yesterday: 'OpenTelemetry PR ready for review.',
-      today: 'Remote today. Responding to review comments on CR-038.',
+      teamId: depositTeam.id,
+      yesterday: 'DW-038 cap enforcement done; PR up for review.',
+      today: 'Remote today. Responding to review comments.',
       blockers: null,
       capacityPct: 50,
       postedAt: hoursAgo(3),
     },
   });
 
-  // Yesterday's standups
-  const yesterdayDate = daysFromToday(-1);
+  await prisma.standup.create({
+    data: {
+      userId: ivayloH,
+      teamId: exchangeTeam.id,
+      yesterday: 'Planning partial fill UX with Panayot.',
+      today: 'Implementing incremental fill events on EX-017.',
+      blockers: null,
+      capacityPct: 70,
+      postedAt: hoursAgo(3),
+    },
+  });
 
+  await prisma.standup.create({
+    data: {
+      userId: ivelina,
+      teamId: qaTeam.id,
+      yesterday: 'Investigated flaky withdrawal tests — suspect is queue backpressure.',
+      today: 'Reproducing QA-015 under load; assigning fixtures to Momchil.',
+      blockers: null,
+      capacityPct: 60,
+      postedAt: hoursAgo(2),
+    },
+  });
+
+  await prisma.standup.create({
+    data: {
+      userId: svetli,
+      teamId: accountTeam.id,
+      yesterday: 'Specced out 2FA recovery codes.',
+      today: 'KYC reminder job — schedule and copy review.',
+      blockers: null,
+      capacityPct: 55,
+      postedAt: hoursAgo(2),
+    },
+  });
+
+  // Yesterday
+  const yesterday = daysFromToday(-1);
   await prisma.standup.create({
     data: {
       userId: krasimir,
-      teamId: devTeam.id,
-      yesterday: 'Client call, architecture review for Q3 roadmap.',
-      today: 'Release coordination, onboarding Borislav and Dimitar to the publish flow.',
+      teamId: depositTeam.id,
+      yesterday: 'Client call, architecture review for Q3.',
+      today: 'Release coordination, onboarding Ivan to the payouts flow.',
       blockers: null,
       capacityPct: 55,
-      postedAt: new Date(yesterdayDate.getTime() + 9.5 * 3600 * 1000),
+      postedAt: new Date(yesterday.getTime() + 9.5 * 3600 * 1000),
     },
   });
-
   await prisma.standup.create({
     data: {
       userId: borislav,
-      teamId: devTeam.id,
+      teamId: depositTeam.id,
       yesterday: 'Backlog grooming, Jira cleanup.',
-      today: 'Starting on token rotation with Dimitar.',
+      today: 'Starting on SEPA retries with Dimitar.',
       blockers: null,
       capacityPct: 80,
-      postedAt: new Date(yesterdayDate.getTime() + 9.3 * 3600 * 1000),
+      postedAt: new Date(yesterday.getTime() + 9.3 * 3600 * 1000),
     },
   });
 
-  // ─── LEAVE REQUESTS ─────────────────────────────────────────────────────
-  // Boris currently on leave
+  // ─── LEAVES ─────────────────────────────────────────────────────────────
+  // Yuliia currently on annual leave
   await prisma.leaveRequest.create({
     data: {
-      userId: boris,
+      userId: yuliia,
       type: 'ANNUAL',
       status: 'APPROVED',
       startDate: daysFromToday(-2),
       endDate: daysFromToday(2),
       note: 'Pre-planned family trip.',
-      reviewedBy: krasimir,
+      reviewedBy: ivelina,
       reviewedAt: daysFromToday(-10),
       notifySlack: true,
     },
   });
 
-  // Boris had sick leave last week
-  await prisma.leaveRequest.create({
-    data: {
-      userId: boris,
-      type: 'SICK',
-      status: 'APPROVED',
-      startDate: daysFromToday(-6),
-      endDate: daysFromToday(-5),
-      reviewedBy: krasimir,
-      reviewedAt: daysFromToday(-6),
-    },
-  });
-
-  // Ivan remote days — approved
-  await prisma.leaveRequest.create({
-    data: {
-      userId: ivan,
-      type: 'REMOTE',
-      status: 'APPROVED',
-      startDate: daysFromToday(-9),
-      endDate: daysFromToday(-8),
-      reviewedBy: krasimir,
-      reviewedAt: daysFromToday(-12),
-    },
-  });
-
+  // Ivan remote day today
   await prisma.leaveRequest.create({
     data: {
       userId: ivan,
@@ -443,7 +444,7 @@ async function main() {
     },
   });
 
-  // Borislav partial day — approved (last week)
+  // Borislav partial day last week
   await prisma.leaveRequest.create({
     data: {
       userId: borislav,
@@ -457,10 +458,10 @@ async function main() {
     },
   });
 
-  // PENDING — partial day
+  // PENDING — Elitsa partial day
   await prisma.leaveRequest.create({
     data: {
-      userId: ivaylo,
+      userId: elitsa,
       type: 'PARTIAL_AM',
       status: 'PENDING',
       startDate: daysFromToday(2),
@@ -470,10 +471,10 @@ async function main() {
     },
   });
 
-  // PENDING — 3-day annual leave
+  // PENDING — Dimitar annual leave
   await prisma.leaveRequest.create({
     data: {
-      userId: teodor,
+      userId: dimitar,
       type: 'ANNUAL',
       status: 'PENDING',
       startDate: daysFromToday(6),
@@ -483,10 +484,10 @@ async function main() {
     },
   });
 
-  // PENDING — remote day
+  // PENDING — Todor remote day
   await prisma.leaveRequest.create({
     data: {
-      userId: momchil,
+      userId: todor,
       type: 'REMOTE',
       status: 'PENDING',
       startDate: daysFromToday(13),
@@ -495,7 +496,7 @@ async function main() {
     },
   });
 
-  // Design team leaves
+  // Diana approved remote block
   await prisma.leaveRequest.create({
     data: {
       userId: diana,
@@ -504,33 +505,20 @@ async function main() {
       startDate: daysFromToday(5),
       endDate: daysFromToday(9),
       note: 'Working from the coast this week.',
-      reviewedBy: svetli,
+      reviewedBy: ivelina,
       reviewedAt: daysFromToday(-1),
     },
   });
 
-  // Ops team leaves
+  // Future scheduled
   await prisma.leaveRequest.create({
     data: {
-      userId: ralitsa,
-      type: 'SICK',
-      status: 'APPROVED',
-      startDate: daysFromToday(-2),
-      endDate: daysFromToday(1),
-      reviewedBy: hrUser,
-      reviewedAt: daysFromToday(-2),
-    },
-  });
-
-  // Future scheduled leave
-  await prisma.leaveRequest.create({
-    data: {
-      userId: boris,
+      userId: yuliia,
       type: 'ANNUAL',
       status: 'APPROVED',
       startDate: daysFromToday(21),
       endDate: daysFromToday(23),
-      reviewedBy: krasimir,
+      reviewedBy: ivelina,
       reviewedAt: daysFromToday(-5),
     },
   });
@@ -547,7 +535,7 @@ async function main() {
     },
   });
 
-  // ─── INTEGRATIONS (placeholder credentials) ─────────────────────────────
+  // ─── INTEGRATIONS (placeholders) ────────────────────────────────────────
   await prisma.slackConfig.create({
     data: {
       orgId: org.id,
@@ -567,7 +555,7 @@ async function main() {
       baseUrl: 'https://cloudruid.atlassian.net',
       email: 'hristo.minkov@cloudruid.com',
       apiToken: 'PLACEHOLDER-REPLACE-VIA-UI',
-      projectKeys: ['CR', 'DES', 'OPS'],
+      projectKeys: ['DW', 'EX', 'AC', 'QA'],
       syncInterval: 15,
       lastSyncAt: hoursAgo(1),
     },
@@ -575,14 +563,15 @@ async function main() {
 
   console.log('Seed complete.');
   console.log(`  Org:       ${org.name}`);
-  console.log(`  Teams:     3  (Dev, Design, Ops)`);
-  console.log(`  Users:     ${seeds.length}  (1 admin, 3 leads, ${seeds.length - 4} developers)`);
+  console.log(`  Teams:     4  (Deposit/Withdrawal, Exchange, Account, QA)`);
+  console.log(`  Users:     ${seeds.length}`);
   console.log('');
   console.log('Login credentials — password for all users: Password123!');
-  console.log('  Admin:       hristo.minkov@cloudruid.com');
-  console.log('  Dev lead:    krasimir.gizdov@cloudruid.com');
-  console.log('  Design lead: svetli@cloudruid.com');
-  console.log('  Ops lead:    hr@cloudruid.com');
+  console.log('  Admin:          hristo.minkov@cloudruid.com');
+  console.log('  Deposit lead:   krasimir.gizdov@cloudruid.com');
+  console.log('  Exchange lead:  ivaylo.hadzhiyski@cloudruid.com');
+  console.log('  Account lead:   svetli@cloudruid.com');
+  console.log('  QA lead:        ivelina.georgieva@cloudruid.com');
 }
 
 main()
