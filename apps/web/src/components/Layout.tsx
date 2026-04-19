@@ -1,6 +1,11 @@
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { useUserDetail } from '../hooks/useUserDetail';
+import { trpc } from '../lib/trpc';
 import { ThemeToggle } from './ThemeToggle';
+import { HeaderSearch } from './HeaderSearch';
+import { UserMenu } from './UserMenu';
+import { BellIcon } from './icons';
 import { Logo } from './ui/Logo';
 import type { ReactNode, SVGProps } from 'react';
 
@@ -66,12 +71,6 @@ const Icon = {
       <path d="M11 6.5h4a2 2 0 0 1 2 2V13M6.5 13v-1.5" />
     </svg>
   ),
-  Logout: (p: IconProps) => (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" {...p}>
-      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-      <path d="m16 17 5-5-5-5M21 12H9" />
-    </svg>
-  ),
 };
 
 type NavItem = {
@@ -106,14 +105,13 @@ const navSections: { label: string; items: NavItem[] }[] = [
 const roleHierarchy = { ADMIN: 3, TEAM_LEAD: 2, DEVELOPER: 1 };
 
 export function Layout({ children }: { children: ReactNode }) {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
+  const { openUser } = useUserDetail();
   const location = useLocation();
-  const navigate = useNavigate();
 
-  const handleLogout = async () => {
-    await logout();
-    navigate('/login');
-  };
+  const isLeadOrAdmin = user?.role === 'ADMIN' || user?.role === 'TEAM_LEAD';
+  const pendingLeavesQuery = trpc.leaves.pending.useQuery(undefined, { enabled: !!isLeadOrAdmin });
+  const pendingCount = pendingLeavesQuery.data?.length ?? 0;
 
   const visibleSections = user
     ? navSections
@@ -126,14 +124,19 @@ export function Layout({ children }: { children: ReactNode }) {
 
   const allVisibleItems = visibleSections.flatMap((s) => s.items);
 
+  const currentItem = allVisibleItems.find((i) => i.path === location.pathname);
+  const currentLabel = currentItem?.label ?? '';
+  const CurrentIcon = currentItem?.icon;
+  const currentSection = visibleSections.find((s) =>
+    s.items.some((i) => i.path === location.pathname)
+  );
+
   const initials = user?.name
     ?.split(' ')
     .map((n) => n[0])
     .join('')
     .slice(0, 2)
     .toUpperCase();
-
-  const currentLabel = allVisibleItems.find((i) => i.path === location.pathname)?.label ?? '';
 
   return (
     <div className="flex h-screen bg-surface-tertiary">
@@ -183,37 +186,70 @@ export function Layout({ children }: { children: ReactNode }) {
           ))}
         </nav>
 
-        <div className="border-t border-border p-3">
-          <div className="hidden items-center gap-3 lg:flex">
-            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--avatar-1-bg)] text-xs text-[var(--avatar-1-text)]">
-              {initials}
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-base text-text-primary">{user?.name}</p>
-              <p className="text-xs text-text-tertiary">{user?.role.replace('_', ' ').toLowerCase()}</p>
-            </div>
+        {user && (
+          <div className="border-t border-border p-3">
+            <button
+              onClick={() => openUser(user.id)}
+              title="View my profile"
+              className="flex w-full items-center gap-3 rounded p-1 text-left transition-colors duration-fast hover:bg-surface-secondary"
+            >
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--avatar-1-bg)] text-xs text-[var(--avatar-1-text)]">
+                {initials}
+              </span>
+              <div className="hidden min-w-0 flex-1 lg:block">
+                <p className="truncate text-base text-text-primary">{user.name}</p>
+                <p className="text-xs text-text-tertiary">
+                  {user.role.replace('_', ' ').toLowerCase()}
+                </p>
+              </div>
+            </button>
           </div>
-          <button
-            onClick={handleLogout}
-            className="mt-2 flex w-full items-center justify-center gap-2 rounded border border-border px-3 py-1 text-base text-text-secondary transition-colors duration-fast hover:border-border-strong hover:bg-surface-secondary hover:text-text-primary"
-            title="Sign out"
-          >
-            <Icon.Logout className="h-4 w-4" />
-            <span className="hidden lg:inline">Sign out</span>
-          </button>
-        </div>
+        )}
       </aside>
 
       {/* Main content */}
       <div className="flex flex-1 flex-col overflow-hidden">
-        <header className="flex h-12 items-center justify-between border-b border-border bg-surface-primary px-6">
-          <h2 className="text-md text-text-primary">{currentLabel}</h2>
-          <div className="flex items-center gap-4">
-            <div className="hidden items-center gap-2 text-xs text-text-tertiary sm:flex">
-              <span className="h-1 w-1 rounded-full bg-success-text" />
-              All systems operational
+        <header className="flex h-14 items-center gap-4 border-b border-border bg-surface-primary px-6">
+          {/* Left — breadcrumb */}
+          <div className="flex min-w-0 items-center gap-2">
+            {currentSection && (
+              <>
+                <span className="hidden text-xs text-text-tertiary md:inline">
+                  {currentSection.label}
+                </span>
+                <span className="hidden text-text-tertiary md:inline">/</span>
+              </>
+            )}
+            <div className="flex items-center gap-1.5">
+              {CurrentIcon && (
+                <CurrentIcon className="h-4 w-4 shrink-0 text-brand-600" />
+              )}
+              <h2 className="truncate text-md text-text-primary">{currentLabel}</h2>
             </div>
+          </div>
+
+          {/* Center — search */}
+          <div className="mx-auto flex w-full max-w-sm">
+            <HeaderSearch />
+          </div>
+
+          {/* Right — actions */}
+          <div className="flex shrink-0 items-center gap-2">
+            {isLeadOrAdmin && pendingCount > 0 && (
+              <Link
+                to="/admin/leaves"
+                className="relative flex h-8 w-8 items-center justify-center rounded-full border border-border bg-surface-primary text-text-secondary transition-colors duration-fast hover:border-border-strong hover:text-text-primary"
+                title={`${pendingCount} pending leave ${pendingCount === 1 ? 'request' : 'requests'}`}
+                aria-label={`${pendingCount} pending leave requests`}
+              >
+                <BellIcon className="h-3.5 w-3.5" />
+                <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-danger-bg px-1 text-[10px] text-danger-text ring-2 ring-surface-primary">
+                  {pendingCount}
+                </span>
+              </Link>
+            )}
             <ThemeToggle />
+            <UserMenu />
           </div>
         </header>
         <main className="flex-1 overflow-y-auto p-6">{children}</main>
