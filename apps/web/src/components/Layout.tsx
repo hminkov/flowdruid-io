@@ -74,16 +74,33 @@ const Icon = {
   ),
 };
 
-const navItems = [
-  { path: '/dashboard', label: 'Dashboard', minRole: 'DEVELOPER' as const, icon: Icon.Dashboard },
-  { path: '/tasks', label: 'Tasks', minRole: 'DEVELOPER' as const, icon: Icon.Tasks },
-  { path: '/standup', label: 'Standup', minRole: 'DEVELOPER' as const, icon: Icon.Standup },
-  { path: '/calendar', label: 'Calendar', minRole: 'DEVELOPER' as const, icon: Icon.Calendar },
-  { path: '/leave/request', label: 'Leave', minRole: 'DEVELOPER' as const, icon: Icon.Leave },
-  { path: '/admin/leaves', label: 'Approve leaves', minRole: 'TEAM_LEAD' as const, icon: Icon.Approve },
-  { path: '/all-teams', label: 'All teams', minRole: 'TEAM_LEAD' as const, icon: Icon.Teams },
-  { path: '/admin/users', label: 'Users', minRole: 'ADMIN' as const, icon: Icon.Users },
-  { path: '/admin/integrations', label: 'Integrations', minRole: 'ADMIN' as const, icon: Icon.Integrations },
+type NavItem = {
+  path: string;
+  label: string;
+  minRole: 'ADMIN' | 'TEAM_LEAD' | 'DEVELOPER';
+  icon: (p: SVGProps<SVGSVGElement>) => JSX.Element;
+};
+
+const navSections: { label: string; items: NavItem[] }[] = [
+  {
+    label: 'Workspace',
+    items: [
+      { path: '/dashboard', label: 'Dashboard', minRole: 'DEVELOPER', icon: Icon.Dashboard },
+      { path: '/tasks', label: 'Tasks & tickets', minRole: 'DEVELOPER', icon: Icon.Tasks },
+      { path: '/standup', label: 'Standup feed', minRole: 'DEVELOPER', icon: Icon.Standup },
+      { path: '/calendar', label: 'Leave calendar', minRole: 'DEVELOPER', icon: Icon.Calendar },
+      { path: '/leave/request', label: 'Leave request', minRole: 'DEVELOPER', icon: Icon.Leave },
+    ],
+  },
+  {
+    label: 'Admin',
+    items: [
+      { path: '/admin/leaves', label: 'Approve leaves', minRole: 'TEAM_LEAD', icon: Icon.Approve },
+      { path: '/all-teams', label: 'All teams', minRole: 'TEAM_LEAD', icon: Icon.Teams },
+      { path: '/admin/users', label: 'Users & roles', minRole: 'ADMIN', icon: Icon.Users },
+      { path: '/admin/integrations', label: 'Integrations', minRole: 'ADMIN', icon: Icon.Integrations },
+    ],
+  },
 ];
 
 const roleHierarchy = { ADMIN: 3, TEAM_LEAD: 2, DEVELOPER: 1 };
@@ -98,9 +115,16 @@ export function Layout({ children }: { children: ReactNode }) {
     navigate('/login');
   };
 
-  const visibleNav = navItems.filter(
-    (item) => user && roleHierarchy[user.role] >= roleHierarchy[item.minRole]
-  );
+  const visibleSections = user
+    ? navSections
+        .map((s) => ({
+          ...s,
+          items: s.items.filter((i) => roleHierarchy[user.role] >= roleHierarchy[i.minRole]),
+        }))
+        .filter((s) => s.items.length > 0)
+    : [];
+
+  const allVisibleItems = visibleSections.flatMap((s) => s.items);
 
   const initials = user?.name
     ?.split(' ')
@@ -109,7 +133,7 @@ export function Layout({ children }: { children: ReactNode }) {
     .slice(0, 2)
     .toUpperCase();
 
-  const currentLabel = navItems.find((i) => i.path === location.pathname)?.label ?? '';
+  const currentLabel = allVisibleItems.find((i) => i.path === location.pathname)?.label ?? '';
 
   return (
     <div className="flex h-screen bg-surface-tertiary">
@@ -120,25 +144,39 @@ export function Layout({ children }: { children: ReactNode }) {
           <span className="hidden text-md text-text-primary lg:inline">Flowdruid</span>
         </div>
 
-        <nav className="flex-1 space-y-1 p-2">
-          {visibleNav.map((item) => {
-            const active = location.pathname === item.path;
-            const IconCmp = item.icon;
-            return (
-              <Link
-                key={item.path}
-                to={item.path}
-                className={`group flex items-center gap-3 rounded px-3 py-2 text-base transition-colors duration-fast ${
-                  active
-                    ? 'bg-brand-50 text-brand-600'
-                    : 'text-text-secondary hover:bg-surface-secondary hover:text-text-primary'
-                }`}
-              >
-                <IconCmp className="h-4 w-4 shrink-0" />
-                <span className="hidden lg:inline">{item.label}</span>
-              </Link>
-            );
-          })}
+        <nav className="flex-1 overflow-y-auto p-2">
+          {visibleSections.map((section, idx) => (
+            <div key={section.label} className={idx === 0 ? '' : 'mt-4'}>
+              <div className="mb-1 hidden px-3 lg:block">
+                <span className="text-[10px] uppercase tracking-widest text-text-tertiary">
+                  {section.label}
+                </span>
+              </div>
+              {idx > 0 && (
+                <div className="mx-2 mb-2 border-t border-border lg:hidden" aria-hidden="true" />
+              )}
+              <div className="space-y-1">
+                {section.items.map((item) => {
+                  const active = location.pathname === item.path;
+                  const IconCmp = item.icon;
+                  return (
+                    <Link
+                      key={item.path}
+                      to={item.path}
+                      className={`group flex items-center gap-3 rounded px-3 py-2 text-base transition-colors duration-fast ${
+                        active
+                          ? 'bg-brand-50 text-brand-600'
+                          : 'text-text-secondary hover:bg-surface-secondary hover:text-text-primary'
+                      }`}
+                    >
+                      <IconCmp className="h-4 w-4 shrink-0" />
+                      <span className="hidden lg:inline">{item.label}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </nav>
 
         <div className="border-t border-border p-3">
