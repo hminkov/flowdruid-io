@@ -6,4 +6,5 @@ export * from './schemas/standups';
 export * from './schemas/leaves';
 export * from './schemas/integrations';
 export * from './schemas/suggestions';
+export * from './schemas/resources';
 export * from './types/enums';

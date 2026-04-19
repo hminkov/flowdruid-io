@@ -71,6 +71,24 @@ const Icon = {
       <path d="M11 6.5h4a2 2 0 0 1 2 2V13M6.5 13v-1.5" />
     </svg>
   ),
+  QaEnv: (p: IconProps) => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <rect x="3" y="4" width="18" height="12" rx="2" />
+      <path d="M8 20h8M12 16v4" />
+    </svg>
+  ),
+  Parking: (p: IconProps) => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <rect x="3" y="3" width="18" height="18" rx="3" />
+      <path d="M9 17V7h4a3 3 0 0 1 0 6h-4" />
+    </svg>
+  ),
+  ProdSupport: (p: IconProps) => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <path d="M12 2a10 10 0 1 0 10 10h-4a6 6 0 1 1-6-6z" />
+      <circle cx="12" cy="12" r="2" />
+    </svg>
+  ),
 };
 
 type NavItem = {
@@ -89,6 +107,14 @@ const navSections: { label: string; items: NavItem[] }[] = [
       { path: '/standup', label: 'Standup feed', minRole: 'DEVELOPER', icon: Icon.Standup },
       { path: '/calendar', label: 'Leave calendar', minRole: 'DEVELOPER', icon: Icon.Calendar },
       { path: '/leave/request', label: 'Leave request', minRole: 'DEVELOPER', icon: Icon.Leave },
+    ],
+  },
+  {
+    label: 'Resources',
+    items: [
+      { path: '/qa', label: 'QA environments', minRole: 'DEVELOPER', icon: Icon.QaEnv },
+      { path: '/parking', label: 'Parking', minRole: 'DEVELOPER', icon: Icon.Parking },
+      { path: '/prod-support', label: 'Prod support', minRole: 'DEVELOPER', icon: Icon.ProdSupport },
     ],
   },
   {

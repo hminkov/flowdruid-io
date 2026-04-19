@@ -19,6 +19,9 @@ import { ApproveLeavesPage } from './pages/ApproveLeavesPage';
 import { UsersRolesPage } from './pages/UsersRolesPage';
 import { IntegrationsPage } from './pages/IntegrationsPage';
 import { AllTeamsPage } from './pages/AllTeamsPage';
+import { QaEnvironmentsPage } from './pages/QaEnvironmentsPage';
+import { ParkingPage } from './pages/ParkingPage';
+import { ProdSupportPage } from './pages/ProdSupportPage';
 
 export function App() {
   const [trpcClient] = useState(createTrpcClient);
@@ -71,6 +74,30 @@ export function App() {
                 element={
                   <ProtectedRoute>
                     <Layout><LeaveRequestPage /></Layout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/qa"
+                element={
+                  <ProtectedRoute>
+                    <Layout><QaEnvironmentsPage /></Layout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/parking"
+                element={
+                  <ProtectedRoute>
+                    <Layout><ParkingPage /></Layout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/prod-support"
+                element={
+                  <ProtectedRoute>
+                    <Layout><ProdSupportPage /></Layout>
                   </ProtectedRoute>
                 }
               />

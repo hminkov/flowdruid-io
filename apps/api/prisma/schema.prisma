@@ -52,6 +52,15 @@ enum AvailabilityStatus {
   ON_LEAVE
 }
 
+enum QaBookingStatus {
+  NEW
+  IN_DEVELOPMENT
+  TEST_IN_QA
+  READY_FOR_PROD
+  PUSHED_TO_PROD
+  PAUSED
+}
+
 model Organisation {
   id        String   @id @default(cuid())
   name      String
@@ -59,10 +68,12 @@ model Organisation {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  teams       Team[]
-  users       User[]
-  slackConfig SlackConfig?
-  jiraConfig  JiraConfig?
+  teams           Team[]
+  users           User[]
+  slackConfig     SlackConfig?
+  jiraConfig      JiraConfig?
+  qaEnvironments  QaEnvironment[]
+  parkingSpots    ParkingSpot[]
 }
 
 model Team {
@@ -72,10 +83,11 @@ model Team {
   slackChannelId String?
   createdAt      DateTime @default(now())
 
-  org      Organisation @relation(fields: [orgId], references: [id])
-  members  User[]
-  tickets  Ticket[]
-  standups Standup[]
+  org               Organisation            @relation(fields: [orgId], references: [id])
+  members           User[]
+  tickets           Ticket[]
+  standups          Standup[]
+  prodSupportShifts ProdSupportAssignment[]
 }
 
 model User {
@@ -100,6 +112,11 @@ model User {
   refreshTokens           RefreshToken[]
   suggestionsFor          AssignmentSuggestion[] @relation("SuggestionsFor")
   suggestionsRequestedBy  AssignmentSuggestion[] @relation("SuggestionsBy")
+  qaBookingsAsDev         QaBooking[]            @relation("QaDevOwner")
+  qaBookingsAsQa          QaBooking[]            @relation("QaQaOwner")
+  parkingAssignments      ParkingAssignment[]
+  prodSupportPrimary      ProdSupportAssignment[] @relation("ProdSupportPrimary")
+  prodSupportSecondary    ProdSupportAssignment[] @relation("ProdSupportSecondary")
 }
 
 model RefreshToken {
@@ -211,4 +228,85 @@ model JiraConfig {
   lastSyncAt   DateTime?
 
   org Organisation @relation(fields: [orgId], references: [id])
+}
+
+// ─── QA Environments ──────────────────────────────────────────────────────
+model QaEnvironment {
+  id        String   @id @default(cuid())
+  orgId     String
+  name      String   // QA1, QA2, …, STG, BETA
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  org      Organisation @relation(fields: [orgId], references: [id])
+  bookings QaBooking[]
+
+  @@unique([orgId, name])
+}
+
+model QaBooking {
+  id            String          @id @default(cuid())
+  environmentId String
+  service       String
+  feature       String?
+  devOwnerId    String?
+  qaOwnerId     String?
+  status        QaBookingStatus @default(IN_DEVELOPMENT)
+  notes         String?
+  branch        String?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  environment QaEnvironment @relation(fields: [environmentId], references: [id], onDelete: Cascade)
+  devOwner    User?         @relation("QaDevOwner", fields: [devOwnerId], references: [id])
+  qaOwner     User?         @relation("QaQaOwner", fields: [qaOwnerId], references: [id])
+
+  @@index([environmentId])
+}
+
+// ─── Parking ──────────────────────────────────────────────────────────────
+model ParkingSpot {
+  id        String   @id @default(cuid())
+  orgId     String
+  name      String   // "Spot 1" etc.
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  org         Organisation        @relation(fields: [orgId], references: [id])
+  assignments ParkingAssignment[]
+
+  @@unique([orgId, name])
+}
+
+model ParkingAssignment {
+  id        String   @id @default(cuid())
+  spotId    String
+  userId    String
+  date      DateTime @db.Date
+  createdAt DateTime @default(now())
+
+  spot ParkingSpot @relation(fields: [spotId], references: [id], onDelete: Cascade)
+  user User        @relation(fields: [userId], references: [id])
+
+  @@unique([spotId, date])
+  @@index([date])
+}
+
+// ─── Prod Support rota (per team) ─────────────────────────────────────────
+model ProdSupportAssignment {
+  id          String   @id @default(cuid())
+  teamId      String
+  weekNumber  Int
+  startDate   DateTime @db.Date
+  endDate     DateTime @db.Date
+  primaryId   String
+  secondaryId String
+  createdAt   DateTime @default(now())
+
+  team      Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  primary   User @relation("ProdSupportPrimary", fields: [primaryId], references: [id])
+  secondary User @relation("ProdSupportSecondary", fields: [secondaryId], references: [id])
+
+  @@unique([teamId, startDate])
+  @@index([startDate])
 }

@@ -34,6 +34,7 @@ const initialsOf = (name: string): string => {
 async function main() {
   console.log('Seeding Cloudruid workspace...');
 
+  await prisma.assignmentSuggestion.deleteMany();
   await prisma.ticketAssignment.deleteMany();
   await prisma.ticket.deleteMany();
   await prisma.standup.deleteMany();
@@ -41,6 +42,11 @@ async function main() {
   await prisma.refreshToken.deleteMany();
   await prisma.slackConfig.deleteMany();
   await prisma.jiraConfig.deleteMany();
+  await prisma.parkingAssignment.deleteMany();
+  await prisma.parkingSpot.deleteMany();
+  await prisma.qaBooking.deleteMany();
+  await prisma.qaEnvironment.deleteMany();
+  await prisma.prodSupportAssignment.deleteMany();
   await prisma.user.deleteMany();
   await prisma.team.deleteMany();
   await prisma.organisation.deleteMany();
@@ -83,24 +89,36 @@ async function main() {
     { name: 'Krasimir Gizdov', email: 'krasimir.gizdov@cloudruid.com', role: 'TEAM_LEAD', teamId: depositTeam.id, availability: 'AVAILABLE' },
     { name: 'Borislav Iliev', email: 'borislav.iliev@cloudruid.com', role: 'DEVELOPER', teamId: depositTeam.id, availability: 'BUSY' },
     { name: 'Dimitar Dimitrov', email: 'dimitar.dimitrov@cloudruid.com', role: 'DEVELOPER', teamId: depositTeam.id, availability: 'AVAILABLE' },
-    { name: 'Ivan', email: 'ivan@cloudruid.com', role: 'DEVELOPER', teamId: depositTeam.id, availability: 'REMOTE' },
+    { name: 'Ivan Backrachev', email: 'ivan.backrachev@cloudruid.com', role: 'DEVELOPER', teamId: depositTeam.id, availability: 'REMOTE' },
     { name: 'Elitsa Stancheva', email: 'elitsa.stancheva@cloudruid.com', role: 'DEVELOPER', teamId: depositTeam.id, availability: 'AVAILABLE' },
+    { name: 'Ivan Borisov', email: 'ivan.borisov@cloudruid.com', role: 'DEVELOPER', teamId: depositTeam.id, availability: 'AVAILABLE' },
+    { name: 'Tihomir Evgeniev', email: 'tihomir.evgeniev@cloudruid.com', role: 'DEVELOPER', teamId: depositTeam.id, availability: 'BUSY' },
+    { name: 'Dimitar Kolev', email: 'dimitar.kolev@cloudruid.com', role: 'DEVELOPER', teamId: depositTeam.id, availability: 'AVAILABLE' },
+    { name: 'Dimitar Tagarev', email: 'dimitar.tagarev@cloudruid.com', role: 'DEVELOPER', teamId: depositTeam.id, availability: 'REMOTE' },
+    { name: 'Marian Valchinov', email: 'marian.valchinov@cloudruid.com', role: 'DEVELOPER', teamId: depositTeam.id, availability: 'AVAILABLE' },
+    { name: 'Renal Ahmedov', email: 'renal.ahmedov@cloudruid.com', role: 'DEVELOPER', teamId: depositTeam.id, availability: 'REMOTE' },
+    { name: 'Teodor Karakashev', email: 'teodor.karakashev@cloudruid.com', role: 'DEVELOPER', teamId: depositTeam.id, availability: 'AVAILABLE' },
+    { name: 'Nikola Valchinov', email: 'nikola.valchinov@cloudruid.com', role: 'DEVELOPER', teamId: depositTeam.id, availability: 'BUSY' },
+    { name: 'Veselin Velev', email: 'veselin.velev@cloudruid.com', role: 'DEVELOPER', teamId: depositTeam.id, availability: 'AVAILABLE' },
+    { name: 'Boris', email: 'boris@cloudruid.com', role: 'DEVELOPER', teamId: depositTeam.id, availability: 'ON_LEAVE' },
 
     // Exchange
     { name: 'Ivaylo Hadzhiyski', email: 'ivaylo.hadzhiyski@cloudruid.com', role: 'TEAM_LEAD', teamId: exchangeTeam.id, availability: 'AVAILABLE' },
-    { name: 'Panayot', email: 'panayot@cloudruid.com', role: 'DEVELOPER', teamId: exchangeTeam.id, availability: 'AVAILABLE' },
+    { name: 'Panayot Kostov', email: 'panayot.kostov@cloudruid.com', role: 'DEVELOPER', teamId: exchangeTeam.id, availability: 'AVAILABLE' },
     { name: 'Ralitsa Stancheva', email: 'ralitsa.stancheva@cloudruid.com', role: 'DEVELOPER', teamId: exchangeTeam.id, availability: 'BUSY' },
+    { name: 'Radoslav Dimitrov', email: 'radoslav.dimitrov@cloudruid.com', role: 'DEVELOPER', teamId: exchangeTeam.id, availability: 'AVAILABLE' },
 
     // Account
-    { name: 'Svetli', email: 'svetli@cloudruid.com', role: 'TEAM_LEAD', teamId: accountTeam.id, availability: 'AVAILABLE' },
-    { name: 'Ivaylo Iliev', email: 'ivaylo.iliev@cloudruid.com', role: 'DEVELOPER', teamId: accountTeam.id, availability: 'AVAILABLE' },
+    { name: 'Svetoslav Kochev', email: 'svetoslav.kochev@cloudruid.com', role: 'TEAM_LEAD', teamId: accountTeam.id, availability: 'AVAILABLE' },
+    { name: 'Ivo Iliev', email: 'ivo.iliev@cloudruid.com', role: 'DEVELOPER', teamId: accountTeam.id, availability: 'AVAILABLE' },
     { name: 'Todor Kanev', email: 'todor.kanev@cloudruid.com', role: 'DEVELOPER', teamId: accountTeam.id, availability: 'REMOTE' },
+    { name: 'Keti Hambarliyska', email: 'keti.hambarliyska@cloudruid.com', role: 'DEVELOPER', teamId: accountTeam.id, availability: 'AVAILABLE' },
 
     // QA
     { name: 'Ivelina Georgieva', email: 'ivelina.georgieva@cloudruid.com', role: 'TEAM_LEAD', teamId: qaTeam.id, availability: 'AVAILABLE' },
     { name: 'Diana Demireva', email: 'diana.demireva@cloudruid.com', role: 'DEVELOPER', teamId: qaTeam.id, availability: 'AVAILABLE' },
     { name: 'Veronika Kashaykova', email: 'veronika.kashaykova@cloudruid.com', role: 'DEVELOPER', teamId: qaTeam.id, availability: 'AVAILABLE' },
-    { name: 'Yuliia', email: 'yuliia@cloudruid.com', role: 'DEVELOPER', teamId: qaTeam.id, availability: 'ON_LEAVE' },
+    { name: 'Yuliia Pylaieva', email: 'yuliia.pylaieva@cloudruid.com', role: 'DEVELOPER', teamId: qaTeam.id, availability: 'ON_LEAVE' },
     { name: 'Momchil Dimitrov', email: 'momchil.dimitrov@cloudruid.com', role: 'DEVELOPER', teamId: qaTeam.id, availability: 'AVAILABLE' },
   ];
 
@@ -127,19 +145,33 @@ async function main() {
   const krasimir = id('krasimir.gizdov@cloudruid.com');
   const borislav = id('borislav.iliev@cloudruid.com');
   const dimitar = id('dimitar.dimitrov@cloudruid.com');
-  const ivan = id('ivan@cloudruid.com');
+  const ivan = id('ivan.backrachev@cloudruid.com');
   const ivayloH = id('ivaylo.hadzhiyski@cloudruid.com');
-  const panayot = id('panayot@cloudruid.com');
+  const panayot = id('panayot.kostov@cloudruid.com');
   const elitsa = id('elitsa.stancheva@cloudruid.com');
   const ralitsa = id('ralitsa.stancheva@cloudruid.com');
-  const svetli = id('svetli@cloudruid.com');
-  const ivayloI = id('ivaylo.iliev@cloudruid.com');
+  const svetli = id('svetoslav.kochev@cloudruid.com');
+  const ivayloI = id('ivo.iliev@cloudruid.com');
   const todor = id('todor.kanev@cloudruid.com');
   const ivelina = id('ivelina.georgieva@cloudruid.com');
   const diana = id('diana.demireva@cloudruid.com');
   const veronika = id('veronika.kashaykova@cloudruid.com');
-  const yuliia = id('yuliia@cloudruid.com');
+  const yuliia = id('yuliia.pylaieva@cloudruid.com');
   const momchil = id('momchil.dimitrov@cloudruid.com');
+
+  // Extra members pulled in to back the Resources seeds (parking, QA, prod-support)
+  const tihomir = id('tihomir.evgeniev@cloudruid.com');
+  const marian = id('marian.valchinov@cloudruid.com');
+  const renal = id('renal.ahmedov@cloudruid.com');
+  const teodor = id('teodor.karakashev@cloudruid.com');
+  const nikola = id('nikola.valchinov@cloudruid.com');
+  const veselin = id('veselin.velev@cloudruid.com');
+  const boris = id('boris@cloudruid.com');
+  const keti = id('keti.hambarliyska@cloudruid.com');
+  const radoslav = id('radoslav.dimitrov@cloudruid.com');
+  const ivanBorisov = id('ivan.borisov@cloudruid.com');
+  const dimitarKolev = id('dimitar.kolev@cloudruid.com');
+  const dimitarTagarev = id('dimitar.tagarev@cloudruid.com');
 
   // ─── TICKETS — Deposit / Withdrawal ─────────────────────────────────────
   const dw1 = await prisma.ticket.create({
@@ -966,6 +998,215 @@ async function main() {
       lastSyncAt: hoursAgo(1),
     },
   });
+
+  // ─── PARKING SPOTS + ASSIGNMENTS ─────────────────────────────────────────
+  const parkingSpotIds: Record<string, string> = {};
+  for (let i = 1; i <= 7; i++) {
+    const name = `Spot ${i}`;
+    const spot = await prisma.parkingSpot.create({
+      data: { orgId: org.id, name, order: i },
+    });
+    parkingSpotIds[name] = spot.id;
+  }
+
+  // Build two Mon-Fri weeks: the current week (containing "today") and the previous one.
+  const mondayOf = (d: Date) => {
+    const x = new Date(d);
+    const day = x.getUTCDay();
+    const diff = day === 0 ? -6 : 1 - day;
+    x.setUTCDate(x.getUTCDate() + diff);
+    x.setUTCHours(0, 0, 0, 0);
+    return x;
+  };
+  const thisMonday = mondayOf(today);
+  const parkingWeeks: Date[] = [];
+  for (let offset = -7; offset <= 0; offset += 7) {
+    const m = new Date(thisMonday);
+    m.setUTCDate(m.getUTCDate() + offset);
+    parkingWeeks.push(m);
+  }
+
+  const rotation = [
+    [krasimir, ivayloH, svetli, ivelina, panayot, tihomir, marian],
+    [hristo, panayot, svetli, radoslav, borislav, renal, marian],
+    [krasimir, ivayloH, svetli, ivelina, teodor, tihomir, veselin],
+    [hristo, panayot, ivan, keti, dimitar, nikola, boris],
+    [krasimir, ivayloH, svetli, ivelina, ivanBorisov, tihomir, marian],
+  ] as const;
+
+  for (let wi = 0; wi < parkingWeeks.length; wi++) {
+    const monday = parkingWeeks[wi]!;
+    for (let day = 0; day < 5; day++) {
+      const d = new Date(monday);
+      d.setUTCDate(d.getUTCDate() + day);
+      const assignments = rotation[day]!;
+      for (let spotIdx = 0; spotIdx < 7; spotIdx++) {
+        await prisma.parkingAssignment.create({
+          data: {
+            spotId: parkingSpotIds[`Spot ${spotIdx + 1}`]!,
+            userId: assignments[spotIdx]!,
+            date: d,
+          },
+        });
+      }
+    }
+  }
+
+  // ─── QA ENVIRONMENTS + BOOKINGS ──────────────────────────────────────────
+  const envNames = ['QA1', 'QA2', 'QA3', 'QA4', 'QA5', 'QA6', 'QA7', 'QA8', 'QA9', 'QA10', 'QA11', 'STG', 'BETA'];
+  const envIds: Record<string, string> = {};
+  for (let i = 0; i < envNames.length; i++) {
+    const e = await prisma.qaEnvironment.create({
+      data: { orgId: org.id, name: envNames[i]!, order: i },
+    });
+    envIds[envNames[i]!] = e.id;
+  }
+
+  const qaBookings = [
+    { env: 'QA1', service: 'Account management', feature: 'Gateway 21 project', devOwnerId: renal, qaOwnerId: diana, status: 'IN_DEVELOPMENT', notes: 'Phase 2', branch: 'temp/qa1-config' },
+    { env: 'QA1', service: 'Salesforce integration service', feature: 'Gateway 21 project', devOwnerId: ivanBorisov, qaOwnerId: null, status: 'PAUSED', notes: 'Blocked because of Gateway21', branch: null },
+    { env: 'QA2', service: 'Exchange services', feature: 'Health check endpoint', devOwnerId: panayot, qaOwnerId: null, status: 'IN_DEVELOPMENT', notes: null, branch: 'qa2-config-v2' },
+    { env: 'QA2', service: 'withdrawal services', feature: 'Migrate to new Fireblocks SDK', devOwnerId: borislav, qaOwnerId: null, status: 'PAUSED', notes: null, branch: null },
+    { env: 'QA2', service: 'account services', feature: 'Email MFA', devOwnerId: borislav, qaOwnerId: diana, status: 'IN_DEVELOPMENT', notes: 'Released V1', branch: null },
+    { env: 'QA3', service: 'Fiat deposit processing', feature: 'Fraud Questionnaire', devOwnerId: elitsa, qaOwnerId: null, status: 'IN_DEVELOPMENT', notes: null, branch: 'feature/fraud-questionnaire' },
+    { env: 'QA3', service: 'Exchange', feature: 'Maintenance guard', devOwnerId: panayot, qaOwnerId: panayot, status: 'IN_DEVELOPMENT', notes: null, branch: null },
+    { env: 'QA4', service: 'Merchant services', feature: 'Merchant V2 Dashboard', devOwnerId: radoslav, qaOwnerId: null, status: 'TEST_IN_QA', notes: null, branch: 'qa4-config' },
+    { env: 'QA4', service: 'Account', feature: 'MFA improvements', devOwnerId: ivayloI, qaOwnerId: yuliia, status: 'TEST_IN_QA', notes: null, branch: null },
+    { env: 'QA5', service: 'Account management', feature: 'KYB backfilling + account closure', devOwnerId: radoslav, qaOwnerId: null, status: 'TEST_IN_QA', notes: null, branch: null },
+    { env: 'QA5', service: 'KMS', feature: 'KYB backfilling', devOwnerId: tihomir, qaOwnerId: null, status: 'TEST_IN_QA', notes: null, branch: null },
+    { env: 'QA6', service: 'Yield engine', feature: 'Automate yield payments push', devOwnerId: keti, qaOwnerId: keti, status: 'TEST_IN_QA', notes: null, branch: 'qa6-config' },
+    { env: 'QA6', service: 'Account', feature: 'T&C', devOwnerId: svetli, qaOwnerId: yuliia, status: 'PUSHED_TO_PROD', notes: null, branch: null },
+    { env: 'QA7', service: 'Withdrawal-api', feature: 'Payments v2', devOwnerId: boris, qaOwnerId: boris, status: 'TEST_IN_QA', notes: null, branch: 'payments-v2' },
+    { env: 'QA8', service: 'Fiat deposit services', feature: 'Yellowcard Phase 2.1', devOwnerId: dimitar, qaOwnerId: momchil, status: 'READY_FOR_PROD', notes: null, branch: 'feature/new-deposit-queues' },
+    { env: 'QA9', service: 'Account', feature: 'New IP email', devOwnerId: svetli, qaOwnerId: ivelina, status: 'READY_FOR_PROD', notes: 'Request from Tom', branch: null },
+    { env: 'QA9', service: 'profit-and-loss-processor', feature: 'New service', devOwnerId: todor, qaOwnerId: null, status: 'IN_DEVELOPMENT', notes: null, branch: null },
+    { env: 'QA10', service: 'Debit card payment processing', feature: 'Chargebacks', devOwnerId: teodor, qaOwnerId: yuliia, status: 'IN_DEVELOPMENT', notes: null, branch: null },
+    { env: 'QA10', service: 'Exchange', feature: 'Order amendment fix', devOwnerId: ralitsa, qaOwnerId: diana, status: 'TEST_IN_QA', notes: null, branch: null },
+    { env: 'STG', service: 'Kinesis test automation', feature: 'Crypto deposit/withdrawal email MFA', devOwnerId: momchil, qaOwnerId: null, status: 'IN_DEVELOPMENT', notes: null, branch: 'patch/stg-config' },
+    { env: 'BETA', service: 'KMS - BETA', feature: 'CoinWatch V1 - review', devOwnerId: ivayloH, qaOwnerId: ivelina, status: 'TEST_IN_QA', notes: null, branch: null },
+  ] as const;
+
+  for (const b of qaBookings) {
+    await prisma.qaBooking.create({
+      data: {
+        environmentId: envIds[b.env]!,
+        service: b.service,
+        feature: b.feature,
+        devOwnerId: b.devOwnerId,
+        qaOwnerId: b.qaOwnerId,
+        status: b.status,
+        notes: b.notes,
+        branch: b.branch,
+      },
+    });
+  }
+
+  // ─── PROD SUPPORT ROTA (per team, 10 upcoming weeks) ──────────────────────
+  // Weekly pair starting on Monday.  Seeded for every team so leads can see the schedule.
+  const mondayUtc = (d: Date) => {
+    const x = new Date(d);
+    x.setUTCHours(0, 0, 0, 0);
+    const day = x.getUTCDay();
+    const diff = day === 0 ? -6 : 1 - day;
+    x.setUTCDate(x.getUTCDate() + diff);
+    return x;
+  };
+  const isoWeekNumber = (d: Date): number => {
+    const t = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+    const dayNum = (t.getUTCDay() + 6) % 7;
+    t.setUTCDate(t.getUTCDate() - dayNum + 3);
+    const firstThu = new Date(Date.UTC(t.getUTCFullYear(), 0, 4));
+    const firstThuDayNum = (firstThu.getUTCDay() + 6) % 7;
+    firstThu.setUTCDate(firstThu.getUTCDate() - firstThuDayNum + 3);
+    return 1 + Math.round((t.getTime() - firstThu.getTime()) / (7 * 24 * 3600 * 1000));
+  };
+
+  type Pair = [string, string];
+  const rotas: { teamId: string; pairs: Pair[] }[] = [
+    {
+      teamId: depositTeam.id,
+      pairs: [
+        [dimitar, krasimir],
+        [hristo, ivan],
+        [borislav, dimitar],
+        [krasimir, elitsa],
+        [hristo, borislav],
+        [krasimir, ivan],
+        [elitsa, dimitar],
+        [hristo, krasimir],
+        [ivan, dimitar],
+        [elitsa, borislav],
+      ],
+    },
+    {
+      teamId: exchangeTeam.id,
+      pairs: [
+        [ivayloH, panayot],
+        [panayot, ralitsa],
+        [ivayloH, radoslav],
+        [panayot, ivayloH],
+        [ralitsa, radoslav],
+        [ivayloH, panayot],
+        [panayot, ralitsa],
+        [ivayloH, radoslav],
+        [panayot, ralitsa],
+        [ivayloH, panayot],
+      ],
+    },
+    {
+      teamId: accountTeam.id,
+      pairs: [
+        [svetli, ivayloI],
+        [ivayloI, todor],
+        [svetli, keti],
+        [todor, keti],
+        [svetli, ivayloI],
+        [ivayloI, todor],
+        [svetli, keti],
+        [todor, svetli],
+        [ivayloI, keti],
+        [svetli, todor],
+      ],
+    },
+    {
+      teamId: qaTeam.id,
+      pairs: [
+        [ivelina, diana],
+        [diana, veronika],
+        [ivelina, momchil],
+        [veronika, diana],
+        [momchil, ivelina],
+        [ivelina, veronika],
+        [diana, momchil],
+        [veronika, ivelina],
+        [momchil, diana],
+        [ivelina, diana],
+      ],
+    },
+  ];
+
+  const baseMonday = mondayUtc(new Date(today));
+  // Start 4 weeks back so there is history + future
+  baseMonday.setUTCDate(baseMonday.getUTCDate() - 28);
+  for (const rota of rotas) {
+    for (let i = 0; i < rota.pairs.length; i++) {
+      const start = new Date(baseMonday);
+      start.setUTCDate(start.getUTCDate() + i * 7);
+      const end = new Date(start);
+      end.setUTCDate(end.getUTCDate() + 4);
+      const [primary, secondary] = rota.pairs[i]!;
+      await prisma.prodSupportAssignment.create({
+        data: {
+          teamId: rota.teamId,
+          weekNumber: isoWeekNumber(start),
+          startDate: start,
+          endDate: end,
+          primaryId: primary,
+          secondaryId: secondary,
+        },
+      });
+    }
+  }
 
   console.log('Seed complete.');
   console.log(`  Org:       ${org.name}`);

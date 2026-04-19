@@ -7,6 +7,7 @@ import { standupsRouter } from './standups.router';
 import { leavesRouter } from './leaves.router';
 import { integrationsRouter } from './integrations.router';
 import { suggestionsRouter } from './suggestions.router';
+import { resourcesRouter } from './resources.router';
 
 export const appRouter = router({
   auth: authRouter,
@@ -17,6 +18,7 @@ export const appRouter = router({
   leaves: leavesRouter,
   integrations: integrationsRouter,
   suggestions: suggestionsRouter,
+  resources: resourcesRouter,
 });
 
 export type AppRouter = typeof appRouter;
