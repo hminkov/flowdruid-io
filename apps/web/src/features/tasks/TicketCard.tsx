@@ -1,6 +1,7 @@
-import { forwardRef, type HTMLAttributes } from 'react';
+import { forwardRef, type HTMLAttributes, type MouseEvent, type PointerEvent } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { useUserDetail } from '../../hooks/useUserDetail';
 import type { Ticket, TicketAssignee } from './types';
 import { PRIORITY_COLORS } from './types';
 
@@ -19,20 +20,52 @@ const paletteFor = (id: string) => {
   return AVATAR_PALETTES[Math.abs(hash) % AVATAR_PALETTES.length]!;
 };
 
-function AvatarStack({ assignees }: { assignees: TicketAssignee[] }) {
+function AvatarStack({ assignees, interactive = false }: { assignees: TicketAssignee[]; interactive?: boolean }) {
+  // Hook is always called, but openUser is only used when interactive
+  const { openUser } = useUserDetail();
+
+  const stopDrag = (e: PointerEvent<HTMLButtonElement>) => {
+    // Prevent dnd-kit's PointerSensor from treating this as a drag start
+    e.stopPropagation();
+  };
+
+  const handleClick = (e: MouseEvent<HTMLButtonElement>, userId: string) => {
+    e.stopPropagation();
+    openUser(userId);
+  };
+
   return (
-    <div className="flex -space-x-1">
+    <div className="flex -space-x-1.5">
       {assignees.map((a) => {
         const palette = paletteFor(a.user.id);
+        const className =
+          'flex h-7 w-7 items-center justify-center rounded-full text-[11px] ring-2 ring-surface-primary';
+        if (!interactive) {
+          return (
+            <span
+              key={a.user.id}
+              title={a.user.name}
+              className={className}
+              style={{ background: palette.bg, color: palette.text }}
+            >
+              {a.user.initials}
+            </span>
+          );
+        }
         return (
-          <span
+          <button
             key={a.user.id}
-            title={a.user.name}
-            className="flex h-5 w-5 items-center justify-center rounded-full text-xs ring-2 ring-surface-primary"
+            type="button"
+            title={`View ${a.user.name}`}
+            aria-label={`View ${a.user.name}`}
+            onClick={(e) => handleClick(e, a.user.id)}
+            onPointerDown={stopDrag}
+            onMouseDown={(e) => e.stopPropagation()}
+            className={`${className} cursor-pointer transition-transform duration-fast hover:z-10 hover:scale-110 focus-visible:z-10 focus-visible:scale-110`}
             style={{ background: palette.bg, color: palette.text }}
           >
             {a.user.initials}
-          </span>
+          </button>
         );
       })}
     </div>
@@ -69,8 +102,17 @@ export const TicketCardDisplay = forwardRef<HTMLDivElement, DisplayProps>(
             className={`inline-block h-[7px] w-[7px] rounded-full ${PRIORITY_COLORS[ticket.priority]}`}
           />
         </div>
-        <p className="mb-2 text-base text-text-primary">{ticket.title}</p>
-        <AvatarStack assignees={ticket.assignees} />
+        <p className="mb-3 text-base text-text-primary">{ticket.title}</p>
+        {ticket.assignees.length > 0 && (
+          <div className="flex items-center justify-between">
+            <AvatarStack assignees={ticket.assignees} interactive={!dragging} />
+            {ticket.assignees.length > 1 && (
+              <span className="text-xs text-text-tertiary">
+                {ticket.assignees.length} assignees
+              </span>
+            )}
+          </div>
+        )}
       </div>
     );
   }

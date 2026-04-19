@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useAuth } from '../hooks/useAuth';
+import { useUserDetail } from '../hooks/useUserDetail';
 import { trpc } from '../lib/trpc';
 import { AlertIcon, CalendarIcon, CheckIcon, PlaneIcon, ZapIcon } from '../components/icons';
 
@@ -41,6 +42,7 @@ function CapacityBar({ pct }: { pct: number }) {
 
 export function DashboardPage() {
   const { user } = useAuth();
+  const { openUser } = useUserDetail();
   const teamsQuery = trpc.teams.list.useQuery();
   const todayIso = new Date().toISOString().slice(0, 10);
 
@@ -164,7 +166,12 @@ export function DashboardPage() {
 
                 <div className="space-y-2">
                   {team.members.map((member) => (
-                    <div key={member.id} className="flex items-center justify-between">
+                    <button
+                      key={member.id}
+                      type="button"
+                      onClick={() => openUser(member.id)}
+                      className="-mx-2 flex w-full items-center justify-between rounded px-2 py-1 text-left transition-colors duration-fast hover:bg-surface-secondary"
+                    >
                       <div className="flex items-center gap-2">
                         <span
                           className="flex h-6 w-6 items-center justify-center rounded-full text-xs"
@@ -182,7 +189,7 @@ export function DashboardPage() {
                       >
                         {member.availability.replace('_', ' ').toLowerCase()}
                       </span>
-                    </div>
+                    </button>
                   ))}
                   {team.members.length === 0 && (
                     <p className="text-sm text-text-tertiary">No members</p>
@@ -210,10 +217,14 @@ export function DashboardPage() {
             return (
               <article
                 key={member.id}
-                className="flex flex-col rounded-lg border border-border bg-surface-primary p-4"
+                className="flex flex-col rounded-lg border border-border bg-surface-primary p-4 transition-colors duration-fast hover:border-border-strong"
               >
                 <header className="mb-3 flex items-start justify-between gap-2">
-                  <div className="flex min-w-0 items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => openUser(member.id)}
+                    className="-m-1 flex min-w-0 items-center gap-2 rounded p-1 text-left hover:bg-surface-secondary"
+                  >
                     <span
                       className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm"
                       style={{ background: palette.bg, color: palette.text }}
@@ -224,7 +235,7 @@ export function DashboardPage() {
                       <div className="truncate text-md text-text-primary">{member.name}</div>
                       <div className="truncate text-xs text-text-tertiary">{member.teamName}</div>
                     </div>
-                  </div>
+                  </button>
                   <span
                     className={`shrink-0 rounded-pill px-2 py-0.5 text-[10px] ${availabilityToneMap[member.availability]}`}
                   >

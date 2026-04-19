@@ -306,6 +306,410 @@ async function main() {
   });
   await prisma.ticketAssignment.create({ data: { ticketId: qa3.id, userId: veronika } });
 
+  // ─── MORE TICKETS — Deposit / Withdrawal ────────────────────────────────
+  const dw5 = await prisma.ticket.create({
+    data: {
+      source: 'JIRA',
+      jiraKey: 'DW-045',
+      jiraId: '10045',
+      title: 'Webhook signature verification — PSP payloads',
+      description: 'Verify HMAC on every inbound PSP webhook. Reject unsigned or stale payloads.',
+      status: 'IN_PROGRESS',
+      priority: 'HIGH',
+      teamId: depositTeam.id,
+      syncedAt: hoursAgo(1),
+    },
+  });
+  await prisma.ticketAssignment.create({ data: { ticketId: dw5.id, userId: borislav } });
+  await prisma.ticketAssignment.create({ data: { ticketId: dw5.id, userId: ivan } });
+  await prisma.ticketAssignment.create({ data: { ticketId: dw5.id, userId: elitsa } });
+
+  const dw6 = await prisma.ticket.create({
+    data: {
+      source: 'JIRA',
+      jiraKey: 'DW-046',
+      jiraId: '10046',
+      title: 'Withdrawal fee calculator refactor',
+      description: 'Extract fee rules into a config table and add per-tier overrides.',
+      status: 'IN_PROGRESS',
+      priority: 'MEDIUM',
+      teamId: depositTeam.id,
+      syncedAt: hoursAgo(1),
+    },
+  });
+  await prisma.ticketAssignment.create({ data: { ticketId: dw6.id, userId: dimitar } });
+
+  const dw7 = await prisma.ticket.create({
+    data: {
+      source: 'JIRA',
+      jiraKey: 'DW-044',
+      jiraId: '10044',
+      title: 'USD wire deposits — SWIFT integration',
+      description: 'Connect to partner bank SWIFT endpoint; parse MT103 inbound messages into deposits.',
+      status: 'TODO',
+      priority: 'HIGH',
+      teamId: depositTeam.id,
+      syncedAt: hoursAgo(1),
+    },
+  });
+  await prisma.ticketAssignment.create({ data: { ticketId: dw7.id, userId: krasimir } });
+  await prisma.ticketAssignment.create({ data: { ticketId: dw7.id, userId: elitsa } });
+
+  const dw8 = await prisma.ticket.create({
+    data: {
+      source: 'JIRA',
+      jiraKey: 'DW-035',
+      jiraId: '10035',
+      title: 'Reconciliation report v2 — drill-through',
+      description: 'Support per-transaction drill-through from the daily reconciliation report.',
+      status: 'IN_REVIEW',
+      priority: 'MEDIUM',
+      teamId: depositTeam.id,
+      syncedAt: hoursAgo(1),
+    },
+  });
+  await prisma.ticketAssignment.create({ data: { ticketId: dw8.id, userId: dimitar } });
+  await prisma.ticketAssignment.create({ data: { ticketId: dw8.id, userId: elitsa } });
+
+  const dw9 = await prisma.ticket.create({
+    data: {
+      source: 'JIRA',
+      jiraKey: 'DW-025',
+      jiraId: '10025',
+      title: 'Audit log — deposit trail',
+      description: 'Record every status change on a deposit with actor and source system.',
+      status: 'DONE',
+      priority: 'LOW',
+      teamId: depositTeam.id,
+      syncedAt: hoursAgo(30),
+    },
+  });
+  await prisma.ticketAssignment.create({ data: { ticketId: dw9.id, userId: borislav } });
+
+  const dw10 = await prisma.ticket.create({
+    data: {
+      source: 'INTERNAL',
+      title: 'Weekly reconciliation runbook',
+      description: 'Step-by-step for the weekly Monday reconciliation call.',
+      status: 'TODO',
+      priority: 'LOW',
+      teamId: depositTeam.id,
+    },
+  });
+  await prisma.ticketAssignment.create({ data: { ticketId: dw10.id, userId: ivan } });
+
+  const dw11 = await prisma.ticket.create({
+    data: {
+      source: 'INTERNAL',
+      title: 'Transaction age metric in Grafana',
+      description: 'Dashboard showing age of the oldest unresolved deposit per PSP.',
+      status: 'TODO',
+      priority: 'MEDIUM',
+      teamId: depositTeam.id,
+    },
+  });
+  await prisma.ticketAssignment.create({ data: { ticketId: dw11.id, userId: krasimir } });
+  await prisma.ticketAssignment.create({ data: { ticketId: dw11.id, userId: ivan } });
+
+  const dw12 = await prisma.ticket.create({
+    data: {
+      source: 'JIRA',
+      jiraKey: 'DW-050',
+      jiraId: '10050',
+      title: 'Payout scheduling — timezone bug',
+      description: 'Cron lands at 23:00 UTC instead of local time for non-UTC orgs.',
+      status: 'IN_PROGRESS',
+      priority: 'HIGH',
+      teamId: depositTeam.id,
+      syncedAt: hoursAgo(1),
+    },
+  });
+  await prisma.ticketAssignment.create({ data: { ticketId: dw12.id, userId: elitsa } });
+
+  // ─── MORE TICKETS — Exchange ────────────────────────────────────────────
+  const ex3 = await prisma.ticket.create({
+    data: {
+      source: 'JIRA',
+      jiraKey: 'EX-020',
+      jiraId: '20020',
+      title: 'Matching engine — spread validation',
+      description: 'Reject orders that cross the spread boundary during auction.',
+      status: 'IN_PROGRESS',
+      priority: 'HIGH',
+      teamId: exchangeTeam.id,
+      syncedAt: hoursAgo(1),
+    },
+  });
+  await prisma.ticketAssignment.create({ data: { ticketId: ex3.id, userId: ivayloH } });
+  await prisma.ticketAssignment.create({ data: { ticketId: ex3.id, userId: panayot } });
+  await prisma.ticketAssignment.create({ data: { ticketId: ex3.id, userId: ralitsa } });
+
+  const ex4 = await prisma.ticket.create({
+    data: {
+      source: 'JIRA',
+      jiraKey: 'EX-021',
+      jiraId: '20021',
+      title: 'WebSocket reconnection jitter',
+      description: 'Exponential backoff with jitter so reconnect storms don\'t flood the gateway.',
+      status: 'IN_REVIEW',
+      priority: 'MEDIUM',
+      teamId: exchangeTeam.id,
+      syncedAt: hoursAgo(1),
+    },
+  });
+  await prisma.ticketAssignment.create({ data: { ticketId: ex4.id, userId: panayot } });
+
+  const ex5 = await prisma.ticket.create({
+    data: {
+      source: 'JIRA',
+      jiraKey: 'EX-015',
+      jiraId: '20015',
+      title: 'Market data feed migration — v2',
+      description: 'Cut over feed from Redis pub/sub to NATS JetStream.',
+      status: 'TODO',
+      priority: 'HIGH',
+      teamId: exchangeTeam.id,
+      syncedAt: hoursAgo(1),
+    },
+  });
+  await prisma.ticketAssignment.create({ data: { ticketId: ex5.id, userId: ivayloH } });
+
+  const ex6 = await prisma.ticket.create({
+    data: {
+      source: 'JIRA',
+      jiraKey: 'EX-014',
+      jiraId: '20014',
+      title: 'Historical candles API',
+      description: '1m/5m/1h/1d candles endpoint with cursor pagination.',
+      status: 'DONE',
+      priority: 'LOW',
+      teamId: exchangeTeam.id,
+      syncedAt: hoursAgo(48),
+    },
+  });
+  await prisma.ticketAssignment.create({ data: { ticketId: ex6.id, userId: ralitsa } });
+
+  const ex7 = await prisma.ticket.create({
+    data: {
+      source: 'INTERNAL',
+      title: 'Pre-market checklist automation',
+      description: 'Automate the 7am pre-market sanity-check run.',
+      status: 'TODO',
+      priority: 'MEDIUM',
+      teamId: exchangeTeam.id,
+    },
+  });
+  await prisma.ticketAssignment.create({ data: { ticketId: ex7.id, userId: panayot } });
+  await prisma.ticketAssignment.create({ data: { ticketId: ex7.id, userId: ralitsa } });
+
+  const ex8 = await prisma.ticket.create({
+    data: {
+      source: 'JIRA',
+      jiraKey: 'EX-022',
+      jiraId: '20022',
+      title: 'Self-match prevention',
+      description: 'Block orders that would match a resting order from the same account.',
+      status: 'IN_PROGRESS',
+      priority: 'HIGH',
+      teamId: exchangeTeam.id,
+      syncedAt: hoursAgo(1),
+    },
+  });
+  await prisma.ticketAssignment.create({ data: { ticketId: ex8.id, userId: ivayloH } });
+  await prisma.ticketAssignment.create({ data: { ticketId: ex8.id, userId: ralitsa } });
+
+  // ─── MORE TICKETS — Account ─────────────────────────────────────────────
+  const ac3 = await prisma.ticket.create({
+    data: {
+      source: 'JIRA',
+      jiraKey: 'AC-024',
+      jiraId: '30024',
+      title: 'Email verification — link expiry tuning',
+      description: 'Reduce link expiry from 7d to 24h; add in-product resend.',
+      status: 'IN_PROGRESS',
+      priority: 'MEDIUM',
+      teamId: accountTeam.id,
+      syncedAt: hoursAgo(1),
+    },
+  });
+  await prisma.ticketAssignment.create({ data: { ticketId: ac3.id, userId: svetli } });
+
+  const ac4 = await prisma.ticket.create({
+    data: {
+      source: 'JIRA',
+      jiraKey: 'AC-025',
+      jiraId: '30025',
+      title: 'Profile photo upload',
+      description: 'S3 signed URL flow, square crop, max 5 MB.',
+      status: 'TODO',
+      priority: 'LOW',
+      teamId: accountTeam.id,
+      syncedAt: hoursAgo(1),
+    },
+  });
+  await prisma.ticketAssignment.create({ data: { ticketId: ac4.id, userId: ivayloI } });
+
+  const ac5 = await prisma.ticket.create({
+    data: {
+      source: 'JIRA',
+      jiraKey: 'AC-026',
+      jiraId: '30026',
+      title: 'Session timeout for inactive users',
+      description: 'Log out idle sessions after 30 minutes; warn at 25.',
+      status: 'IN_REVIEW',
+      priority: 'MEDIUM',
+      teamId: accountTeam.id,
+      syncedAt: hoursAgo(1),
+    },
+  });
+  await prisma.ticketAssignment.create({ data: { ticketId: ac5.id, userId: todor } });
+
+  const ac6 = await prisma.ticket.create({
+    data: {
+      source: 'JIRA',
+      jiraKey: 'AC-020',
+      jiraId: '30020',
+      title: 'Sign-up flow — captcha for suspicious IPs',
+      description: 'Surface hCaptcha when the IP fails reputation checks.',
+      status: 'DONE',
+      priority: 'HIGH',
+      teamId: accountTeam.id,
+      syncedAt: hoursAgo(72),
+    },
+  });
+  await prisma.ticketAssignment.create({ data: { ticketId: ac6.id, userId: svetli } });
+  await prisma.ticketAssignment.create({ data: { ticketId: ac6.id, userId: ivayloI } });
+
+  const ac7 = await prisma.ticket.create({
+    data: {
+      source: 'INTERNAL',
+      title: 'Account deletion — GDPR runbook',
+      description: 'Legal-approved steps for handling right-to-erasure requests.',
+      status: 'TODO',
+      priority: 'LOW',
+      teamId: accountTeam.id,
+    },
+  });
+  await prisma.ticketAssignment.create({ data: { ticketId: ac7.id, userId: svetli } });
+
+  const ac8 = await prisma.ticket.create({
+    data: {
+      source: 'JIRA',
+      jiraKey: 'AC-027',
+      jiraId: '30027',
+      title: 'Referral code generator',
+      description: 'Unique 8-char codes, per-user rate limits, opt-in attribution.',
+      status: 'TODO',
+      priority: 'LOW',
+      teamId: accountTeam.id,
+      syncedAt: hoursAgo(1),
+    },
+  });
+  await prisma.ticketAssignment.create({ data: { ticketId: ac8.id, userId: todor } });
+
+  // ─── MORE TICKETS — QA ──────────────────────────────────────────────────
+  const qa4 = await prisma.ticket.create({
+    data: {
+      source: 'JIRA',
+      jiraKey: 'QA-017',
+      jiraId: '40017',
+      title: 'E2E harness — cross-team flows',
+      description: 'Playwright suite that covers deposit → exchange → withdrawal.',
+      status: 'IN_PROGRESS',
+      priority: 'HIGH',
+      teamId: qaTeam.id,
+      syncedAt: hoursAgo(1),
+    },
+  });
+  await prisma.ticketAssignment.create({ data: { ticketId: qa4.id, userId: ivelina } });
+  await prisma.ticketAssignment.create({ data: { ticketId: qa4.id, userId: diana } });
+
+  const qa5 = await prisma.ticket.create({
+    data: {
+      source: 'JIRA',
+      jiraKey: 'QA-018',
+      jiraId: '40018',
+      title: 'Visual regression on tasks board',
+      description: 'Chromatic baseline for the kanban and key UI states.',
+      status: 'IN_REVIEW',
+      priority: 'MEDIUM',
+      teamId: qaTeam.id,
+      syncedAt: hoursAgo(1),
+    },
+  });
+  await prisma.ticketAssignment.create({ data: { ticketId: qa5.id, userId: veronika } });
+
+  const qa6 = await prisma.ticket.create({
+    data: {
+      source: 'JIRA',
+      jiraKey: 'QA-019',
+      jiraId: '40019',
+      title: 'Performance baseline — dashboard load',
+      description: 'Measure p50/p95/p99 load time; lock in thresholds.',
+      status: 'TODO',
+      priority: 'MEDIUM',
+      teamId: qaTeam.id,
+      syncedAt: hoursAgo(1),
+    },
+  });
+  await prisma.ticketAssignment.create({ data: { ticketId: qa6.id, userId: momchil } });
+
+  const qa7 = await prisma.ticket.create({
+    data: {
+      source: 'JIRA',
+      jiraKey: 'QA-020',
+      jiraId: '40020',
+      title: 'Accessibility audit — WCAG 2.1 AA',
+      description: 'Run axe across every page; log and prioritise violations.',
+      status: 'TODO',
+      priority: 'LOW',
+      teamId: qaTeam.id,
+      syncedAt: hoursAgo(1),
+    },
+  });
+  await prisma.ticketAssignment.create({ data: { ticketId: qa7.id, userId: diana } });
+  await prisma.ticketAssignment.create({ data: { ticketId: qa7.id, userId: veronika } });
+
+  const qa8 = await prisma.ticket.create({
+    data: {
+      source: 'INTERNAL',
+      title: 'Rotate test data weekly',
+      description: 'Refresh staging fixtures every Monday before the retro.',
+      status: 'TODO',
+      priority: 'LOW',
+      teamId: qaTeam.id,
+    },
+  });
+  await prisma.ticketAssignment.create({ data: { ticketId: qa8.id, userId: yuliia } });
+
+  const qa9 = await prisma.ticket.create({
+    data: {
+      source: 'JIRA',
+      jiraKey: 'QA-013',
+      jiraId: '40013',
+      title: 'Security test — token rotation',
+      description: 'Verify every access token is invalidated when a refresh token rotates.',
+      status: 'DONE',
+      priority: 'HIGH',
+      teamId: qaTeam.id,
+      syncedAt: hoursAgo(48),
+    },
+  });
+  await prisma.ticketAssignment.create({ data: { ticketId: qa9.id, userId: momchil } });
+  await prisma.ticketAssignment.create({ data: { ticketId: qa9.id, userId: ivelina } });
+
+  const qa10 = await prisma.ticket.create({
+    data: {
+      source: 'INTERNAL',
+      title: 'Test plan template',
+      description: 'Standard template to attach to every feature ticket.',
+      status: 'TODO',
+      priority: 'LOW',
+      teamId: qaTeam.id,
+    },
+  });
+  await prisma.ticketAssignment.create({ data: { ticketId: qa10.id, userId: ivelina } });
+
   // ─── STANDUPS — today ───────────────────────────────────────────────────
   await prisma.standup.create({
     data: {

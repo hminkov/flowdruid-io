@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { trpc, createTrpcClient } from './lib/trpc';
 import { queryClient } from './lib/query-client';
 import { AuthProvider } from './hooks/useAuth';
+import { UserDetailProvider } from './hooks/useUserDetail';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { Layout } from './components/Layout';
 import { LoginPage } from './pages/LoginPage';
@@ -26,6 +27,7 @@ export function App() {
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
           <AuthProvider>
+            <UserDetailProvider>
             <Routes>
               <Route path="/login" element={<LoginPage />} />
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
@@ -103,6 +105,7 @@ export function App() {
                 }
               />
             </Routes>
+            </UserDetailProvider>
           </AuthProvider>
         </BrowserRouter>
         <ReactQueryDevtools initialIsOpen={false} />
