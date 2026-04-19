@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" role="img" aria-label="Flowdruid">
+  <title>Flowdruid</title>
+  <style>
+    .fd-rotate {
+      transform-origin: 50% 50%;
+      transform-box: fill-box;
+      animation: fd-spin 20s linear infinite;
+    }
+    @keyframes fd-spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .fd-rotate { animation: none; }
+    }
+  </style>
+  <g class="fd-rotate">
+    <g transform="translate(16 16)">
+      <path d="M 0 -2.5 C 3.5 -5.5, 9.5 -7.5, 11 -14 C 7.5 -13, 2.5 -11, 0 -2.5 Z" fill="#534AB7"/>
+      <g transform="rotate(120)">
+        <path d="M 0 -2.5 C 3.5 -5.5, 9.5 -7.5, 11 -14 C 7.5 -13, 2.5 -11, 0 -2.5 Z" fill="#534AB7"/>
+      </g>
+      <g transform="rotate(240)">
+        <path d="M 0 -2.5 C 3.5 -5.5, 9.5 -7.5, 11 -14 C 7.5 -13, 2.5 -11, 0 -2.5 Z" fill="#534AB7"/>
+      </g>
+      <circle r="2.5" fill="#534AB7"/>
+    </g>
+  </g>
+</svg>

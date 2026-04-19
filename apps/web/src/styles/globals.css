@@ -276,6 +276,15 @@
   to { transform: rotate(360deg); }
 }
 
+@keyframes fd-logo-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fd-logo-rotate { animation: none !important; }
+}
+
 /* ─────────────────────────────────────────────────────────────────────────
    UTILITY CLASSES — things Tailwind doesn't cover well
    ───────────────────────────────────────────────────────────────────────── */

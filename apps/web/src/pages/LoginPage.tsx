@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { FlowdruidMark } from '../components/Logo';
+import { Logo } from '../components/ui/Logo';
 import {
   AlertIcon,
   ArrowRightIcon,
@@ -56,16 +56,11 @@ export function LoginPage() {
         </div>
 
         <div className="relative z-10 flex flex-1 flex-col justify-between p-12" style={{ color: '#FFFFFF' }}>
-          <div className="flex items-center gap-3">
-            <FlowdruidMark size={40} />
-            <div className="flex flex-col leading-tight">
-              <span className="text-xl tracking-tight" style={{ color: '#FFFFFF' }}>
-                Flowdruid
-              </span>
-              <span className="text-xs" style={{ color: 'rgba(255,255,255,0.7)' }}>
-                by <span className="tracking-wide">Cloudruid</span>
-              </span>
-            </div>
+          <div>
+            <Logo variant="wordmark" size={48} color="#FFFFFF" />
+            <p className="mt-2 text-xs" style={{ color: 'rgba(255,255,255,0.7)' }}>
+              by <span className="tracking-wide">Cloudruid</span>
+            </p>
           </div>
 
           <div className="max-w-lg">
@@ -109,12 +104,9 @@ export function LoginPage() {
       {/* Form panel */}
       <div className="flex flex-1 items-center justify-center p-6">
         <div className="w-full max-w-card">
-          <div className="mb-6 flex items-center gap-2 lg:hidden">
-            <FlowdruidMark size={32} />
-            <div className="flex flex-col leading-tight">
-              <span className="text-xl text-text-primary">Flowdruid</span>
-              <span className="text-xs text-text-tertiary">by Cloudruid</span>
-            </div>
+          <div className="mb-6 flex flex-col items-center lg:hidden">
+            <Logo variant="wordmark" size={36} />
+            <span className="mt-1 text-xs text-text-tertiary">by Cloudruid</span>
           </div>
 
           <div className="rounded-lg border border-border bg-surface-primary p-6">

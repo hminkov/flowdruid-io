@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Flowdruid">
+  <title>Flowdruid</title>
+  <desc>Rotating triskelion mark in brand purple</desc>
+  <style>
+    .fd-rotate {
+      transform-origin: 50% 50%;
+      transform-box: fill-box;
+      animation: fd-spin 20s linear infinite;
+    }
+    @keyframes fd-spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .fd-rotate { animation: none; }
+    }
+  </style>
+  <g class="fd-rotate">
+    <g transform="translate(32 32)">
+      <path d="M 0 -4 C 6 -10, 18 -14, 20 -26 C 14 -24, 4 -20, 0 -4 Z" fill="#534AB7"/>
+      <g transform="rotate(120)">
+        <path d="M 0 -4 C 6 -10, 18 -14, 20 -26 C 14 -24, 4 -20, 0 -4 Z" fill="#534AB7"/>
+      </g>
+      <g transform="rotate(240)">
+        <path d="M 0 -4 C 6 -10, 18 -14, 20 -26 C 14 -24, 4 -20, 0 -4 Z" fill="#534AB7"/>
+      </g>
+      <circle r="4" fill="#534AB7"/>
+    </g>
+  </g>
+</svg>

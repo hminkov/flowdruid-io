@@ -1,7 +1,7 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { ThemeToggle } from './ThemeToggle';
-import { FlowdruidMark } from './Logo';
+import { Logo } from './ui/Logo';
 import type { ReactNode, SVGProps } from 'react';
 
 type IconProps = SVGProps<SVGSVGElement>;
@@ -139,9 +139,13 @@ export function Layout({ children }: { children: ReactNode }) {
     <div className="flex h-screen bg-surface-tertiary">
       {/* Sidebar */}
       <aside className="flex w-16 flex-col border-r border-border bg-surface-primary lg:w-64">
-        <div className="flex h-12 items-center gap-2 border-b border-border px-4">
-          <FlowdruidMark size={24} />
-          <span className="hidden text-md text-text-primary lg:inline">Flowdruid</span>
+        <div className="flex h-12 items-center border-b border-border px-4">
+          <div className="hidden lg:block">
+            <Logo variant="wordmark" size={28} />
+          </div>
+          <div className="lg:hidden">
+            <Logo size={28} />
+          </div>
         </div>
 
         <nav className="flex-1 overflow-y-auto p-2">
