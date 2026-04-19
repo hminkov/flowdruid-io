@@ -1,0 +1,446 @@
+/*
+ * Flowdruid — Global Styles
+ * apps/web/src/styles/globals.css
+ *
+ * Entry point imported once in main.tsx.
+ * Loads tokens, Inter font, Tailwind layers, then adds:
+ *   - base resets and typography defaults
+ *   - focus ring rules
+ *   - scrollbar styling
+ *   - keyframe animations used across the app
+ *   - utility classes for things Tailwind doesn't cover well
+ */
+
+@import '@fontsource-variable/inter/index.css';
+@import './tokens.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─────────────────────────────────────────────────────────────────────────
+   BASE LAYER
+   ───────────────────────────────────────────────────────────────────────── */
+@layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  html,
+  body {
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+    background-color: var(--surface-tertiary);
+    color: var(--text-primary);
+    font-family: 'Inter Variable', Inter, -apple-system, BlinkMacSystemFont,
+                 'Segoe UI', sans-serif;
+    font-size: 13px;
+    line-height: 1.5;
+    font-weight: 400;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    font-feature-settings: 'cv11', 'ss01', 'ss03';
+  }
+
+  /* Headings never use 600/700 — always 500 */
+  h1, h2, h3, h4, h5, h6 {
+    font-weight: 500;
+    color: var(--text-primary);
+    margin: 0;
+  }
+
+  h1 { font-size: 22px; line-height: 1.2; }
+  h2 { font-size: 18px; line-height: 1.3; }
+  h3 { font-size: 15px; line-height: 1.4; }
+
+  p { margin: 0; }
+
+  a {
+    color: var(--info-text);
+    text-decoration: none;
+    transition: color var(--duration-fast) var(--ease-out);
+  }
+
+  a:hover {
+    text-decoration: underline;
+  }
+
+  button {
+    font-family: inherit;
+    font-size: inherit;
+    cursor: pointer;
+    background: transparent;
+    border: none;
+    padding: 0;
+    color: inherit;
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+
+  /* Inputs inherit the base font — no browser default serif */
+  input,
+  select,
+  textarea {
+    font-family: inherit;
+    font-size: 13px;
+    color: var(--text-primary);
+  }
+
+  /* Placeholder uses tertiary text token */
+  ::placeholder {
+    color: var(--text-tertiary);
+    opacity: 1;
+  }
+
+  /* Remove Safari's inner shadow on text inputs */
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="date"],
+  input[type="search"],
+  input[type="tel"],
+  input[type="url"],
+  textarea {
+    -webkit-appearance: none;
+    appearance: none;
+  }
+
+  /* Remove number input spinners for cleaner look */
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type="number"] {
+    -moz-appearance: textfield;
+  }
+
+  /* Date picker calendar icon recolour */
+  input[type="date"]::-webkit-calendar-picker-indicator {
+    opacity: 0.5;
+    cursor: pointer;
+  }
+  input[type="date"]::-webkit-calendar-picker-indicator:hover {
+    opacity: 1;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   FOCUS RINGS — keyboard focus only, never on mouse click
+   ───────────────────────────────────────────────────────────────────────── */
+@layer base {
+  *:focus {
+    outline: none;
+  }
+
+  *:focus-visible {
+    outline: 2px solid var(--brand-500);
+    outline-offset: 2px;
+    border-radius: var(--radius-default);
+  }
+
+  /* Form controls with their own focus style override the generic ring */
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible {
+    outline: 2px solid var(--brand-500);
+    outline-offset: 0;
+    border-color: var(--brand-500);
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   SCROLLBARS — subtle, themed
+   ───────────────────────────────────────────────────────────────────────── */
+@layer base {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-strong) transparent;
+  }
+
+  *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background-color: var(--border-strong);
+    border-radius: 10px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background-color: var(--text-tertiary);
+    background-clip: content-box;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   SELECTION — brand-tinted
+   ───────────────────────────────────────────────────────────────────────── */
+@layer base {
+  ::selection {
+    background-color: var(--brand-100);
+    color: var(--brand-900);
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   KEYFRAMES
+   ───────────────────────────────────────────────────────────────────────── */
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: 0.6; }
+  50%      { opacity: 1; }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes fade-out {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes modal-out {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(4px) scale(0.98);
+  }
+}
+
+@keyframes drawer-in {
+  from { transform: translateX(100%); }
+  to   { transform: translateX(0); }
+}
+
+@keyframes drawer-out {
+  from { transform: translateX(0); }
+  to   { transform: translateX(100%); }
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes toast-out {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   UTILITY CLASSES — things Tailwind doesn't cover well
+   ───────────────────────────────────────────────────────────────────────── */
+@layer utilities {
+  /* Skeleton loading block */
+  .skeleton {
+    background-color: var(--surface-secondary);
+    border-radius: var(--radius-default);
+    animation: skeleton-pulse 1500ms ease-in-out infinite;
+  }
+
+  /* Spinner used inside buttons */
+  .spinner {
+    animation: spin 600ms linear infinite;
+  }
+
+  /* Truncate to N lines */
+  .line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .line-clamp-3 {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  /* Visually hidden but screen-reader accessible */
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  /* Single-sided borders must disable corner radius */
+  .border-l-accent { border-left-width: 3px; border-radius: 0; }
+  .border-t-accent { border-top-width: 3px;  border-radius: 0; }
+
+  /* Animation entry classes — apply to Radix/HeadlessUI components via state attrs */
+  .animate-fade-in   { animation: fade-in   var(--duration-default) var(--ease-out); }
+  .animate-fade-out  { animation: fade-out  var(--duration-fast)    var(--ease-in-out); }
+  .animate-modal-in  { animation: modal-in  var(--duration-default) var(--ease-out); }
+  .animate-modal-out { animation: modal-out 150ms                   var(--ease-in-out); }
+  .animate-drawer-in  { animation: drawer-in  var(--duration-default) var(--ease-out); }
+  .animate-drawer-out { animation: drawer-out 150ms                   var(--ease-in-out); }
+  .animate-toast-in   { animation: toast-in   250ms                   var(--ease-out); }
+  .animate-toast-out  { animation: toast-out  150ms                   var(--ease-in-out); }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   MOTION PREFERENCES — disable on user request
+   ───────────────────────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* But keep focus rings visible — they're never "motion" */
+  *:focus-visible {
+    outline: 2px solid var(--brand-500) !important;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   COMPONENT BASE STYLES — for things that recur and benefit from raw CSS
+   (all others use Tailwind classes directly in components)
+   ───────────────────────────────────────────────────────────────────────── */
+@layer components {
+  /* Range input (capacity slider) — browsers need per-vendor pseudo rules */
+  .range-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 4px;
+    background: var(--border-default);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+  }
+
+  .range-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--brand-600);
+    cursor: pointer;
+    border: 2px solid var(--surface-primary);
+    box-shadow: 0 0 0 0.5px var(--border-strong);
+    transition: transform var(--duration-fast) var(--ease-out);
+  }
+
+  .range-slider::-webkit-slider-thumb:hover {
+    transform: scale(1.1);
+  }
+
+  .range-slider::-webkit-slider-thumb:active {
+    transform: scale(0.95);
+  }
+
+  .range-slider::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--brand-600);
+    cursor: pointer;
+    border: 2px solid var(--surface-primary);
+    box-shadow: 0 0 0 0.5px var(--border-strong);
+  }
+
+  /* Calendar day cells (leave calendar grid) */
+  .cal-cell {
+    border: 0.5px solid var(--border-default);
+    vertical-align: top;
+    padding: 5px;
+    min-width: 70px;
+    min-height: 72px;
+    font-size: 11px;
+    color: var(--text-tertiary);
+  }
+
+  .cal-cell[data-today="true"] {
+    background-color: var(--surface-secondary);
+  }
+
+  .cal-cell[data-today="true"] .cal-day-number {
+    color: var(--brand-600);
+    font-weight: 500;
+  }
+
+  .cal-cell[data-other-month="true"] {
+    opacity: 0.3;
+  }
+
+  /* Toast stack wrapper (top-right) */
+  .toast-viewport {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 340px;
+    max-width: calc(100vw - 32px);
+    z-index: 9999;
+    pointer-events: none;
+  }
+
+  .toast-viewport > * {
+    pointer-events: auto;
+  }
+}

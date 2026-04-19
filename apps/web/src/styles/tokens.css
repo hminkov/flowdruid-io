@@ -1,0 +1,155 @@
+/*
+ * Flowdruid — Design Tokens
+ * apps/web/src/styles/tokens.css
+ *
+ * All design tokens live here as CSS custom properties.
+ * Light mode values sit on :root. Dark mode values override via
+ * @media (prefers-color-scheme: dark) — no toggle in v1.
+ *
+ * Tokens are consumed by Tailwind (via tailwind.config.ts) and
+ * occasionally directly in components for one-off needs.
+ *
+ * Never hardcode hex values outside this file.
+ */
+
+:root {
+  /* ─── Brand (purple) ─── */
+  --brand-50:  #EEEDFE;
+  --brand-100: #CECBF6;
+  --brand-500: #7F77DD;
+  --brand-600: #534AB7;
+  --brand-800: #3C3489;
+  --brand-900: #26215C;
+
+  /* ─── Surfaces ─── */
+  --surface-primary:   #FFFFFF;
+  --surface-secondary: #F7F6F3;
+  --surface-tertiary:  #F1EFE8;
+
+  /* ─── Borders ─── */
+  --border-default: rgba(0, 0, 0, 0.08);
+  --border-strong:  rgba(0, 0, 0, 0.15);
+
+  /* ─── Text ─── */
+  --text-primary:   #1A1A1A;
+  --text-secondary: #5F5E5A;
+  --text-tertiary:  #888780;
+
+  /* ─── Semantic: Success / Available ─── */
+  --success-bg:   #EAF3DE;
+  --success-text: #27500A;
+
+  /* ─── Semantic: Warning / Busy / Partial ─── */
+  --warning-bg:   #FAEEDA;
+  --warning-text: #633806;
+
+  /* ─── Semantic: Danger / On leave / Sick ─── */
+  --danger-bg:   #FCEBEB;
+  --danger-text: #791F1F;
+
+  /* ─── Semantic: Info / Remote ─── */
+  --info-bg:   #E6F1FB;
+  --info-text: #0C447C;
+
+  /* ─── Semantic: Accent / Partial leave ─── */
+  --accent-bg:   #FBEAF0;
+  --accent-text: #72243E;
+
+  /* ─── Semantic: Neutral / Inactive ─── */
+  --neutral-bg:   #F1EFE8;
+  --neutral-text: #444441;
+
+  /* ─── Priority dots (no tone pair needed — used as dot colour only) ─── */
+  --priority-high:   #E24B4A;
+  --priority-medium: #EF9F27;
+  --priority-low:    #639922;
+
+  /* ─── Capacity bar thresholds ─── */
+  --capacity-normal: var(--brand-600);
+  --capacity-high:   #BA7517;
+  --capacity-full:   #E24B4A;
+
+  /* ─── Avatar palettes (6 fixed pairs, stable per user) ─── */
+  --avatar-1-bg:   #EEEDFE; --avatar-1-text:  #3C3489;
+  --avatar-2-bg:   #E1F5EE; --avatar-2-text:  #085041;
+  --avatar-3-bg:   #FBEAF0; --avatar-3-text:  #72243E;
+  --avatar-4-bg:   #FAEEDA; --avatar-4-text:  #633806;
+  --avatar-5-bg:   #E6F1FB; --avatar-5-text:  #0C447C;
+  --avatar-6-bg:   #F1EFE8; --avatar-6-text:  #444441;
+
+  /* ─── Shadows (only one allowed — for floating elements) ─── */
+  --shadow-float: 0 4px 12px rgba(0, 0, 0, 0.08),
+                  0 0 0 0.5px rgba(0, 0, 0, 0.06);
+
+  /* ─── Overlays ─── */
+  --overlay-backdrop: rgba(0, 0, 0, 0.45);
+
+  /* ─── Radii ─── */
+  --radius-sm:      4px;
+  --radius-default: 6px;
+  --radius-md:      8px;
+  --radius-lg:      12px;
+  --radius-pill:    20px;
+
+  /* ─── Motion ─── */
+  --duration-fast:    120ms;
+  --duration-default: 200ms;
+  --duration-slow:    400ms;
+  --ease-out:         cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out:      cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* Brand inverts its usage: darker stops become fills in dark mode */
+    --brand-50:  #1F1B3E;
+    --brand-100: #2D2754;
+    --brand-500: #7F77DD;
+    --brand-600: #7F77DD;
+    --brand-800: #CECBF6;
+    --brand-900: #EEEDFE;
+
+    --surface-primary:   #1A1A1A;
+    --surface-secondary: #242422;
+    --surface-tertiary:  #2C2C2A;
+
+    --border-default: rgba(255, 255, 255, 0.08);
+    --border-strong:  rgba(255, 255, 255, 0.15);
+
+    --text-primary:   #F1EFE8;
+    --text-secondary: #B4B2A9;
+    --text-tertiary:  #888780;
+
+    --success-bg:   #27500A;
+    --success-text: #C0DD97;
+
+    --warning-bg:   #633806;
+    --warning-text: #FAC775;
+
+    --danger-bg:   #791F1F;
+    --danger-text: #F7C1C1;
+
+    --info-bg:   #0C447C;
+    --info-text: #B5D4F4;
+
+    --accent-bg:   #72243E;
+    --accent-text: #F4C0D1;
+
+    --neutral-bg:   #2C2C2A;
+    --neutral-text: #B4B2A9;
+
+    /* Priority and capacity colours stay the same — they read well on both */
+
+    --avatar-1-bg: #2D2754; --avatar-1-text: #CECBF6;
+    --avatar-2-bg: #085041; --avatar-2-text: #9FE1CB;
+    --avatar-3-bg: #72243E; --avatar-3-text: #F4C0D1;
+    --avatar-4-bg: #633806; --avatar-4-text: #FAC775;
+    --avatar-5-bg: #0C447C; --avatar-5-text: #B5D4F4;
+    --avatar-6-bg: #444441; --avatar-6-text: #D3D1C7;
+
+    --shadow-float: 0 4px 12px rgba(0, 0, 0, 0.4),
+                    0 0 0 0.5px rgba(255, 255, 255, 0.06);
+
+    --overlay-backdrop: rgba(0, 0, 0, 0.65);
+  }
+}

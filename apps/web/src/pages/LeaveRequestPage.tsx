@@ -108,7 +108,7 @@ export function LeaveRequestPage() {
           <button
             type="submit"
             disabled={requestMutation.isPending}
-            className="rounded bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50"
+            className="rounded bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800 disabled:opacity-50"
           >
             Submit Request
           </button>

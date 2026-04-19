@@ -56,7 +56,7 @@ export function TasksPage() {
         <h1 className="text-2xl font-bold">Tasks</h1>
         <button
           onClick={() => setShowCreate(true)}
-          className="rounded bg-primary-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-primary-700"
+          className="rounded bg-brand-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-800"
         >
           New Task
         </button>
@@ -69,7 +69,7 @@ export function TasksPage() {
             key={s ?? 'all'}
             onClick={() => setSource(s)}
             className={`rounded-full px-3 py-1 text-sm font-medium ${
-              sourceFilter === s ? 'bg-primary-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              sourceFilter === s ? 'bg-brand-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
             }`}
           >
             {s ?? 'All'}
@@ -101,7 +101,7 @@ export function TasksPage() {
                         {ticket.assignees.map((a) => (
                           <span
                             key={a.user.id}
-                            className="flex h-5 w-5 items-center justify-center rounded-full bg-primary-100 text-[9px] font-medium text-primary-700 ring-1 ring-white"
+                            className="flex h-5 w-5 items-center justify-center rounded-full bg-brand-100 text-[9px] font-medium text-brand-800 ring-1 ring-white"
                           >
                             {a.user.initials}
                           </span>
@@ -115,7 +115,7 @@ export function TasksPage() {
                               updateMutation.mutate({ ticketId: ticket.id, status: nextStatus });
                             }
                           }}
-                          className="text-xs text-primary-600 hover:text-primary-800"
+                          className="text-xs text-brand-600 hover:text-brand-800"
                         >
                           Move &rarr;
                         </button>
@@ -168,7 +168,7 @@ export function TasksPage() {
                 <button type="button" onClick={() => setShowCreate(false)} className="rounded px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100">
                   Cancel
                 </button>
-                <button type="submit" disabled={createMutation.isPending} className="rounded bg-primary-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-primary-700">
+                <button type="submit" disabled={createMutation.isPending} className="rounded bg-brand-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-800">
                   Create
                 </button>
               </div>

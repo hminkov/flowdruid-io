@@ -1,11 +1,26 @@
 import { useAuth } from '../hooks/useAuth';
 import { trpc } from '../lib/trpc';
 
-const availabilityColors: Record<string, string> = {
-  AVAILABLE: 'bg-green-100 text-green-800',
-  BUSY: 'bg-amber-100 text-amber-800',
-  REMOTE: 'bg-blue-100 text-blue-800',
-  ON_LEAVE: 'bg-red-100 text-red-800',
+const availabilityToneMap: Record<string, string> = {
+  AVAILABLE: 'bg-success-bg text-success-text',
+  BUSY: 'bg-warning-bg text-warning-text',
+  REMOTE: 'bg-info-bg text-info-text',
+  ON_LEAVE: 'bg-danger-bg text-danger-text',
+};
+
+const avatarPalettes = [
+  { bg: 'var(--avatar-1-bg)', text: 'var(--avatar-1-text)' },
+  { bg: 'var(--avatar-2-bg)', text: 'var(--avatar-2-text)' },
+  { bg: 'var(--avatar-3-bg)', text: 'var(--avatar-3-text)' },
+  { bg: 'var(--avatar-4-bg)', text: 'var(--avatar-4-text)' },
+  { bg: 'var(--avatar-5-bg)', text: 'var(--avatar-5-text)' },
+  { bg: 'var(--avatar-6-bg)', text: 'var(--avatar-6-text)' },
+];
+
+const paletteFor = (id: string) => {
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) | 0;
+  return avatarPalettes[Math.abs(hash) % avatarPalettes.length];
 };
 
 export function DashboardPage() {
@@ -33,103 +48,66 @@ export function DashboardPage() {
   const activeTaskCount = ticketsQuery.data?.length ?? 0;
 
   const stats = [
-    {
-      label: 'Teams',
-      value: teamsQuery.data?.length ?? 0,
-      accent: 'from-primary-500 to-primary-700',
-      iconPath: 'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
-    },
-    {
-      label: 'Available Now',
-      value: `${availableMembers}/${totalMembers}`,
-      accent: 'from-emerald-500 to-emerald-700',
-      iconPath: 'M22 11.08V12a10 10 0 1 1-5.93-9.14M22 4 12 14.01l-3-3',
-    },
-    {
-      label: 'On Leave',
-      value: onLeaveMembers,
-      accent: 'from-amber-500 to-amber-700',
-      iconPath: 'M3 4h18M8 4V2M16 4V2M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z',
-    },
-    {
-      label: 'Active Tasks',
-      value: activeTaskCount,
-      accent: 'from-blue-500 to-blue-700',
-      iconPath: 'M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11',
-    },
+    { label: 'Teams', value: teamsQuery.data?.length ?? 0 },
+    { label: 'Available now', value: `${availableMembers}/${totalMembers}` },
+    { label: 'On leave', value: onLeaveMembers },
+    { label: 'Active tasks', value: activeTaskCount },
   ];
 
   return (
-    <div className="mx-auto max-w-7xl">
-      <header className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">
-          {firstName ? `Welcome back, ${firstName} 👋` : 'Dashboard'}
-        </h1>
-        <p className="mt-1 text-sm text-gray-500">
+    <div className="mx-auto max-w-content">
+      <header className="mb-6">
+        <h1>{firstName ? `Welcome back, ${firstName}` : 'Dashboard'}</h1>
+        <p className="mt-1 text-base text-text-secondary">
           Here's what's happening across your teams today.
         </p>
       </header>
 
-      {/* Stats */}
-      <section className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <section className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((stat) => (
           <div
             key={stat.label}
-            className="relative overflow-hidden rounded-xl border border-gray-200 bg-white p-5 shadow-sm transition hover:shadow-md"
+            className="rounded-lg border border-border bg-surface-primary p-4"
           >
-            <div
-              className={`absolute -right-6 -top-6 h-24 w-24 rounded-full bg-gradient-to-br ${stat.accent} opacity-10`}
-            />
-            <div className="relative flex items-start justify-between">
-              <div>
-                <p className="text-xs font-medium uppercase tracking-wider text-gray-500">
-                  {stat.label}
-                </p>
-                <p className="mt-2 text-3xl font-bold text-gray-900">{stat.value}</p>
-              </div>
-              <div
-                className={`flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br ${stat.accent} text-white shadow`}
-              >
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="h-5 w-5"
-                >
-                  <path d={stat.iconPath} />
-                </svg>
-              </div>
-            </div>
+            <p className="text-sm text-text-tertiary">{stat.label}</p>
+            <p className="mt-2 text-2xl text-text-primary">{stat.value}</p>
           </div>
         ))}
       </section>
 
-      {/* Team Availability */}
-      <section className="mb-8">
-        <h2 className="mb-3 text-lg font-semibold text-gray-800">Team Availability</h2>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <section className="mb-6">
+        <h2 className="mb-3">Team availability</h2>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {teamsQuery.data?.map((team) => (
-            <div key={team.id} className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm transition hover:border-primary-200 hover:shadow-md">
-              <h3 className="mb-3 font-medium">{team.name}</h3>
+            <div
+              key={team.id}
+              className="rounded-lg border border-border bg-surface-primary p-4"
+            >
+              <h3 className="mb-3">{team.name}</h3>
               <div className="space-y-2">
-                {team.members.map((member) => (
-                  <div key={member.id} className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary-100 text-xs font-medium text-primary-700">
-                        {member.initials}
+                {team.members.map((member) => {
+                  const palette = paletteFor(member.id);
+                  return (
+                    <div key={member.id} className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className="flex h-6 w-6 items-center justify-center rounded-full text-xs"
+                          style={{ background: palette.bg, color: palette.text }}
+                        >
+                          {member.initials}
+                        </span>
+                        <span className="text-base text-text-primary">{member.name}</span>
+                      </div>
+                      <span
+                        className={`rounded-pill px-2 py-0.5 text-xs ${availabilityToneMap[member.availability]}`}
+                      >
+                        {member.availability.replace('_', ' ').toLowerCase()}
                       </span>
-                      <span className="text-sm">{member.name}</span>
                     </div>
-                    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${availabilityColors[member.availability]}`}>
-                      {member.availability.replace('_', ' ')}
-                    </span>
-                  </div>
-                ))}
+                  );
+                })}
                 {team.members.length === 0 && (
-                  <p className="text-sm text-gray-400">No members</p>
+                  <p className="text-sm text-text-tertiary">No members</p>
                 )}
               </div>
             </div>
@@ -137,33 +115,43 @@ export function DashboardPage() {
         </div>
       </section>
 
-      {/* Active Tasks */}
       <section>
-        <h2 className="mb-3 text-lg font-semibold text-gray-800">Active Tasks</h2>
-        <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
+        <h2 className="mb-3">Active tasks</h2>
+        <div className="overflow-hidden rounded-lg border border-border bg-surface-primary">
           {ticketsQuery.data?.length === 0 && (
-            <p className="p-4 text-sm text-gray-400">No tasks in progress</p>
+            <p className="p-4 text-sm text-text-tertiary">No tasks in progress</p>
           )}
           {ticketsQuery.data?.map((ticket) => (
-            <div key={ticket.id} className="flex items-center justify-between border-b border-gray-100 p-4 transition last:border-b-0 hover:bg-gray-50">
+            <div
+              key={ticket.id}
+              className="flex items-center justify-between border-b border-border p-3 last:border-b-0"
+            >
               <div className="flex items-center gap-3">
-                <span className={`rounded px-2 py-0.5 text-xs font-mono font-medium ${
-                  ticket.source === 'JIRA' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'
-                }`}>
+                <span
+                  className={`rounded px-2 py-0.5 font-mono text-xs ${
+                    ticket.source === 'JIRA'
+                      ? 'bg-info-bg text-info-text'
+                      : 'bg-neutral-bg text-neutral-text'
+                  }`}
+                >
                   {ticket.jiraKey || `INT-${ticket.id.slice(-4)}`}
                 </span>
-                <span className="text-sm">{ticket.title}</span>
+                <span className="text-base text-text-primary">{ticket.title}</span>
               </div>
               <div className="flex -space-x-1">
-                {ticket.assignees.map((a) => (
-                  <span
-                    key={a.user.id}
-                    className="flex h-6 w-6 items-center justify-center rounded-full bg-primary-100 text-[10px] font-medium text-primary-700 ring-2 ring-white"
-                    title={a.user.name}
-                  >
-                    {a.user.initials}
-                  </span>
-                ))}
+                {ticket.assignees.map((a) => {
+                  const palette = paletteFor(a.user.id);
+                  return (
+                    <span
+                      key={a.user.id}
+                      className="flex h-6 w-6 items-center justify-center rounded-full text-xs ring-2 ring-surface-primary"
+                      style={{ background: palette.bg, color: palette.text }}
+                      title={a.user.name}
+                    >
+                      {a.user.initials}
+                    </span>
+                  );
+                })}
               </div>
             </div>
           ))}

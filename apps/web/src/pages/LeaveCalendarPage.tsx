@@ -118,7 +118,7 @@ export function LeaveCalendarPage() {
           {calendarQuery.data?.map((leave) => (
             <div key={leave.id} className="flex items-center justify-between rounded border bg-white p-3 shadow-sm">
               <div className="flex items-center gap-3">
-                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary-100 text-xs font-medium text-primary-700">
+                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-brand-100 text-xs font-medium text-brand-800">
                   {leave.user.initials}
                 </span>
                 <div>

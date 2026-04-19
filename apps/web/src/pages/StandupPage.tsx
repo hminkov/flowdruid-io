@@ -91,7 +91,7 @@ export function StandupPage() {
           <button
             type="submit"
             disabled={postMutation.isPending}
-            className="rounded bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50"
+            className="rounded bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800 disabled:opacity-50"
           >
             {postMutation.isPending ? 'Posting...' : 'Post Standup'}
           </button>
@@ -107,7 +107,7 @@ export function StandupPage() {
             <div key={s.id} className="rounded-lg border bg-white p-4 shadow-sm">
               <div className="mb-2 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary-100 text-xs font-medium text-primary-700">
+                  <span className="flex h-7 w-7 items-center justify-center rounded-full bg-brand-100 text-xs font-medium text-brand-800">
                     {s.user.initials}
                   </span>
                   <span className="font-medium">{s.user.name}</span>

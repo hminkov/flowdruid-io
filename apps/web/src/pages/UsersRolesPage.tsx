@@ -43,7 +43,7 @@ export function UsersRolesPage() {
         <h1 className="text-2xl font-bold">Users & Roles</h1>
         <button
           onClick={() => { setShowInvite(true); setTempPass(''); }}
-          className="rounded bg-primary-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-primary-700"
+          className="rounded bg-brand-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-800"
         >
           Invite User
         </button>
@@ -66,7 +66,7 @@ export function UsersRolesPage() {
               <tr key={u.id} className="border-b last:border-b-0">
                 <td className="p-3">
                   <div className="flex items-center gap-2">
-                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary-100 text-xs font-medium text-primary-700">
+                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-brand-100 text-xs font-medium text-brand-800">
                       {u.initials}
                     </span>
                     {u.name}
@@ -131,7 +131,7 @@ export function UsersRolesPage() {
                 <code className="block rounded bg-gray-100 p-3 text-sm font-mono">{tempPass}</code>
                 <button
                   onClick={() => { setShowInvite(false); setEmail(''); setName(''); setInitials(''); }}
-                  className="mt-4 rounded bg-primary-600 px-3 py-1.5 text-sm text-white"
+                  className="mt-4 rounded bg-brand-600 px-3 py-1.5 text-sm text-white"
                 >
                   Done
                 </button>
@@ -154,7 +154,7 @@ export function UsersRolesPage() {
                 </select>
                 <div className="flex justify-end gap-2">
                   <button type="button" onClick={() => setShowInvite(false)} className="rounded px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100">Cancel</button>
-                  <button type="submit" className="rounded bg-primary-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-primary-700">Invite</button>
+                  <button type="submit" className="rounded bg-brand-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-800">Invite</button>
                 </div>
               </form>
             )}

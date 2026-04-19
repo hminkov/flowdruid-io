@@ -40,7 +40,7 @@ export function AllTeamsPage() {
         {user?.role === 'ADMIN' && (
           <button
             onClick={() => setShowCreateTeam(true)}
-            className="rounded bg-primary-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-primary-700"
+            className="rounded bg-brand-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-800"
           >
             New Team
           </button>
@@ -62,7 +62,7 @@ export function AllTeamsPage() {
             <button
               type="submit"
               disabled={broadcastMutation.isPending}
-              className="rounded bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"
+              className="rounded bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800"
             >
               Send to all
             </button>
@@ -87,7 +87,7 @@ export function AllTeamsPage() {
               {team.members.map((member) => (
                 <div key={member.id} className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary-100 text-[10px] font-medium text-primary-700">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-brand-100 text-[10px] font-medium text-brand-800">
                       {member.initials}
                     </span>
                     <span className="text-sm">{member.name}</span>
@@ -126,7 +126,7 @@ export function AllTeamsPage() {
               />
               <div className="flex justify-end gap-2">
                 <button type="button" onClick={() => setShowCreateTeam(false)} className="rounded px-3 py-1.5 text-sm text-gray-600">Cancel</button>
-                <button type="submit" className="rounded bg-primary-600 px-3 py-1.5 text-sm font-medium text-white">Create</button>
+                <button type="submit" className="rounded bg-brand-600 px-3 py-1.5 text-sm font-medium text-white">Create</button>
               </div>
             </form>
           </div>

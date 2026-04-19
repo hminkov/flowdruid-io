@@ -84,7 +84,7 @@ export function IntegrationsPage() {
             <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={slackNotifyBroadcast} onChange={(e) => setSlackNotifyBroadcast(e.target.checked)} /> Broadcast notifications</label>
           </div>
           <div className="flex gap-2">
-            <button type="submit" disabled={saveSlack.isPending} className="rounded bg-primary-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-primary-700">Save</button>
+            <button type="submit" disabled={saveSlack.isPending} className="rounded bg-brand-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-800">Save</button>
             <button type="button" onClick={() => testSlack.mutate()} disabled={testSlack.isPending} className="rounded border px-3 py-1.5 text-sm">Test Connection</button>
           </div>
           {testSlack.data && <p className="text-sm text-green-600">Connected to {testSlack.data.team}</p>}
@@ -117,7 +117,7 @@ export function IntegrationsPage() {
             <p className="text-xs text-gray-500">Last synced: {new Date(jiraConfig.data.lastSyncAt).toLocaleString()}</p>
           )}
           <div className="flex gap-2">
-            <button type="submit" disabled={saveJira.isPending} className="rounded bg-primary-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-primary-700">Save</button>
+            <button type="submit" disabled={saveJira.isPending} className="rounded bg-brand-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-800">Save</button>
             <button type="button" onClick={() => testJira.mutate()} disabled={testJira.isPending} className="rounded border px-3 py-1.5 text-sm">Test Connection</button>
             <button type="button" onClick={() => syncJira.mutate({})} disabled={syncJira.isPending} className="rounded border px-3 py-1.5 text-sm">{syncJira.isPending ? 'Syncing...' : 'Sync Now'}</button>
           </div>
