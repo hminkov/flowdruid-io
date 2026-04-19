@@ -34,27 +34,42 @@ export function LoginPage() {
 
   return (
     <div className="flex min-h-screen bg-surface-tertiary">
-      {/* Brand panel */}
-      <aside className="relative hidden flex-1 overflow-hidden bg-brand-900 lg:flex">
-        <div className="pointer-events-none absolute inset-0 opacity-40">
-          <div className="absolute left-[-15%] top-[-15%] h-[28rem] w-[28rem] rounded-full bg-brand-500 blur-[120px]" />
-          <div className="absolute bottom-[-25%] right-[-10%] h-[36rem] w-[36rem] rounded-full bg-brand-600 blur-[140px]" />
-          <div className="absolute left-[30%] top-[40%] h-[20rem] w-[20rem] rounded-full bg-brand-800 blur-[100px]" />
+      {/* Brand panel — fixed dark navy so it reads the same in light and dark mode */}
+      <aside
+        className="relative hidden flex-1 overflow-hidden lg:flex"
+        style={{ backgroundColor: '#1A163F' }}
+      >
+        <div className="pointer-events-none absolute inset-0">
+          <div
+            className="absolute left-[-15%] top-[-15%] h-[28rem] w-[28rem] rounded-full blur-[120px]"
+            style={{ backgroundColor: '#534AB7', opacity: 0.5 }}
+          />
+          <div
+            className="absolute bottom-[-25%] right-[-10%] h-[36rem] w-[36rem] rounded-full blur-[140px]"
+            style={{ backgroundColor: '#3C3489', opacity: 0.55 }}
+          />
+          <div
+            className="absolute left-[30%] top-[40%] h-[20rem] w-[20rem] rounded-full blur-[100px]"
+            style={{ backgroundColor: '#7F77DD', opacity: 0.3 }}
+          />
         </div>
 
-        <div className="relative z-10 flex flex-1 flex-col justify-between p-12 text-white">
+        <div className="relative z-10 flex flex-1 flex-col justify-between p-12" style={{ color: '#FFFFFF' }}>
           <div className="flex items-center gap-3">
-            <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/10 text-lg backdrop-blur ring-1 ring-white/20">
+            <span
+              className="flex h-10 w-10 items-center justify-center rounded-lg text-lg backdrop-blur"
+              style={{ backgroundColor: 'rgba(255,255,255,0.12)', boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.2)' }}
+            >
               F
             </span>
             <span className="text-xl tracking-tight">Flowdruid</span>
           </div>
 
           <div className="max-w-lg">
-            <h2 className="text-2xl leading-tight">
+            <h2 className="text-2xl leading-tight" style={{ color: '#FFFFFF' }}>
               One workspace for your whole team.
             </h2>
-            <p className="mt-4 text-base opacity-80">
+            <p className="mt-4 text-base" style={{ color: 'rgba(255,255,255,0.8)' }}>
               Tasks, standups, leave, and availability — without juggling five tools.
             </p>
 
@@ -65,8 +80,15 @@ export function LoginPage() {
                 'Leave requests, approvals, and calendar view',
                 'Role-based access: admin, team lead, developer',
               ].map((item) => (
-                <li key={item} className="flex items-start gap-3 text-base opacity-90">
-                  <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-white/15 ring-1 ring-white/20">
+                <li
+                  key={item}
+                  className="flex items-start gap-3 text-base"
+                  style={{ color: 'rgba(255,255,255,0.9)' }}
+                >
+                  <span
+                    className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full"
+                    style={{ backgroundColor: 'rgba(255,255,255,0.15)', boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.2)' }}
+                  >
                     <CheckIcon className="h-3 w-3" />
                   </span>
                   <span>{item}</span>
@@ -75,7 +97,9 @@ export function LoginPage() {
             </ul>
           </div>
 
-          <p className="text-xs opacity-60">© {new Date().getFullYear()} Cloudruid · Internal</p>
+          <p className="text-xs" style={{ color: 'rgba(255,255,255,0.6)' }}>
+            © {new Date().getFullYear()} Cloudruid · Internal
+          </p>
         </div>
       </aside>
 
