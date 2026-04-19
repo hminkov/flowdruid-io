@@ -1,14 +1,30 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useUserDetail } from '../hooks/useUserDetail';
 import { trpc } from '../lib/trpc';
-import { AlertIcon, CalendarIcon, CheckIcon, PlaneIcon, ZapIcon } from '../components/icons';
+import {
+  AlertIcon,
+  BriefcaseIcon,
+  CalendarIcon,
+  CheckIcon,
+  PlaneIcon,
+  TeamsIcon,
+  TrendingUpIcon,
+  ZapIcon,
+} from '../components/icons';
 
 const availabilityToneMap: Record<string, string> = {
   AVAILABLE: 'bg-success-bg text-success-text',
   BUSY: 'bg-warning-bg text-warning-text',
   REMOTE: 'bg-info-bg text-info-text',
   ON_LEAVE: 'bg-danger-bg text-danger-text',
+};
+
+const availabilityDotMap: Record<string, string> = {
+  AVAILABLE: 'bg-success-text',
+  BUSY: 'bg-warning-text',
+  REMOTE: 'bg-info-text',
+  ON_LEAVE: 'bg-danger-text',
 };
 
 const avatarPalettes = [
@@ -29,10 +45,12 @@ const paletteFor = (id: string) => {
 const capacityTone = (pct: number) =>
   pct >= 90 ? 'bg-capacity-full' : pct >= 70 ? 'bg-capacity-high' : 'bg-capacity-normal';
 
-function CapacityBar({ pct }: { pct: number }) {
+function CapacityBar({ pct, thin = false }: { pct: number; thin?: boolean }) {
   return (
     <div className="flex items-center gap-2">
-      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-secondary">
+      <div
+        className={`${thin ? 'h-1' : 'h-1.5'} flex-1 overflow-hidden rounded-full bg-surface-secondary`}
+      >
         <div className={`h-full ${capacityTone(pct)}`} style={{ width: `${pct}%` }} />
       </div>
       <span className="text-xs tabular-nums text-text-tertiary">{pct}%</span>
@@ -40,9 +58,44 @@ function CapacityBar({ pct }: { pct: number }) {
   );
 }
 
+type StatCardProps = {
+  label: string;
+  value: string | number;
+  hint?: string;
+  accent: 'brand' | 'success' | 'warning' | 'info' | 'accent';
+  Icon: (p: React.SVGProps<SVGSVGElement>) => JSX.Element;
+};
+
+const accentTones: Record<StatCardProps['accent'], string> = {
+  brand: 'bg-brand-50 text-brand-600',
+  success: 'bg-success-bg text-success-text',
+  warning: 'bg-warning-bg text-warning-text',
+  info: 'bg-info-bg text-info-text',
+  accent: 'bg-accent-bg text-accent-text',
+};
+
+function StatCard({ label, value, hint, accent, Icon }: StatCardProps) {
+  return (
+    <div className="rounded-lg border border-border bg-surface-primary p-4">
+      <div className="mb-2 flex items-center justify-between">
+        <p className="text-sm text-text-tertiary">{label}</p>
+        <span
+          className={`flex h-7 w-7 items-center justify-center rounded-md ${accentTones[accent]}`}
+        >
+          <Icon className="h-3.5 w-3.5" />
+        </span>
+      </div>
+      <p className="text-2xl text-text-primary">{value}</p>
+      {hint && <p className="mt-1 text-xs text-text-tertiary">{hint}</p>}
+    </div>
+  );
+}
+
 export function DashboardPage() {
   const { user } = useAuth();
   const { openUser } = useUserDetail();
+  const isLeadOrAdmin = user?.role === 'ADMIN' || user?.role === 'TEAM_LEAD';
+
   const teamsQuery = trpc.teams.list.useQuery();
   const todayIso = new Date().toISOString().slice(0, 10);
 
@@ -53,6 +106,11 @@ export function DashboardPage() {
     teamId: user?.teamId ?? undefined,
     date: todayIso,
   });
+  const pendingLeavesQuery = trpc.leaves.pending.useQuery(undefined, {
+    enabled: !!isLeadOrAdmin,
+  });
+
+  const [teamFilter, setTeamFilter] = useState<string | 'all'>('all');
 
   const standupByUser = useMemo(() => {
     type Standup = NonNullable<typeof standupsTodayQuery.data>[number];
@@ -62,7 +120,7 @@ export function DashboardPage() {
   }, [standupsTodayQuery.data]);
 
   const activeTicketsByUser = useMemo(() => {
-    const map = new Map<string, typeof ticketsQuery.data>();
+    const map = new Map<string, NonNullable<typeof ticketsQuery.data>>();
     for (const t of ticketsQuery.data ?? []) {
       if (t.status !== 'IN_PROGRESS' && t.status !== 'IN_REVIEW') continue;
       for (const a of t.assignees) {
@@ -82,6 +140,11 @@ export function DashboardPage() {
       (acc, t) => acc + t.members.filter((m) => m.availability === 'AVAILABLE').length,
       0
     ) ?? 0;
+  const remoteMembers =
+    teamsQuery.data?.reduce(
+      (acc, t) => acc + t.members.filter((m) => m.availability === 'REMOTE').length,
+      0
+    ) ?? 0;
   const onLeaveMembers =
     teamsQuery.data?.reduce(
       (acc, t) => acc + t.members.filter((m) => m.availability === 'ON_LEAVE').length,
@@ -90,125 +153,315 @@ export function DashboardPage() {
   const inProgressCount =
     ticketsQuery.data?.filter((t) => t.status === 'IN_PROGRESS').length ?? 0;
 
-  const stats = [
-    { label: 'Teams', value: teamsQuery.data?.length ?? 0 },
-    { label: 'Available now', value: `${availableMembers}/${totalMembers}` },
-    { label: 'On leave', value: onLeaveMembers },
-    { label: 'In progress', value: inProgressCount },
-  ];
+  const totalStandups = standupsTodayQuery.data?.length ?? 0;
+  const avgCapacity =
+    totalStandups > 0
+      ? Math.round(
+          (standupsTodayQuery.data ?? []).reduce((sum, s) => sum + s.capacityPct, 0) /
+            totalStandups
+        )
+      : null;
 
-  const avgTeamCapacity = (teamId: string): number | null => {
-    const teamStandups = (standupsTodayQuery.data ?? []).filter((s) => s.teamId === teamId);
-    if (teamStandups.length === 0) return null;
-    return Math.round(
-      teamStandups.reduce((sum, s) => sum + s.capacityPct, 0) / teamStandups.length
-    );
-  };
+  const blockers = useMemo(() => {
+    return (standupsTodayQuery.data ?? []).filter((s) => s.blockers && s.blockers.trim() !== '');
+  }, [standupsTodayQuery.data]);
+
+  const pendingLeaveCount = pendingLeavesQuery.data?.length ?? 0;
+
+  const dateLabel = new Date().toLocaleDateString(undefined, {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+  });
 
   const allMembers = (teamsQuery.data ?? []).flatMap((team) =>
     team.members.map((m) => ({ ...m, teamId: team.id, teamName: team.name }))
   );
 
+  const filteredMembers =
+    teamFilter === 'all' ? allMembers : allMembers.filter((m) => m.teamId === teamFilter);
+
   return (
     <div className="mx-auto max-w-content">
-      <header className="mb-6">
-        <h1>{firstName ? `Welcome back, ${firstName}` : 'Dashboard'}</h1>
-        <p className="mt-1 text-base text-text-secondary">
-          Here's what's happening across your teams today.
-        </p>
+      {/* Header */}
+      <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1>{firstName ? `Welcome back, ${firstName}` : 'Dashboard'}</h1>
+          <p className="mt-1 flex items-center gap-2 text-base text-text-secondary">
+            <CalendarIcon className="h-3.5 w-3.5 text-text-tertiary" />
+            {dateLabel}
+          </p>
+        </div>
+        <div className="flex items-center gap-3 text-xs text-text-tertiary">
+          {avgCapacity !== null && (
+            <span className="flex items-center gap-1.5 rounded-pill border border-border bg-surface-primary px-3 py-1">
+              <ZapIcon className="h-3 w-3" />
+              Avg capacity <span className="text-text-primary">{avgCapacity}%</span>
+            </span>
+          )}
+          <span className="flex items-center gap-1.5 rounded-pill border border-border bg-surface-primary px-3 py-1">
+            <TrendingUpIcon className="h-3 w-3" />
+            {totalStandups}/{totalMembers} posted
+          </span>
+        </div>
       </header>
 
       {/* Stats */}
       <section className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {stats.map((stat) => (
-          <div key={stat.label} className="rounded-lg border border-border bg-surface-primary p-4">
-            <p className="text-sm text-text-tertiary">{stat.label}</p>
-            <p className="mt-2 text-2xl text-text-primary">{stat.value}</p>
-          </div>
-        ))}
+        <StatCard
+          label="Teams"
+          value={teamsQuery.data?.length ?? 0}
+          hint={`${totalMembers} members total`}
+          accent="brand"
+          Icon={TeamsIcon}
+        />
+        <StatCard
+          label="Available now"
+          value={`${availableMembers}/${totalMembers}`}
+          hint={remoteMembers > 0 ? `${remoteMembers} remote` : 'everyone on-site'}
+          accent="success"
+          Icon={CheckIcon}
+        />
+        <StatCard
+          label="On leave"
+          value={onLeaveMembers}
+          hint={onLeaveMembers === 0 ? 'All hands on deck' : 'today'}
+          accent="warning"
+          Icon={PlaneIcon}
+        />
+        <StatCard
+          label="In progress"
+          value={inProgressCount}
+          hint={`${ticketsQuery.data?.length ?? 0} tickets total`}
+          accent="info"
+          Icon={BriefcaseIcon}
+        />
       </section>
 
-      {/* Team availability with capacity rollup */}
-      <section className="mb-6">
-        <h2 className="mb-3">Team availability</h2>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {teamsQuery.data?.map((team) => {
-            const avgCap = avgTeamCapacity(team.id);
-            const postedCount = (standupsTodayQuery.data ?? []).filter(
-              (s) => s.teamId === team.id
-            ).length;
-            return (
-              <div key={team.id} className="rounded-lg border border-border bg-surface-primary p-4">
-                <div className="mb-3 flex items-center justify-between">
-                  <h3>{team.name}</h3>
-                  <span className="text-xs text-text-tertiary">
-                    {team.members.length} {team.members.length === 1 ? 'member' : 'members'}
+      {/* Attention — blockers + pending approvals */}
+      {(blockers.length > 0 || pendingLeaveCount > 0) && (
+        <section className="mb-6">
+          <h2 className="mb-3 flex items-center gap-2">
+            <AlertIcon className="h-4 w-4 text-danger-text" />
+            Needs attention
+          </h2>
+          <div className="grid gap-3 lg:grid-cols-2">
+            {blockers.length > 0 && (
+              <div className="rounded-lg border border-danger-text/20 bg-danger-bg/40 p-4">
+                <div className="mb-2 flex items-center justify-between">
+                  <span className="text-md text-danger-text">
+                    {blockers.length} {blockers.length === 1 ? 'blocker' : 'blockers'} today
                   </span>
                 </div>
-
-                {/* Capacity rollup */}
-                <div className="mb-3 rounded border border-border bg-surface-secondary p-2.5">
-                  <div className="mb-1.5 flex items-center justify-between text-xs text-text-tertiary">
-                    <span className="flex items-center gap-1">
-                      <ZapIcon className="h-3 w-3" />
-                      Team capacity
-                    </span>
-                    <span>
-                      {postedCount}/{team.members.length} posted
-                    </span>
-                  </div>
-                  {avgCap === null ? (
-                    <p className="text-xs text-text-tertiary">No standups posted yet today.</p>
-                  ) : (
-                    <CapacityBar pct={avgCap} />
-                  )}
-                </div>
-
                 <div className="space-y-2">
-                  {team.members.map((member) => (
+                  {blockers.slice(0, 3).map((s) => (
                     <button
-                      key={member.id}
-                      type="button"
-                      onClick={() => openUser(member.id)}
-                      className="-mx-2 flex w-full items-center justify-between rounded px-2 py-1 text-left transition-colors duration-fast hover:bg-surface-secondary"
+                      key={s.id}
+                      onClick={() => openUser(s.user.id)}
+                      className="flex w-full items-start gap-2 rounded border border-border bg-surface-primary p-2 text-left hover:bg-surface-secondary"
                     >
-                      <div className="flex items-center gap-2">
-                        <span
-                          className="flex h-6 w-6 items-center justify-center rounded-full text-xs"
-                          style={{
-                            background: paletteFor(member.id).bg,
-                            color: paletteFor(member.id).text,
-                          }}
-                        >
-                          {member.initials}
-                        </span>
-                        <span className="text-base text-text-primary">{member.name}</span>
-                      </div>
                       <span
-                        className={`rounded-pill px-2 py-0.5 text-xs ${availabilityToneMap[member.availability]}`}
+                        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs"
+                        style={{
+                          background: paletteFor(s.user.id).bg,
+                          color: paletteFor(s.user.id).text,
+                        }}
                       >
-                        {member.availability.replace('_', ' ').toLowerCase()}
+                        {s.user.initials}
                       </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-sm text-text-primary">{s.user.name}</div>
+                        <div className="line-clamp-2 text-xs text-text-secondary">
+                          {s.blockers}
+                        </div>
+                      </div>
                     </button>
                   ))}
-                  {team.members.length === 0 && (
-                    <p className="text-sm text-text-tertiary">No members</p>
+                  {blockers.length > 3 && (
+                    <p className="text-xs text-text-tertiary">
+                      +{blockers.length - 3} more — see Standup feed
+                    </p>
                   )}
                 </div>
               </div>
+            )}
+
+            {pendingLeaveCount > 0 && (
+              <a
+                href="/admin/leaves"
+                className="rounded-lg border border-warning-text/20 bg-warning-bg/40 p-4 no-underline hover:opacity-90"
+              >
+                <div className="mb-2 flex items-center justify-between">
+                  <span className="text-md text-warning-text">
+                    {pendingLeaveCount} leave{' '}
+                    {pendingLeaveCount === 1 ? 'request' : 'requests'} to review
+                  </span>
+                  <span className="text-xs text-warning-text">Review →</span>
+                </div>
+                <div className="space-y-1">
+                  {(pendingLeavesQuery.data ?? []).slice(0, 3).map((leave) => (
+                    <div
+                      key={leave.id}
+                      className="flex items-center justify-between rounded border border-border bg-surface-primary p-2"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span
+                          className="flex h-5 w-5 items-center justify-center rounded-full text-[10px]"
+                          style={{
+                            background: paletteFor(leave.user.id).bg,
+                            color: paletteFor(leave.user.id).text,
+                          }}
+                        >
+                          {leave.user.initials}
+                        </span>
+                        <span className="text-sm text-text-primary">{leave.user.name}</span>
+                      </div>
+                      <span className="text-xs text-text-secondary">
+                        {leave.type.replace('_', ' ').toLowerCase()}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </a>
+            )}
+          </div>
+        </section>
+      )}
+
+      {/* Team snapshot */}
+      <section className="mb-6">
+        <h2 className="mb-3">Teams</h2>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {teamsQuery.data?.map((team) => {
+            const teamStandups = (standupsTodayQuery.data ?? []).filter(
+              (s) => s.teamId === team.id
+            );
+            const avg =
+              teamStandups.length > 0
+                ? Math.round(
+                    teamStandups.reduce((sum, s) => sum + s.capacityPct, 0) / teamStandups.length
+                  )
+                : null;
+            const availCount = team.members.filter((m) => m.availability === 'AVAILABLE').length;
+            const busyCount = team.members.filter((m) => m.availability === 'BUSY').length;
+            const remoteCount = team.members.filter((m) => m.availability === 'REMOTE').length;
+            const leaveCount = team.members.filter((m) => m.availability === 'ON_LEAVE').length;
+
+            const active = teamFilter === team.id;
+            return (
+              <button
+                key={team.id}
+                onClick={() => setTeamFilter(active ? 'all' : team.id)}
+                className={`rounded-lg border p-4 text-left transition-colors duration-fast ${
+                  active
+                    ? 'border-brand-500 bg-brand-50'
+                    : 'border-border bg-surface-primary hover:border-border-strong'
+                }`}
+              >
+                <div className="mb-3 flex items-center justify-between">
+                  <h3 className={active ? 'text-brand-600' : ''}>{team.name}</h3>
+                  <span className="text-xs text-text-tertiary">
+                    {team.members.length}
+                  </span>
+                </div>
+
+                {/* Avatar stack */}
+                <div className="mb-3 flex -space-x-1.5">
+                  {team.members.slice(0, 5).map((m) => {
+                    const palette = paletteFor(m.id);
+                    return (
+                      <span
+                        key={m.id}
+                        title={m.name}
+                        className="flex h-6 w-6 items-center justify-center rounded-full text-[10px] ring-2 ring-surface-primary"
+                        style={{ background: palette.bg, color: palette.text }}
+                      >
+                        {m.initials}
+                      </span>
+                    );
+                  })}
+                  {team.members.length > 5 && (
+                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-surface-secondary text-[10px] text-text-tertiary ring-2 ring-surface-primary">
+                      +{team.members.length - 5}
+                    </span>
+                  )}
+                </div>
+
+                {/* Availability breakdown */}
+                <div className="mb-3 flex flex-wrap gap-1 text-xs text-text-tertiary">
+                  {availCount > 0 && (
+                    <span className="inline-flex items-center gap-1">
+                      <span className={`h-1.5 w-1.5 rounded-full ${availabilityDotMap.AVAILABLE}`} />
+                      {availCount}
+                    </span>
+                  )}
+                  {busyCount > 0 && (
+                    <span className="inline-flex items-center gap-1">
+                      <span className={`h-1.5 w-1.5 rounded-full ${availabilityDotMap.BUSY}`} />
+                      {busyCount}
+                    </span>
+                  )}
+                  {remoteCount > 0 && (
+                    <span className="inline-flex items-center gap-1">
+                      <span className={`h-1.5 w-1.5 rounded-full ${availabilityDotMap.REMOTE}`} />
+                      {remoteCount}
+                    </span>
+                  )}
+                  {leaveCount > 0 && (
+                    <span className="inline-flex items-center gap-1">
+                      <span className={`h-1.5 w-1.5 rounded-full ${availabilityDotMap.ON_LEAVE}`} />
+                      {leaveCount}
+                    </span>
+                  )}
+                </div>
+
+                {/* Capacity */}
+                <div className="text-xs text-text-tertiary">
+                  {avg !== null ? (
+                    <CapacityBar pct={avg} thin />
+                  ) : (
+                    <span>No standups yet</span>
+                  )}
+                </div>
+              </button>
             );
           })}
         </div>
       </section>
 
-      {/* Who's working on what */}
-      <section className="mb-6">
-        <h2 className="mb-1">Who's working on what</h2>
-        <p className="mb-3 text-sm text-text-tertiary">
-          Each person's current load — today's standup and open tickets.
-        </p>
+      {/* Members */}
+      <section>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <h2>Who's working on what</h2>
+          <div className="flex flex-wrap gap-1 rounded-pill border border-border bg-surface-primary p-0.5">
+            <button
+              onClick={() => setTeamFilter('all')}
+              className={`rounded-pill px-3 py-1 text-sm transition-colors duration-fast ${
+                teamFilter === 'all'
+                  ? 'bg-brand-600 text-white'
+                  : 'text-text-secondary hover:text-text-primary'
+              }`}
+            >
+              All
+            </button>
+            {teamsQuery.data?.map((t) => (
+              <button
+                key={t.id}
+                onClick={() => setTeamFilter(t.id)}
+                className={`rounded-pill px-3 py-1 text-sm transition-colors duration-fast ${
+                  teamFilter === t.id
+                    ? 'bg-brand-600 text-white'
+                    : 'text-text-secondary hover:text-text-primary'
+                }`}
+              >
+                {t.name}
+              </button>
+            ))}
+          </div>
+        </div>
+
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {allMembers.map((member) => {
+          {filteredMembers.map((member) => {
             const standup = standupByUser.get(member.id);
             const tickets = (activeTicketsByUser.get(member.id) ?? []) as NonNullable<
               typeof ticketsQuery.data
@@ -275,7 +528,7 @@ export function DashboardPage() {
                   ) : (
                     <div className="space-y-1.5">
                       <p className="flex items-center gap-1.5 text-xs text-text-tertiary">
-                        <CheckIcon className="h-3 w-3" />
+                        <BriefcaseIcon className="h-3 w-3" />
                         {tickets.length} open
                       </p>
                       <ul className="space-y-1">
@@ -310,9 +563,9 @@ export function DashboardPage() {
               </article>
             );
           })}
-          {allMembers.length === 0 && (
+          {filteredMembers.length === 0 && (
             <div className="col-span-full rounded-lg border border-dashed border-border bg-surface-primary p-6 text-center text-sm text-text-secondary">
-              No team members yet.
+              No members in this filter.
             </div>
           )}
         </div>

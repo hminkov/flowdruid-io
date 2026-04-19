@@ -175,6 +175,26 @@ export const MoonIcon = (p: P) => (
   </svg>
 );
 
+export const BriefcaseIcon = (p: P) => (
+  <svg {...base(p)}>
+    <rect x="3" y="7" width="18" height="13" rx="2" />
+    <path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M3 13h18" />
+  </svg>
+);
+
+export const ClockIcon = (p: P) => (
+  <svg {...base(p)}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M12 7v5l3 2" />
+  </svg>
+);
+
+export const TrendingUpIcon = (p: P) => (
+  <svg {...base(p)}>
+    <path d="M3 17 9 11l4 4 8-8M14 4h7v7" />
+  </svg>
+);
+
 export const ThermometerIcon = (p: P) => (
   <svg {...base(p)}>
     <path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z" />
