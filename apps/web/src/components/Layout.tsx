@@ -1,5 +1,6 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { ThemeToggle } from './ThemeToggle';
 import type { ReactNode, SVGProps } from 'react';
 
 type IconProps = SVGProps<SVGSVGElement>;
@@ -166,9 +167,12 @@ export function Layout({ children }: { children: ReactNode }) {
       <div className="flex flex-1 flex-col overflow-hidden">
         <header className="flex h-12 items-center justify-between border-b border-border bg-surface-primary px-6">
           <h2 className="text-md text-text-primary">{currentLabel}</h2>
-          <div className="flex items-center gap-2 text-xs text-text-tertiary">
-            <span className="h-1 w-1 rounded-full bg-success-text" />
-            All systems operational
+          <div className="flex items-center gap-4">
+            <div className="hidden items-center gap-2 text-xs text-text-tertiary sm:flex">
+              <span className="h-1 w-1 rounded-full bg-success-text" />
+              All systems operational
+            </div>
+            <ThemeToggle />
           </div>
         </header>
         <main className="flex-1 overflow-y-auto p-6">{children}</main>

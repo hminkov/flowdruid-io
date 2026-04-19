@@ -99,9 +99,18 @@
   --ease-in-out:      cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/*
+ * Three-way theme toggle:
+ *   - :root                       → light tokens (default)
+ *   - @media (dark) + :not(.light) → dark tokens when OS prefers dark AND user hasn't forced light
+ *   - :root.dark                  → dark tokens regardless of OS
+ *   - :root.light                 → light tokens regardless of OS
+ * The pre-hydration script in index.html applies `.dark` or `.light` on <html>
+ * based on the stored preference so there is no flash on first paint.
+ */
+
 @media (prefers-color-scheme: dark) {
-  :root {
-    /* Brand inverts its usage: darker stops become fills in dark mode */
+  :root:not(.light) {
     --brand-50:  #1F1B3E;
     --brand-100: #2D2754;
     --brand-500: #7F77DD;
@@ -138,8 +147,6 @@
     --neutral-bg:   #2C2C2A;
     --neutral-text: #B4B2A9;
 
-    /* Priority and capacity colours stay the same — they read well on both */
-
     --avatar-1-bg: #2D2754; --avatar-1-text: #CECBF6;
     --avatar-2-bg: #085041; --avatar-2-text: #9FE1CB;
     --avatar-3-bg: #72243E; --avatar-3-text: #F4C0D1;
@@ -152,4 +159,54 @@
 
     --overlay-backdrop: rgba(0, 0, 0, 0.65);
   }
+}
+
+:root.dark {
+  --brand-50:  #1F1B3E;
+  --brand-100: #2D2754;
+  --brand-500: #7F77DD;
+  --brand-600: #7F77DD;
+  --brand-800: #CECBF6;
+  --brand-900: #EEEDFE;
+
+  --surface-primary:   #1A1A1A;
+  --surface-secondary: #242422;
+  --surface-tertiary:  #2C2C2A;
+
+  --border-default: rgba(255, 255, 255, 0.08);
+  --border-strong:  rgba(255, 255, 255, 0.15);
+
+  --text-primary:   #F1EFE8;
+  --text-secondary: #B4B2A9;
+  --text-tertiary:  #888780;
+
+  --success-bg:   #27500A;
+  --success-text: #C0DD97;
+
+  --warning-bg:   #633806;
+  --warning-text: #FAC775;
+
+  --danger-bg:   #791F1F;
+  --danger-text: #F7C1C1;
+
+  --info-bg:   #0C447C;
+  --info-text: #B5D4F4;
+
+  --accent-bg:   #72243E;
+  --accent-text: #F4C0D1;
+
+  --neutral-bg:   #2C2C2A;
+  --neutral-text: #B4B2A9;
+
+  --avatar-1-bg: #2D2754; --avatar-1-text: #CECBF6;
+  --avatar-2-bg: #085041; --avatar-2-text: #9FE1CB;
+  --avatar-3-bg: #72243E; --avatar-3-text: #F4C0D1;
+  --avatar-4-bg: #633806; --avatar-4-text: #FAC775;
+  --avatar-5-bg: #0C447C; --avatar-5-text: #B5D4F4;
+  --avatar-6-bg: #444441; --avatar-6-text: #D3D1C7;
+
+  --shadow-float: 0 4px 12px rgba(0, 0, 0, 0.4),
+                  0 0 0 0.5px rgba(255, 255, 255, 0.06);
+
+  --overlay-backdrop: rgba(0, 0, 0, 0.65);
 }

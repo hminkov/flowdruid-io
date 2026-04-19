@@ -20,7 +20,7 @@ export default {
     './index.html',
     './src/**/*.{ts,tsx}',
   ],
-  darkMode: 'media', // follows OS preference — no manual toggle in v1
+  darkMode: 'class', // manual toggle via `.dark` on <html>; tokens.css keeps the media-query fallback
   theme: {
     extend: {
       colors: {
