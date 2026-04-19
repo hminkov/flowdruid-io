@@ -1,6 +1,15 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { trpc } from '../lib/trpc';
-import { AlertIcon, CalendarIcon, PlaneIcon, XIcon, ZapIcon } from './icons';
+import {
+  AlertIcon,
+  BriefcaseIcon,
+  CalendarIcon,
+  CheckIcon,
+  PlaneIcon,
+  TrendingUpIcon,
+  XIcon,
+  ZapIcon,
+} from './icons';
 
 const availabilityToneMap: Record<string, string> = {
   AVAILABLE: 'bg-success-bg text-success-text',
@@ -41,6 +50,26 @@ const PRIORITY_DOT: Record<string, string> = {
   LOW: 'bg-priority-low',
 };
 
+// Complexity / difficulty scoring — used to award points per completed ticket.
+// HIGH = 5, MEDIUM = 3, LOW = 1.
+const PRIORITY_SCORE: Record<string, number> = {
+  HIGH: 5,
+  MEDIUM: 3,
+  LOW: 1,
+};
+
+type ActivityWindow = 'week' | 'month' | 'year';
+const WINDOW_LABEL: Record<ActivityWindow, string> = {
+  week: 'This week',
+  month: 'This month',
+  year: 'This year',
+};
+const WINDOW_DAYS: Record<ActivityWindow, number> = {
+  week: 7,
+  month: 30,
+  year: 365,
+};
+
 export function UserDetailDrawer({
   userId,
   onClose,
@@ -50,6 +79,7 @@ export function UserDetailDrawer({
 }) {
   const open = userId !== null;
   const today = new Date().toISOString().slice(0, 10);
+  const [activityWindow, setActivityWindow] = useState<ActivityWindow>('month');
 
   const teamsQuery = trpc.teams.list.useQuery(undefined, { enabled: open });
   const ticketsQuery = trpc.tickets.list.useQuery(
@@ -82,6 +112,18 @@ export function UserDetailDrawer({
     for (const t of ticketsQuery.data ?? []) grouped[t.status]?.push(t);
     return grouped;
   }, [ticketsQuery.data]);
+
+  // Activity — tickets marked DONE whose updatedAt falls inside the window.
+  // Score = sum of priority weights (HIGH=5, MEDIUM=3, LOW=1).
+  const activity = useMemo(() => {
+    const doneTickets = ticketsByStatus.DONE ?? [];
+    const cutoff = Date.now() - WINDOW_DAYS[activityWindow] * 24 * 60 * 60 * 1000;
+    const inWindow = doneTickets.filter(
+      (t) => new Date(t.updatedAt).getTime() >= cutoff
+    );
+    const score = inWindow.reduce((sum, t) => sum + (PRIORITY_SCORE[t.priority] ?? 0), 0);
+    return { tickets: inWindow, score };
+  }, [ticketsByStatus.DONE, activityWindow]);
 
   // Close on Escape
   useEffect(() => {
@@ -188,6 +230,83 @@ export function UserDetailDrawer({
                   )}
                 </div>
               )}
+
+              {/* Activity / score */}
+              <div className="mb-5">
+                <div className="mb-2 flex items-center justify-between">
+                  <h3>Activity</h3>
+                  <div className="flex gap-0.5 rounded-pill border border-border bg-surface-primary p-0.5">
+                    {(['week', 'month', 'year'] as ActivityWindow[]).map((w) => (
+                      <button
+                        key={w}
+                        onClick={() => setActivityWindow(w)}
+                        className={`rounded-pill px-2 py-0.5 text-xs transition-colors duration-fast ${
+                          activityWindow === w
+                            ? 'bg-brand-600 text-white'
+                            : 'text-text-secondary hover:text-text-primary'
+                        }`}
+                      >
+                        {w === 'week' ? 'Week' : w === 'month' ? 'Month' : 'Year'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="rounded-lg border border-border bg-surface-secondary p-3">
+                    <div className="mb-1 flex items-center gap-1.5 text-xs text-text-tertiary">
+                      <CheckIcon className="h-3 w-3" />
+                      Completed
+                    </div>
+                    <div className="text-2xl text-text-primary">{activity.tickets.length}</div>
+                    <div className="text-xs text-text-tertiary">
+                      {WINDOW_LABEL[activityWindow].toLowerCase()}
+                    </div>
+                  </div>
+                  <div className="rounded-lg border border-border bg-surface-secondary p-3">
+                    <div className="mb-1 flex items-center gap-1.5 text-xs text-text-tertiary">
+                      <TrendingUpIcon className="h-3 w-3" />
+                      Score
+                    </div>
+                    <div className="text-2xl text-text-primary">{activity.score}</div>
+                    <div className="text-xs text-text-tertiary">
+                      HIGH 5 · MED 3 · LOW 1
+                    </div>
+                  </div>
+                </div>
+
+                {activity.tickets.length > 0 && (
+                  <div className="mt-3 space-y-1">
+                    {activity.tickets.slice(0, 5).map((t) => (
+                      <div
+                        key={t.id}
+                        className="flex items-center gap-2 rounded border border-border bg-surface-primary p-2"
+                      >
+                        <span
+                          className={`inline-block h-[7px] w-[7px] shrink-0 rounded-full ${PRIORITY_DOT[t.priority]}`}
+                        />
+                        <span
+                          className={`shrink-0 rounded px-1.5 py-0.5 font-mono text-[10px] ${
+                            t.source === 'JIRA'
+                              ? 'bg-info-bg text-info-text'
+                              : 'bg-neutral-bg text-neutral-text'
+                          }`}
+                        >
+                          {t.jiraKey || `INT-${t.id.slice(-4)}`}
+                        </span>
+                        <span className="truncate text-xs text-text-primary">{t.title}</span>
+                        <span className="ml-auto shrink-0 text-xs text-text-tertiary">
+                          +{PRIORITY_SCORE[t.priority]}
+                        </span>
+                      </div>
+                    ))}
+                    {activity.tickets.length > 5 && (
+                      <p className="text-xs text-text-tertiary">
+                        +{activity.tickets.length - 5} more
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
 
               {/* Tickets grouped by status */}
               <div>

@@ -118,7 +118,13 @@ export const TicketCardDisplay = forwardRef<HTMLDivElement, DisplayProps>(
   }
 );
 
-export function TicketCard({ ticket }: { ticket: Ticket }) {
+export function TicketCard({
+  ticket,
+  onOpen,
+}: {
+  ticket: Ticket;
+  onOpen?: (t: Ticket) => void;
+}) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: ticket.id,
   });
@@ -136,6 +142,9 @@ export function TicketCard({ ticket }: { ticket: Ticket }) {
       ticket={ticket}
       dragging={isDragging}
       className="cursor-grab active:cursor-grabbing"
+      onClick={() => {
+        if (!isDragging) onOpen?.(ticket);
+      }}
       {...attributes}
       {...listeners}
     />

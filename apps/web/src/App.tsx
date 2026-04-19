@@ -6,6 +6,7 @@ import { trpc, createTrpcClient } from './lib/trpc';
 import { queryClient } from './lib/query-client';
 import { AuthProvider } from './hooks/useAuth';
 import { UserDetailProvider } from './hooks/useUserDetail';
+import { TeamDetailProvider } from './hooks/useTeamDetail';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { Layout } from './components/Layout';
 import { LoginPage } from './pages/LoginPage';
@@ -28,6 +29,7 @@ export function App() {
         <BrowserRouter>
           <AuthProvider>
             <UserDetailProvider>
+            <TeamDetailProvider>
             <Routes>
               <Route path="/login" element={<LoginPage />} />
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
@@ -105,6 +107,7 @@ export function App() {
                 }
               />
             </Routes>
+            </TeamDetailProvider>
             </UserDetailProvider>
           </AuthProvider>
         </BrowserRouter>

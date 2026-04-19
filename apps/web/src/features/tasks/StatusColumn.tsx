@@ -6,9 +6,11 @@ import { STATUS_LABELS, type Ticket, type TicketStatus } from './types';
 export function StatusColumn({
   status,
   tickets,
+  onOpenTicket,
 }: {
   status: TicketStatus;
   tickets: Ticket[];
+  onOpenTicket?: (t: Ticket) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: status });
 
@@ -29,7 +31,7 @@ export function StatusColumn({
       <SortableContext items={tickets.map((t) => t.id)} strategy={verticalListSortingStrategy}>
         <div className="space-y-2">
           {tickets.map((t) => (
-            <TicketCard key={t.id} ticket={t} />
+            <TicketCard key={t.id} ticket={t} onOpen={onOpenTicket} />
           ))}
           {tickets.length === 0 && (
             <div className="flex h-16 items-center justify-center rounded border border-dashed border-border text-xs text-text-tertiary">

@@ -6,6 +6,7 @@ import { ticketsRouter } from './tickets.router';
 import { standupsRouter } from './standups.router';
 import { leavesRouter } from './leaves.router';
 import { integrationsRouter } from './integrations.router';
+import { suggestionsRouter } from './suggestions.router';
 
 export const appRouter = router({
   auth: authRouter,
@@ -15,6 +16,7 @@ export const appRouter = router({
   standups: standupsRouter,
   leaves: leavesRouter,
   integrations: integrationsRouter,
+  suggestions: suggestionsRouter,
 });
 
 export type AppRouter = typeof appRouter;

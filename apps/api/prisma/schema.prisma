@@ -92,12 +92,14 @@ model User {
   createdAt    DateTime           @default(now())
   updatedAt    DateTime           @updatedAt
 
-  org             Organisation       @relation(fields: [orgId], references: [id])
-  team            Team?              @relation(fields: [teamId], references: [id])
-  leaveRequests   LeaveRequest[]
-  standups        Standup[]
-  assignedTickets TicketAssignment[]
-  refreshTokens   RefreshToken[]
+  org                     Organisation           @relation(fields: [orgId], references: [id])
+  team                    Team?                  @relation(fields: [teamId], references: [id])
+  leaveRequests           LeaveRequest[]
+  standups                Standup[]
+  assignedTickets         TicketAssignment[]
+  refreshTokens           RefreshToken[]
+  suggestionsFor          AssignmentSuggestion[] @relation("SuggestionsFor")
+  suggestionsRequestedBy  AssignmentSuggestion[] @relation("SuggestionsBy")
 }
 
 model RefreshToken {
@@ -140,8 +142,9 @@ model Ticket {
   updatedAt   DateTime       @updatedAt
   syncedAt    DateTime?
 
-  team      Team               @relation(fields: [teamId], references: [id])
-  assignees TicketAssignment[]
+  team        Team                   @relation(fields: [teamId], references: [id])
+  assignees   TicketAssignment[]
+  suggestions AssignmentSuggestion[]
 }
 
 model TicketAssignment {
@@ -152,6 +155,21 @@ model TicketAssignment {
   user   User   @relation(fields: [userId], references: [id])
 
   @@id([ticketId, userId])
+}
+
+model AssignmentSuggestion {
+  id              String   @id @default(cuid())
+  ticketId        String
+  suggestedUserId String
+  requestedBy     String
+  reason          String?
+  createdAt       DateTime @default(now())
+
+  ticket        Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  suggestedUser User   @relation("SuggestionsFor", fields: [suggestedUserId], references: [id])
+  requester     User   @relation("SuggestionsBy", fields: [requestedBy], references: [id])
+
+  @@index([ticketId])
 }
 
 model Standup {

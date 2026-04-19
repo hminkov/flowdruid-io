@@ -5,4 +5,5 @@ export * from './schemas/tickets';
 export * from './schemas/standups';
 export * from './schemas/leaves';
 export * from './schemas/integrations';
+export * from './schemas/suggestions';
 export * from './types/enums';

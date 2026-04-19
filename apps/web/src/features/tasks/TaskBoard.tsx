@@ -14,6 +14,7 @@ import {
 import { sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import { StatusColumn } from './StatusColumn';
 import { TicketCardDisplay } from './TicketCard';
+import { TicketDetailModal } from './TicketDetailModal';
 import { STATUS_COLUMNS, STATUS_LABELS, type Ticket, type TicketStatus } from './types';
 import { useUpdateTicketStatus } from './useUpdateTicketStatus';
 
@@ -29,8 +30,12 @@ type Props = {
 
 export function TaskBoard({ tickets, listArgs }: Props) {
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [openTicket, setOpenTicket] = useState<Ticket | null>(null);
 
   const updateStatus = useUpdateTicketStatus(listArgs);
+
+  // Re-read the latest version of the open ticket after optimistic updates land
+  const currentOpen = openTicket ? tickets.find((t) => t.id === openTicket.id) ?? null : null;
 
   // useMemo keeps the column grouping stable across re-renders triggered
   // by drag events — without this, every pointer move rebuilds the object.
@@ -107,13 +112,20 @@ export function TaskBoard({ tickets, listArgs }: Props) {
     >
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
         {STATUS_COLUMNS.map((status) => (
-          <StatusColumn key={status} status={status} tickets={byStatus[status]} />
+          <StatusColumn
+            key={status}
+            status={status}
+            tickets={byStatus[status]}
+            onOpenTicket={setOpenTicket}
+          />
         ))}
       </div>
 
       <DragOverlay>
         {activeTicket ? <TicketCardDisplay ticket={activeTicket} dragging /> : null}
       </DragOverlay>
+
+      <TicketDetailModal ticket={currentOpen} onClose={() => setOpenTicket(null)} />
     </DndContext>
   );
 }
