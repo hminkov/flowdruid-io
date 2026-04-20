@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { trpc } from '../../lib/trpc';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { useConfirm, useToast } from '../../components/ui';
 import { AlertIcon, LinkIcon, SpinnerIcon, TrashIcon, XIcon } from '../../components/icons';
 
@@ -23,6 +24,7 @@ export function QaEnvironmentModal({ existing, onClose, canDelete = false }: Pro
   const toast = useToast();
   const confirm = useConfirm();
   const utils = trpc.useUtils();
+  const trapRef = useFocusTrap<HTMLDivElement>();
 
   const [name, setName] = useState(existing?.name ?? '');
   const [branch, setBranch] = useState(existing?.branch ?? '');
@@ -111,6 +113,7 @@ export function QaEnvironmentModal({ existing, onClose, canDelete = false }: Pro
 
   return (
     <div
+      ref={trapRef}
       className="fixed inset-0 z-modal flex items-center justify-center bg-[var(--overlay-backdrop)] p-4"
       role="dialog"
       aria-modal="true"

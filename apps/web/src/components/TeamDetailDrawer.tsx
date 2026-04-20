@@ -1,5 +1,6 @@
 import { Suspense, lazy, useEffect, useMemo, useState } from 'react';
 import { trpc } from '../lib/trpc';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 import { useUserDetail } from '../hooks/useUserDetail';
 import {
   AlertIcon,
@@ -75,6 +76,7 @@ export function TeamDetailDrawer({
   const todayIso = new Date().toISOString().slice(0, 10);
   const { openUser } = useUserDetail();
   const [openTicket, setOpenTicket] = useState<Ticket | null>(null);
+  const trapRef = useFocusTrap<HTMLDivElement>(open);
 
   const teamsQuery = trpc.teams.list.useQuery(undefined, { enabled: open });
   const standupsQuery = trpc.standups.list.useQuery(
@@ -138,7 +140,7 @@ export function TeamDetailDrawer({
   const todoCount = ticketsByStatus.TODO?.length ?? 0;
 
   return (
-    <div className="fixed inset-0 z-drawer" role="dialog" aria-modal="true">
+    <div ref={trapRef} className="fixed inset-0 z-drawer" role="dialog" aria-modal="true">
       <div
         className="absolute inset-0 animate-fade-in bg-[var(--overlay-backdrop)]"
         onClick={onClose}

@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { trpc } from '../../lib/trpc';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { useToast, useConfirm } from '../../components/ui';
 import { AlertIcon, CalendarIcon, SpinnerIcon, TrashIcon, XIcon } from '../../components/icons';
 
@@ -38,6 +39,7 @@ export function ProdSupportModal({
   const toast = useToast();
   const confirm = useConfirm();
   const utils = trpc.useUtils();
+  const trapRef = useFocusTrap<HTMLDivElement>();
 
   const teamsQuery = trpc.teams.list.useQuery();
 
@@ -129,6 +131,7 @@ export function ProdSupportModal({
 
   return (
     <div
+      ref={trapRef}
       className="fixed inset-0 z-modal flex items-center justify-center bg-[var(--overlay-backdrop)] p-4"
       role="dialog"
       aria-modal="true"

@@ -4,6 +4,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useUserDetail } from '../hooks/useUserDetail';
 import { useTeamDetail } from '../hooks/useTeamDetail';
 import { usePersistedLocalState } from '../hooks/usePersistedState';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 import { trpc } from '../lib/trpc';
 import type { Ticket } from '../features/tasks/types';
 
@@ -1098,6 +1099,7 @@ function ModalShell({
   anchor?: DOMRect | null;
   children: React.ReactNode;
 }) {
+  const trapRef = useFocusTrap<HTMLDivElement>();
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -1128,7 +1130,7 @@ function ModalShell({
     : undefined;
 
   return (
-    <div className="fixed inset-0 z-modal" role="dialog" aria-modal="true">
+    <div ref={trapRef} className="fixed inset-0 z-modal" role="dialog" aria-modal="true">
       {/* Transparent capture layer — click outside the popover dismisses
           without dimming the rest of the page, so it feels like a native
           dropdown. */}

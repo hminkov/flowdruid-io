@@ -1,5 +1,6 @@
 import { Suspense, lazy, useEffect, useMemo, useState } from 'react';
 import { trpc } from '../lib/trpc';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 import {
   AlertIcon,
   BriefcaseIcon,
@@ -65,6 +66,7 @@ export function UserDetailDrawer({
   const today = new Date().toISOString().slice(0, 10);
   const [activityWindow, setActivityWindow] = useState<ActivityWindow>('month');
   const [openTicket, setOpenTicket] = useState<Ticket | null>(null);
+  const trapRef = useFocusTrap<HTMLDivElement>(open);
 
   const teamsQuery = trpc.teams.list.useQuery(undefined, { enabled: open });
   const ticketsQuery = trpc.tickets.list.useQuery(
@@ -127,7 +129,7 @@ export function UserDetailDrawer({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-drawer" role="dialog" aria-modal="true">
+    <div ref={trapRef} className="fixed inset-0 z-drawer" role="dialog" aria-modal="true">
       <div
         className="absolute inset-0 animate-fade-in bg-[var(--overlay-backdrop)]"
         onClick={onClose}

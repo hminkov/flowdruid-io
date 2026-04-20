@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
 import { trpc } from '../../lib/trpc';
 import { useAuth } from '../../hooks/useAuth';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { useUserDetail } from '../../hooks/useUserDetail';
 import { Avatar, EmptyState, useConfirm, useToast } from '../../components/ui';
 import {
@@ -689,6 +690,7 @@ function NewDmModal({
     onSuccess: (data) => onOpened(data.id),
   });
   const [search, setSearch] = useState('');
+  const trapRef = useFocusTrap<HTMLDivElement>();
 
   const members = useMemo(
     () =>
@@ -721,6 +723,7 @@ function NewDmModal({
 
   return (
     <div
+      ref={trapRef}
       className="fixed inset-0 z-modal flex items-start justify-center bg-[var(--overlay-backdrop)] p-4 pt-20"
       role="dialog"
       aria-modal="true"

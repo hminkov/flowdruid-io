@@ -7,6 +7,7 @@ import {
   type ReactNode,
 } from 'react';
 import { AlertIcon, XIcon } from '../icons';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 
 type ConfirmOptions = {
   title: string;
@@ -53,54 +54,66 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
   return (
     <ConfirmContext.Provider value={confirm}>
       {children}
-      {pending && (
-        <div
-          className="fixed inset-0 z-modal flex items-center justify-center bg-[var(--overlay-backdrop)] p-4"
-          role="dialog"
-          aria-modal="true"
-        >
-          <div className="absolute inset-0" onClick={() => close(false)} />
-          <div className="animate-modal-in relative w-full max-w-card overflow-hidden rounded-lg bg-surface-primary shadow-float">
-            <header className="flex items-start gap-3 border-b border-border p-4">
-              {pending.tone === 'danger' && (
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-danger-bg text-danger-text">
-                  <AlertIcon className="h-4 w-4" />
-                </span>
-              )}
-              <h3 className="min-w-0 flex-1 pt-1">{pending.title}</h3>
-              <button
-                aria-label="Close"
-                onClick={() => close(false)}
-                className="flex h-7 w-7 items-center justify-center rounded text-text-tertiary hover:bg-surface-secondary hover:text-text-primary"
-              >
-                <XIcon className="h-4 w-4" />
-              </button>
-            </header>
-            {pending.message && (
-              <div className="p-4 text-sm text-text-secondary">{pending.message}</div>
-            )}
-            <footer className="flex justify-end gap-2 border-t border-border bg-surface-secondary p-3">
-              <button
-                onClick={() => close(false)}
-                className="min-h-input rounded px-3 text-sm text-text-secondary hover:bg-surface-primary"
-              >
-                {pending.cancelLabel ?? 'Cancel'}
-              </button>
-              <button
-                onClick={() => close(true)}
-                className={`min-h-input rounded px-3 text-sm text-white transition-colors duration-fast ${
-                  pending.tone === 'danger'
-                    ? 'bg-danger-text hover:brightness-110'
-                    : 'bg-brand-600 hover:bg-brand-800'
-                }`}
-              >
-                {pending.confirmLabel ?? 'Confirm'}
-              </button>
-            </footer>
-          </div>
-        </div>
-      )}
+      {pending && <ConfirmDialogBody pending={pending} close={close} />}
     </ConfirmContext.Provider>
+  );
+}
+
+function ConfirmDialogBody({
+  pending,
+  close,
+}: {
+  pending: NonNullable<Pending>;
+  close: (result: boolean) => void;
+}) {
+  const trapRef = useFocusTrap<HTMLDivElement>();
+  return (
+    <div
+      ref={trapRef}
+      className="fixed inset-0 z-modal flex items-center justify-center bg-[var(--overlay-backdrop)] p-4"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div className="absolute inset-0" onClick={() => close(false)} />
+      <div className="animate-modal-in relative w-full max-w-card overflow-hidden rounded-lg bg-surface-primary shadow-float">
+        <header className="flex items-start gap-3 border-b border-border p-4">
+          {pending.tone === 'danger' && (
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-danger-bg text-danger-text">
+              <AlertIcon className="h-4 w-4" />
+            </span>
+          )}
+          <h3 className="min-w-0 flex-1 pt-1">{pending.title}</h3>
+          <button
+            aria-label="Close"
+            onClick={() => close(false)}
+            className="flex h-7 w-7 items-center justify-center rounded text-text-tertiary hover:bg-surface-secondary hover:text-text-primary"
+          >
+            <XIcon className="h-4 w-4" />
+          </button>
+        </header>
+        {pending.message && (
+          <div className="p-4 text-sm text-text-secondary">{pending.message}</div>
+        )}
+        <footer className="flex justify-end gap-2 border-t border-border bg-surface-secondary p-3">
+          <button
+            onClick={() => close(false)}
+            className="min-h-input rounded px-3 text-sm text-text-secondary hover:bg-surface-primary"
+          >
+            {pending.cancelLabel ?? 'Cancel'}
+          </button>
+          <button
+            onClick={() => close(true)}
+            className={`min-h-input rounded px-3 text-sm text-white transition-colors duration-fast ${
+              pending.tone === 'danger'
+                ? 'bg-danger-text hover:brightness-110'
+                : 'bg-brand-600 hover:bg-brand-800'
+            }`}
+          >
+            {pending.confirmLabel ?? 'Confirm'}
+          </button>
+        </footer>
+      </div>
+    </div>
   );
 }
 

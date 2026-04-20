@@ -1,6 +1,7 @@
 import { useMemo, useState, type FormEvent } from 'react';
 import { trpc } from '../lib/trpc';
 import { useAuth } from '../hooks/useAuth';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 import { useUserDetail } from '../hooks/useUserDetail';
 import { useConfirm, useToast } from '../components/ui';
 import {
@@ -563,8 +564,10 @@ function ModalShell({
   onClose: () => void;
   children: React.ReactNode;
 }) {
+  const trapRef = useFocusTrap<HTMLDivElement>();
   return (
     <div
+      ref={trapRef}
       className="fixed inset-0 z-modal flex items-center justify-center bg-[var(--overlay-backdrop)] p-4"
       role="dialog"
       aria-modal="true"

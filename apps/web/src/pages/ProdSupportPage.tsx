@@ -2,6 +2,7 @@ import { Suspense, lazy, useMemo, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { trpc } from '../lib/trpc';
 import { useAuth } from '../hooks/useAuth';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 import { useUserDetail } from '../hooks/useUserDetail';
 import { Avatar, useConfirm, useToast, paletteFor } from '../components/ui';
 import {
@@ -686,6 +687,7 @@ function RequestCoverModal({
   const toast = useToast();
   const utils = trpc.useUtils();
   const [reason, setReason] = useState('');
+  const trapRef = useFocusTrap<HTMLDivElement>();
 
   const requestCover = trpc.resources.requestCover.useMutation({
     onSuccess: () => {
@@ -710,6 +712,7 @@ function RequestCoverModal({
 
   return (
     <div
+      ref={trapRef}
       className="fixed inset-0 z-modal flex items-center justify-center bg-[var(--overlay-backdrop)] p-4"
       role="dialog"
       aria-modal="true"
@@ -792,6 +795,7 @@ function AutoScheduleModal({
   const utils = trpc.useUtils();
   const teamsQuery = trpc.teams.list.useQuery();
   const team = teamsQuery.data?.find((t) => t.id === teamId);
+  const trapRef = useFocusTrap<HTMLDivElement>();
 
   const [startDate, setStartDate] = useState(toIso(nextMonday()));
   const [weeks, setWeeks] = useState(4);
@@ -854,6 +858,7 @@ function AutoScheduleModal({
 
   return (
     <div
+      ref={trapRef}
       className="fixed inset-0 z-modal flex items-center justify-center bg-[var(--overlay-backdrop)] p-4"
       role="dialog"
       aria-modal="true"

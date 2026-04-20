@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { trpc } from '../../lib/trpc';
 import { useAuth } from '../../hooks/useAuth';
 import { useUserDetail } from '../../hooks/useUserDetail';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 import {
   AlertIcon,
   ArrowRightIcon,
@@ -46,6 +47,7 @@ export function TicketDetailModal({
   const navigate = useNavigate();
   const location = useLocation();
   const open = ticket !== null;
+  const trapRef = useFocusTrap<HTMLDivElement>(open);
 
   // Jump to the task board with this ticket pre-opened. If we're already
   // there, just update the query param — otherwise navigate with it.
@@ -274,7 +276,12 @@ export function TicketDetailModal({
   activity.sort((a, b) => b.at.getTime() - a.at.getTime());
 
   return (
-    <div className="fixed inset-0 z-modal flex items-center justify-center bg-[var(--overlay-backdrop)] p-4">
+    <div
+      ref={trapRef}
+      role="dialog"
+      aria-modal="true"
+      className="fixed inset-0 z-modal flex items-center justify-center bg-[var(--overlay-backdrop)] p-4"
+    >
       <div className="absolute inset-0" onClick={onClose} aria-hidden="true" />
       <div className="animate-modal-in relative flex max-h-[85vh] w-full max-w-2xl flex-col overflow-hidden rounded-lg bg-surface-primary shadow-float">
         <header className="flex items-start justify-between gap-3 border-b border-border p-5">
