@@ -1,10 +1,17 @@
-import { useEffect, useMemo, useState } from 'react';
+import { Suspense, lazy, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useUserDetail } from '../hooks/useUserDetail';
 import { useTeamDetail } from '../hooks/useTeamDetail';
 import { usePersistedLocalState } from '../hooks/usePersistedState';
 import { trpc } from '../lib/trpc';
+import type { Ticket } from '../features/tasks/types';
+
+const TicketDetailModal = lazy(() =>
+  import('../features/tasks/TicketDetailModal').then((m) => ({
+    default: m.TicketDetailModal,
+  })),
+);
 import {
   AlertIcon,
   ArrowRightIcon,
@@ -188,6 +195,7 @@ export function DashboardPage() {
   const [teamFilter, setTeamFilter] = useState<string>(user?.teamId ? 'my' : 'all');
   const [focus, setFocus] = useState<FocusFilter>(null);
   const [teamsModalOpen, setTeamsModalOpen] = useState(false);
+  const [openTicket, setOpenTicket] = useState<Ticket | null>(null);
   // Rect of the stat card that triggered the popover — drives the popover's
   // on-screen position so it lands under the card that was clicked.
   const [popoverAnchor, setPopoverAnchor] = useState<DOMRect | null>(null);
@@ -992,6 +1000,7 @@ export function DashboardPage() {
                                 typeof ticketsQuery.data
                               >}
                               onOpen={() => openUser(member.id)}
+                              onOpenTicket={(t) => setOpenTicket(t as Ticket)}
                             />
                           ))}
                         </div>
@@ -1042,6 +1051,15 @@ export function DashboardPage() {
             setPopoverAnchor(null);
           }}
         />
+      )}
+
+      {openTicket && (
+        <Suspense fallback={null}>
+          <TicketDetailModal
+            ticket={openTicket}
+            onClose={() => setOpenTicket(null)}
+          />
+        </Suspense>
       )}
     </div>
   );
@@ -1367,13 +1385,16 @@ function MemberCard({
   standup,
   tickets,
   onOpen,
+  onOpenTicket,
 }: {
   member: Member;
   standup?: Standup;
   tickets: TicketLite[];
   onOpen: () => void;
+  onOpenTicket: (ticket: TicketLite) => void;
 }) {
   const palette = paletteFor(member.id);
+  const glyph = availabilityEmojiMap[member.availability];
   return (
     <article className="flex flex-col rounded-lg border border-border bg-surface-primary p-4 transition-colors duration-fast hover:border-border-strong">
       <header className="mb-3 flex items-start justify-between gap-2">
@@ -1382,11 +1403,22 @@ function MemberCard({
           onClick={onOpen}
           className="-m-1 flex min-w-0 items-center gap-2 rounded p-1 text-left hover:bg-surface-secondary"
         >
-          <span
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm"
-            style={{ background: palette.bg, color: palette.text }}
-          >
-            {member.initials}
+          <span className="relative shrink-0">
+            <span
+              className="flex h-9 w-9 items-center justify-center rounded-full text-sm"
+              style={{ background: palette.bg, color: palette.text }}
+            >
+              {member.initials}
+            </span>
+            {glyph && (
+              <span
+                title={member.availability.toLowerCase().replace('_', ' ')}
+                aria-label={member.availability.toLowerCase().replace('_', ' ')}
+                className="pointer-events-none absolute -right-1 -bottom-1 flex h-4 w-4 items-center justify-center text-[11px] leading-none"
+              >
+                {glyph}
+              </span>
+            )}
           </span>
           <div className="min-w-0">
             <div className="truncate text-md font-medium text-text-primary">{member.name}</div>
@@ -1431,22 +1463,25 @@ function MemberCard({
             </p>
             <ul className="space-y-1">
               {tickets.slice(0, 3).map((t) => (
-                <li
-                  key={t.id}
-                  className="flex items-center gap-2 rounded border border-border bg-surface-secondary px-2 py-1"
-                >
-                  <span
-                    className={`shrink-0 rounded px-1 py-0.5 font-mono text-[10px] ${
-                      t.source === 'JIRA'
-                        ? 'bg-info-bg text-info-text'
-                        : 'bg-neutral-bg text-neutral-text'
-                    }`}
+                <li key={t.id}>
+                  <button
+                    type="button"
+                    onClick={() => onOpenTicket(t)}
+                    className="flex w-full items-center gap-2 rounded border border-border bg-surface-secondary px-2 py-1 text-left transition-colors duration-fast hover:border-border-strong hover:bg-surface-primary"
                   >
-                    {t.jiraKey || `INT-${t.id.slice(-4)}`}
-                  </span>
-                  <span className="truncate text-xs text-text-primary" title={t.title}>
-                    {t.title}
-                  </span>
+                    <span
+                      className={`shrink-0 rounded px-1 py-0.5 font-mono text-[10px] ${
+                        t.source === 'JIRA'
+                          ? 'bg-info-bg text-info-text'
+                          : 'bg-neutral-bg text-neutral-text'
+                      }`}
+                    >
+                      {t.jiraKey || `INT-${t.id.slice(-4)}`}
+                    </span>
+                    <span className="truncate text-xs text-text-primary" title={t.title}>
+                      {t.title}
+                    </span>
+                  </button>
                 </li>
               ))}
               {tickets.length > 3 && (
