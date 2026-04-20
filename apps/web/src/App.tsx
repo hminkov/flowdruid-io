@@ -7,6 +7,8 @@ import { queryClient } from './lib/query-client';
 import { AuthProvider } from './hooks/useAuth';
 import { UserDetailProvider } from './hooks/useUserDetail';
 import { TeamDetailProvider } from './hooks/useTeamDetail';
+import { KeyboardShortcutsProvider } from './hooks/useKeyboardShortcuts';
+import { ShortcutsHelp } from './components/ShortcutsHelp';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { Layout } from './components/Layout';
 import { ToastProvider, ConfirmProvider, RouteErrorBoundary } from './components/ui';
@@ -39,6 +41,8 @@ export function App() {
             <ConfirmProvider>
             <UserDetailProvider>
             <TeamDetailProvider>
+            <KeyboardShortcutsProvider>
+            <ShortcutsHelp />
             <Routes>
               <Route path="/login" element={<LoginPage />} />
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
@@ -164,6 +168,7 @@ export function App() {
                 }
               />
             </Routes>
+            </KeyboardShortcutsProvider>
             </TeamDetailProvider>
             </UserDetailProvider>
             </ConfirmProvider>

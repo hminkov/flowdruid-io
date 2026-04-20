@@ -115,6 +115,7 @@ export function HeaderSearch() {
           }}
           onFocus={() => setOpen(true)}
           placeholder="Search people or tickets"
+          data-shortcut="search"
           className="w-full rounded-pill border border-border bg-surface-secondary py-1.5 pl-8 pr-12 text-sm text-text-primary placeholder:text-text-tertiary focus:border-brand-500 focus:bg-surface-primary"
         />
         <kbd className="pointer-events-none absolute right-2 top-1/2 hidden -translate-y-1/2 rounded border border-border bg-surface-primary px-1.5 py-0.5 text-[10px] text-text-tertiary sm:block">
