@@ -133,7 +133,7 @@ export function UserDetailDrawer({
                 <span
                   title={user.availability.toLowerCase().replace('_', ' ')}
                   aria-label={user.availability.toLowerCase().replace('_', ' ')}
-                  className="absolute -right-1 -bottom-1 flex h-5 w-5 items-center justify-center rounded-full bg-surface-primary ring-2 ring-surface-primary"
+                  className="pointer-events-none absolute -right-0.5 -bottom-0.5 flex items-center justify-center"
                 >
                   <AvailabilityGlyph status={user.availability} size="sm" />
                 </span>

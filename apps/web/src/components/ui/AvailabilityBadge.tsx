@@ -34,6 +34,8 @@ const LABEL: Record<Availability, string> = {
 
 // Small glyph — an emoji if one exists for this status, otherwise a
 // coloured dot. Use this anywhere you'd otherwise render a plain dot.
+// The dot variants (AVAILABLE / BUSY) render with a pulsing halo so
+// the "is this person reachable right now?" signal reads at a glance.
 export function AvailabilityGlyph({
   status,
   size = 'sm',
@@ -57,13 +59,22 @@ export function AvailabilityGlyph({
       </span>
     );
   }
-  const dotSize = size === 'xs' ? 'h-1 w-1' : size === 'sm' ? 'h-1.5 w-1.5' : 'h-2 w-2';
+  const wrapSize =
+    size === 'xs' ? 'h-2 w-2' : size === 'sm' ? 'h-2.5 w-2.5' : 'h-3.5 w-3.5';
+  const dotSize =
+    size === 'xs' ? 'h-1 w-1' : size === 'sm' ? 'h-1.5 w-1.5' : 'h-2 w-2';
   return (
     <span
-      className={`inline-block rounded-full ${dotSize} ${AVAILABILITY_DOT[status]} ${className}`}
+      className={`relative inline-flex ${wrapSize} items-center justify-center ${className}`}
       aria-label={LABEL[status]}
       title={LABEL[status]}
-    />
+    >
+      <span
+        className={`absolute inline-flex h-full w-full animate-ping rounded-full opacity-60 ${AVAILABILITY_DOT[status]}`}
+        aria-hidden="true"
+      />
+      <span className={`relative inline-block rounded-full ${dotSize} ${AVAILABILITY_DOT[status]}`} />
+    </span>
   );
 }
 
