@@ -8,6 +8,7 @@ import {
   markConversationReadSchema,
 } from '@flowdruid/shared';
 import { router, protectedProcedure } from '../trpc';
+import { publish } from '../lib/events';
 
 export const messagesRouter = router({
   /**
@@ -204,6 +205,23 @@ export const messagesRouter = router({
       where: { conversationId_userId: { conversationId: conv.id, userId: ctx.user.id } },
       data: { lastReadAt: message.createdAt },
     });
+
+    // Push a message.new event to every other conversation member
+    // so their thread refreshes and their unread marker updates
+    // without waiting for a poll.
+    const members = await ctx.prisma.conversationMember.findMany({
+      where: { conversationId: conv.id, userId: { not: ctx.user.id } },
+      select: { userId: true },
+    });
+    await Promise.all(
+      members.map((m) =>
+        publish(ctx.user.orgId, m.userId, {
+          type: 'message.new',
+          conversationId: conv.id,
+          messageId: message.id,
+        }),
+      ),
+    );
 
     return message;
   }),

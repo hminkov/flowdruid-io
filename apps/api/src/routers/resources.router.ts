@@ -23,6 +23,7 @@ import {
 } from '@flowdruid/shared';
 import { router, protectedProcedure, leadProcedure, adminProcedure } from '../trpc';
 import { audit } from '../lib/audit';
+import { publish } from '../lib/events';
 
 const toUtcDate = (iso: string): Date => {
   // Accepts YYYY-MM-DD or full ISO; returns midnight UTC for the date portion.
@@ -564,6 +565,13 @@ export const resourcesRouter = router({
             entityId: request.id,
           })),
         });
+        // Fire a notification.new event to every teammate so their
+        // inbox badge updates without waiting for the poll.
+        await Promise.all(
+          others.map((m) =>
+            publish(ctx.user.orgId, m.id, { type: 'notification.new', id: request.id }),
+          ),
+        );
       }
 
       return request;
@@ -625,7 +633,7 @@ export const resourcesRouter = router({
       ]);
 
       // Notify the requester that someone took the shift
-      await ctx.prisma.notification.create({
+      const note = await ctx.prisma.notification.create({
         data: {
           userId: req.requesterId,
           type: 'PROD_SUPPORT_ON_CALL',
@@ -635,6 +643,10 @@ export const resourcesRouter = router({
           actorId: ctx.user.id,
           entityId: req.id,
         },
+      });
+      await publish(ctx.user.orgId, req.requesterId, {
+        type: 'notification.new',
+        id: note.id,
       });
 
       return { ok: true };

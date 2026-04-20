@@ -24,7 +24,8 @@ export function MessagesTab() {
   const utils = trpc.useUtils();
 
   const conversationsQuery = trpc.messages.conversations.useQuery(undefined, {
-    refetchInterval: 30_000,
+    // SSE pushes message.new events — this poll is a fallback.
+    refetchInterval: 120_000,
   });
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [search, setSearch] = useState('');

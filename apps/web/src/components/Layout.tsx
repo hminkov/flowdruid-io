@@ -181,7 +181,9 @@ export function Layout({ children }: { children: ReactNode }) {
 
   const unreadQuery = trpc.notifications.unreadCount.useQuery(undefined, {
     enabled: !!user,
-    refetchInterval: 30_000, // lightweight polling — real-time wiring lands alongside WebSocket push
+    // SSE (see useLiveEvents) drives the fast path; this poll is
+    // now a safety net for sessions where the stream can't connect.
+    refetchInterval: 120_000,
   });
   const unreadCount = unreadQuery.data ?? 0;
 

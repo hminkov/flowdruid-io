@@ -9,6 +9,7 @@ import { UserDetailProvider } from './hooks/useUserDetail';
 import { TeamDetailProvider } from './hooks/useTeamDetail';
 import { KeyboardShortcutsProvider } from './hooks/useKeyboardShortcuts';
 import { ShortcutsHelp } from './components/ShortcutsHelp';
+import { LiveEventsBridge } from './hooks/useLiveEvents';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { Layout } from './components/Layout';
 import { ToastProvider, ConfirmProvider, RouteErrorBoundary } from './components/ui';
@@ -43,6 +44,7 @@ export function App() {
             <UserDetailProvider>
             <TeamDetailProvider>
             <KeyboardShortcutsProvider>
+            <LiveEventsBridge />
             <ShortcutsHelp />
             <Routes>
               <Route path="/login" element={<LoginPage />} />

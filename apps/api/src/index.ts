@@ -3,13 +3,15 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
+import jwt from 'jsonwebtoken';
 import { createExpressMiddleware } from '@trpc/server/adapters/express';
 import { appRouter } from './routers';
-import { createContext } from './context';
+import { createContext, type UserPayload } from './context';
 import { slackEventsHandler } from './middleware/slack-events';
 import { startSlackWorker } from './workers/slack.worker';
 import { startJiraWorker } from './workers/jira.worker';
 import { startLeaveWorker } from './workers/leave.worker';
+import { createSubscriber, eventPattern } from './lib/events';
 
 const app = express();
 const port = Number(process.env.PORT) || 3000;
@@ -79,6 +81,60 @@ app.use((req, res, next) => {
 // can show it in the sidebar footer without needing a dedicated route.
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok', version: VERSION, timestamp: new Date().toISOString() });
+});
+
+// ─── Live events (SSE) ───────────────────────────────────────────────────
+// EventSource can't send an Authorization header, so the access token
+// is passed as a query param. Access tokens are short-lived (15 min)
+// so query-string exposure is acceptable; production should configure
+// nginx to scrub query strings from access logs on this route.
+//
+// Each connection subscribes to two Redis pubsub patterns:
+//   evt:<orgId>:<userId>     — events directed at this user
+//   evt:<orgId>:broadcast    — events visible to anyone in the org
+// Handled via a single PSUBSCRIBE on evt:<orgId>:*.
+app.get('/api/events', async (req, res) => {
+  const token = (req.query.token as string | undefined) ?? '';
+  let user: UserPayload;
+  try {
+    user = jwt.verify(token, process.env.JWT_SECRET!) as UserPayload;
+  } catch {
+    res.status(401).end();
+    return;
+  }
+
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache, no-transform');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no'); // disable nginx buffering on this route
+  res.flushHeaders();
+
+  // One-time comment so proxies that need an initial byte see something.
+  res.write(':ok\n\n');
+
+  const sub = createSubscriber();
+  const pattern = eventPattern(user.orgId);
+  await sub.psubscribe(pattern);
+
+  sub.on('pmessage', (_pattern, channel, message) => {
+    const parts = channel.split(':'); // evt:<orgId>:<userId|broadcast>
+    const target = parts[2];
+    // Only forward broadcast events and events addressed to this user.
+    if (target === 'broadcast' || target === user.id) {
+      res.write(`data: ${message}\n\n`);
+    }
+  });
+
+  // Heartbeat every 25 s to keep idle-timeout proxies (nginx default
+  // is 60 s) from closing the stream.
+  const hb = setInterval(() => {
+    res.write(':hb\n\n');
+  }, 25_000);
+
+  req.on('close', () => {
+    clearInterval(hb);
+    sub.quit().catch(() => {});
+  });
 });
 
 // Slack events route is registered above (needs raw body — see comment).

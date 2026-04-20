@@ -4,6 +4,7 @@ import { requestLeaveSchema, listLeavesSchema, leaveCalendarSchema } from '@flow
 import { router, protectedProcedure, leadProcedure } from '../trpc';
 import { slackQueue } from '../lib/queue';
 import { audit } from '../lib/audit';
+import { publish } from '../lib/events';
 
 export const leavesRouter = router({
   request: protectedProcedure.input(requestLeaveSchema).mutation(async ({ ctx, input }) => {
@@ -132,7 +133,18 @@ export const leavesRouter = router({
           where: { id: leave.userId },
           data: { availability: 'ON_LEAVE' },
         });
+        await publish(ctx.user.orgId, null, {
+          type: 'user.availability',
+          userId: leave.userId,
+          availability: 'ON_LEAVE',
+        });
       }
+
+      // Let the requester's inbox + calendar refresh live.
+      await publish(ctx.user.orgId, leave.userId, {
+        type: 'leave.updated',
+        id: updated.id,
+      });
 
       if (leave.notifySlack) {
         await slackQueue.add('leave.approved', {
@@ -185,6 +197,11 @@ export const leavesRouter = router({
           endDate: leave.endDate.toISOString(),
         });
       }
+
+      await publish(ctx.user.orgId, leave.userId, {
+        type: 'leave.updated',
+        id: updated.id,
+      });
 
       return updated;
     }),

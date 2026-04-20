@@ -10,3 +10,4 @@ export * from './schemas/resources';
 export * from './schemas/notifications';
 export * from './schemas/messages';
 export * from './types/enums';
+export * from './types/events';
