@@ -1,0 +1,68 @@
+name: test
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  api:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: flowdruid
+          POSTGRES_PASSWORD: flowdruid
+          POSTGRES_DB: flowdruid
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U flowdruid"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      TEST_DATABASE_URL: postgresql://flowdruid:flowdruid@localhost:5432/flowdruid_test
+      REDIS_URL: redis://localhost:6379
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build shared package
+        run: pnpm --filter @flowdruid/shared build
+
+      - name: Generate Prisma client
+        run: pnpm --filter @flowdruid/api exec prisma generate
+
+      - name: Typecheck API
+        run: pnpm --filter @flowdruid/api exec tsc --noEmit
+
+      - name: Typecheck web
+        run: pnpm --filter @flowdruid/web exec tsc --noEmit
+
+      - name: Run API tests
+        run: pnpm --filter @flowdruid/api test
