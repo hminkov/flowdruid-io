@@ -176,7 +176,7 @@ export function QaEnvironmentsPage() {
           {canManageEnvs && (
             <button
               onClick={() => setEnvCreating(true)}
-              className="flex min-h-input items-center gap-1.5 rounded bg-brand-600 px-3 text-sm text-white hover:bg-brand-800"
+              className="flex min-h-input items-center gap-1.5 rounded-md bg-brand-600 px-3 text-sm font-medium text-white transition-all duration-fast hover:bg-brand-800 hover:shadow-float"
             >
               <PlusIcon className="h-3.5 w-3.5" />
               Add environment
@@ -284,7 +284,7 @@ export function QaEnvironmentsPage() {
             return (
               <article
                 key={env.id}
-                className="rounded-lg border border-border bg-surface-primary p-4 transition-colors duration-fast hover:border-border-strong"
+                className="animate-fade-in rounded-lg border border-border bg-surface-primary p-4 transition-all duration-default hover:border-border-strong hover:shadow-float"
               >
                 <EnvCardHeader
                   env={env}
@@ -301,11 +301,11 @@ export function QaEnvironmentsPage() {
 
                 {/* Status breakdown + last activity */}
                 {env.bookings.length > 0 && (
-                  <div className="mb-3 flex flex-wrap items-center gap-1.5 text-[10px]">
+                  <div className="mb-3 flex flex-wrap items-center gap-1.5 border-t border-border pt-3 text-[10px]">
                     {statusBreakdown(env.bookings).map(({ status, count }) => (
                       <span
                         key={status}
-                        className={`inline-flex items-center gap-1 rounded-pill px-1.5 py-0.5 ${statusTone[status]}`}
+                        className={`inline-flex items-center gap-1 rounded-pill px-2 py-0.5 font-medium ${statusTone[status]}`}
                       >
                         <span className="tabular-nums">{count}</span>
                         {statusLabel[status].toLowerCase()}
@@ -325,7 +325,7 @@ export function QaEnvironmentsPage() {
                 )}
 
                 {filteredBookings.length === 0 ? (
-                  <p className="rounded border border-dashed border-border bg-surface-secondary p-2 text-center text-xs text-text-tertiary">
+                  <p className="rounded-md border border-dashed border-border bg-surface-secondary/60 p-4 text-center text-xs text-text-tertiary">
                     No matching bookings
                   </p>
                 ) : view === 'compact' ? (
@@ -336,8 +336,10 @@ export function QaEnvironmentsPage() {
                       <div
                         key={b.id}
                         onClick={() => canEditBookings && setEditing(b)}
-                        className={`rounded border border-border bg-surface-secondary p-2.5 ${
-                          canEditBookings ? 'cursor-pointer hover:border-border-strong' : ''
+                        className={`rounded-md border border-border bg-surface-secondary p-3 transition-all duration-fast ${
+                          canEditBookings
+                            ? 'cursor-pointer hover:border-border-strong hover:bg-surface-primary'
+                            : ''
                         }`}
                       >
                         <div className="mb-1.5 flex items-center justify-between gap-2">
@@ -523,16 +525,22 @@ function EnvCardHeader({
   onAddBooking: () => void;
   onEditEnv: () => void;
 }) {
+  const countLabel =
+    filteredCount === env.bookings.length
+      ? `${env.bookings.length} booking${env.bookings.length === 1 ? '' : 's'}`
+      : `${filteredCount} / ${env.bookings.length} bookings`;
+
   return (
     <header className="mb-3 flex items-start justify-between gap-3">
       <div className="min-w-0 flex-1">
-        {/* Single, prominent env name */}
-        <div className="flex items-baseline gap-2">
-          <h3 className="truncate text-xl font-semibold text-text-primary">{env.name}</h3>
-          <span className="shrink-0 text-xs text-text-tertiary tabular-nums">
-            {filteredCount === env.bookings.length
-              ? `${env.bookings.length} booking${env.bookings.length === 1 ? '' : 's'}`
-              : `${filteredCount} / ${env.bookings.length}`}
+        {/* Env identity — distinctive brand pill so the env name reads as a code, not body copy */}
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="rounded-md bg-brand-50 px-2.5 py-1 font-mono text-lg font-medium tracking-wide text-brand-600">
+            {env.name}
+          </span>
+          <span className="inline-flex items-center gap-1.5 rounded-pill bg-surface-secondary px-2 py-0.5 text-[11px] text-text-secondary tabular-nums">
+            <span className="h-1.5 w-1.5 rounded-full bg-brand-500" />
+            {countLabel}
           </span>
         </div>
         {env.branch ? (
@@ -540,21 +548,21 @@ function EnvCardHeader({
             href="#"
             onClick={(e) => e.preventDefault()}
             title={env.branch}
-            className="mt-0.5 inline-flex items-center gap-1 rounded-pill bg-surface-secondary px-2 py-0.5 font-mono text-[11px] text-text-secondary"
+            className="mt-2 inline-flex max-w-full items-center gap-1 rounded-pill bg-surface-secondary px-2 py-0.5 font-mono text-[11px] text-text-secondary transition-colors duration-fast hover:text-text-primary"
           >
-            <LinkIcon className="h-3 w-3" />
+            <LinkIcon className="h-3 w-3 shrink-0" />
             <span className="truncate">{env.branch}</span>
           </a>
         ) : canManageEnvs ? (
           <button
             onClick={onEditEnv}
-            className="mt-0.5 inline-flex items-center gap-1 rounded-pill border border-dashed border-border px-2 py-0.5 text-[11px] text-text-tertiary hover:border-border-strong hover:text-text-primary"
+            className="mt-2 inline-flex items-center gap-1 rounded-pill border border-dashed border-border px-2 py-0.5 text-[11px] text-text-tertiary transition-colors duration-fast hover:border-border-strong hover:text-text-primary"
           >
             <LinkIcon className="h-3 w-3" />
             Set branch
           </button>
         ) : (
-          <span className="mt-0.5 inline-flex text-[11px] text-text-tertiary">No branch set</span>
+          <span className="mt-2 inline-flex text-[11px] text-text-tertiary">No branch set</span>
         )}
       </div>
       <div className="flex shrink-0 items-center gap-1.5">
@@ -562,7 +570,7 @@ function EnvCardHeader({
           <button
             onClick={onAddBooking}
             title={`Add a new service to ${env.name}`}
-            className="flex h-9 items-center gap-1.5 rounded-md bg-brand-600 px-3 text-sm font-medium text-white shadow-sm transition-colors duration-fast hover:bg-brand-800"
+            className="flex h-9 items-center gap-1.5 rounded-md bg-brand-600 px-3 text-sm font-medium text-white transition-all duration-fast hover:bg-brand-800 hover:shadow-float"
           >
             <PlusIcon className="h-4 w-4" />
             <span>Add service</span>
@@ -573,7 +581,7 @@ function EnvCardHeader({
             onClick={onEditEnv}
             title={`Configure ${env.name}`}
             aria-label={`Configure ${env.name}`}
-            className="flex h-9 w-9 items-center justify-center rounded-md border border-border bg-surface-primary text-text-secondary transition-colors duration-fast hover:border-brand-500 hover:text-text-primary"
+            className="flex h-9 w-9 items-center justify-center rounded-md border border-border bg-surface-primary text-text-secondary transition-all duration-fast hover:border-brand-500 hover:text-text-primary hover:shadow-float"
           >
             <SettingsIcon className="h-5 w-5" />
           </button>
@@ -593,12 +601,12 @@ function CompactBookings({
   onOpenUser: (id: string) => void;
 }) {
   return (
-    <ul className="divide-y divide-border rounded border border-border bg-surface-secondary">
+    <ul className="divide-y divide-border overflow-hidden rounded-md border border-border bg-surface-secondary">
       {bookings.map((b) => (
         <li
           key={b.id}
           onClick={() => onOpen?.(b)}
-          className={`px-3 py-2 ${onOpen ? 'cursor-pointer hover:bg-surface-primary' : ''}`}
+          className={`px-3 py-2.5 transition-colors duration-fast ${onOpen ? 'cursor-pointer hover:bg-surface-primary' : ''}`}
         >
           {/* Row 1 — status + service + client-tag + feature + owners */}
           <div className="flex items-center gap-2">
@@ -772,7 +780,7 @@ function TableView({
                             open ? '' : '-rotate-90'
                           }`}
                         />
-                        <span className="rounded-md bg-brand-50 px-2.5 py-1 text-sm font-semibold text-brand-600">
+                        <span className="rounded-md bg-brand-50 px-2.5 py-1 font-mono text-sm font-medium tracking-wide text-brand-600">
                           {env.name}
                         </span>
                         {env.branch && (
