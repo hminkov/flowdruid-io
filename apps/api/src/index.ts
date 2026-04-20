@@ -1,3 +1,7 @@
+// Sentry init has side-effects that must run before Express / Prisma
+// so auto-instrumentation can patch those modules. Keep this import
+// first.
+import './lib/sentry';
 import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
@@ -5,6 +9,7 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import jwt from 'jsonwebtoken';
 import { createExpressMiddleware } from '@trpc/server/adapters/express';
+import { Sentry, sentryEnabled } from './lib/sentry';
 import { appRouter } from './routers';
 import { createContext, type UserPayload } from './context';
 import { slackEventsHandler } from './middleware/slack-events';
@@ -12,6 +17,7 @@ import { startSlackWorker } from './workers/slack.worker';
 import { startJiraWorker } from './workers/jira.worker';
 import { startLeaveWorker } from './workers/leave.worker';
 import { createSubscriber, eventPattern } from './lib/events';
+import { httpLogger, echoRequestId, logger } from './lib/logger';
 
 const app = express();
 const port = Number(process.env.PORT) || 3000;
@@ -23,6 +29,12 @@ const VERSION = process.env.npm_package_version ?? '0.0.1';
 // real client for rate-limit bookkeeping. Do not enable in dev where
 // requests arrive direct.
 if (process.env.NODE_ENV === 'production') app.set('trust proxy', 1);
+
+// HTTP access log + request-id generation + X-Request-ID echo.
+// Sits before helmet so every request — including those rejected by
+// later middleware — gets a log line.
+app.use(httpLogger);
+app.use(echoRequestId);
 
 // Security headers. Content-Security-Policy is off by default for now
 // because the SPA is served from a different origin; turn it on once
@@ -145,11 +157,18 @@ app.use('/trpc', createExpressMiddleware({
   createContext: ({ req, res }) => createContext({ req, res }),
 }));
 
+// Express 5 handles async error propagation automatically. If Sentry
+// is wired, install its error handler before the final express error
+// handler so exceptions reach Sentry before we respond to the client.
+if (sentryEnabled) {
+  Sentry.setupExpressErrorHandler(app);
+}
+
 app.listen(port, () => {
-  console.log(`API server running on port ${port}`);
+  logger.info({ port, version: VERSION, sentryEnabled }, 'API server ready');
 
   // Start background workers
   startSlackWorker();
-  startJiraWorker().catch(console.error);
-  startLeaveWorker().catch(console.error);
+  startJiraWorker().catch((err) => logger.error({ err }, 'jira worker failed'));
+  startLeaveWorker().catch((err) => logger.error({ err }, 'leave worker failed'));
 });
