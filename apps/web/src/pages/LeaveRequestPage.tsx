@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { trpc } from '../lib/trpc';
+import { useToast } from '../components/ui';
 import { AlertIcon, CalendarIcon, SendIcon, SpinnerIcon } from '../components/icons';
 
 const leaveTypes = [
@@ -32,6 +33,7 @@ export function LeaveRequestPage() {
   const [notifySlack, setNotifySlack] = useState(true);
 
   const utils = trpc.useUtils();
+  const toast = useToast();
   const myLeaves = trpc.leaves.list.useQuery({});
   const requestMutation = trpc.leaves.request.useMutation({
     onSuccess: () => {
@@ -39,7 +41,10 @@ export function LeaveRequestPage() {
       setStartDate('');
       setEndDate('');
       setNote('');
+      toast.push({ kind: 'success', title: 'Leave request submitted' });
     },
+    onError: (err) =>
+      toast.push({ kind: 'error', title: 'Request failed', message: err.message }),
   });
 
   const handleSubmit = (e: FormEvent) => {

@@ -10,6 +10,7 @@ import {
   TeamsIcon,
   ZapIcon,
 } from '../components/icons';
+import { useToast } from '../components/ui';
 
 const availabilityTones: Record<string, string> = {
   AVAILABLE: 'bg-success-bg text-success-text',
@@ -40,6 +41,7 @@ export function AllTeamsPage() {
   const [newTeamName, setNewTeamName] = useState('');
 
   const utils = trpc.useUtils();
+  const toast = useToast();
   const teamsQuery = trpc.teams.list.useQuery();
   const todayIso = new Date().toISOString().slice(0, 10);
   const standupsTodayQuery = trpc.standups.list.useQuery({ date: todayIso });
@@ -58,14 +60,26 @@ export function AllTeamsPage() {
   const capacityTone = (pct: number) =>
     pct >= 90 ? 'bg-capacity-full' : pct >= 70 ? 'bg-capacity-high' : 'bg-capacity-normal';
   const broadcastMutation = trpc.integrations.broadcastSlack.useMutation({
-    onSuccess: () => setBroadcastMsg(''),
+    onSuccess: (data) => {
+      setBroadcastMsg('');
+      toast.push({
+        kind: 'success',
+        title: 'Broadcast sent',
+        message: `Delivered to ${data.channelCount} ${data.channelCount === 1 ? 'channel' : 'channels'}`,
+      });
+    },
+    onError: (err) =>
+      toast.push({ kind: 'error', title: 'Broadcast failed', message: err.message }),
   });
   const createTeamMutation = trpc.teams.create.useMutation({
     onSuccess: () => {
       utils.teams.list.invalidate();
       setShowCreateTeam(false);
       setNewTeamName('');
+      toast.push({ kind: 'success', title: 'Team created' });
     },
+    onError: (err) =>
+      toast.push({ kind: 'error', title: 'Create failed', message: err.message }),
   });
 
   const handleBroadcast = (e: FormEvent) => {

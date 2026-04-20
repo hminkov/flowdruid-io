@@ -1,5 +1,6 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { trpc } from '../lib/trpc';
+import { useToast } from '../components/ui';
 import {
   AlertIcon,
   CheckIcon,
@@ -27,19 +28,47 @@ export function IntegrationsPage() {
   const [jiraSyncInterval, setJiraSyncInterval] = useState(15);
 
   const utils = trpc.useUtils();
+  const toast = useToast();
+
+  // Which Jira projects are ticked when the multi-select is visible.
+  // Populated from the testJira result; falls back to the manual text input below.
+  const [selectedJiraProjects, setSelectedJiraProjects] = useState<string[]>([]);
 
   const slackConfig = trpc.integrations.getSlackConfig.useQuery();
   const saveSlack = trpc.integrations.saveSlackConfig.useMutation({
-    onSuccess: () => utils.integrations.getSlackConfig.invalidate(),
+    onSuccess: () => {
+      utils.integrations.getSlackConfig.invalidate();
+      toast.push({ kind: 'success', title: 'Slack config saved' });
+    },
+    onError: (err) => toast.push({ kind: 'error', title: 'Save failed', message: err.message }),
   });
-  const testSlack = trpc.integrations.testSlack.useMutation();
+  const testSlack = trpc.integrations.testSlack.useMutation({
+    onError: (err) => toast.push({ kind: 'error', title: 'Test failed', message: err.message }),
+  });
 
   const jiraConfig = trpc.integrations.getJiraConfig.useQuery();
   const saveJira = trpc.integrations.saveJiraConfig.useMutation({
-    onSuccess: () => utils.integrations.getJiraConfig.invalidate(),
+    onSuccess: () => {
+      utils.integrations.getJiraConfig.invalidate();
+      toast.push({ kind: 'success', title: 'Jira config saved' });
+    },
+    onError: (err) => toast.push({ kind: 'error', title: 'Save failed', message: err.message }),
   });
-  const testJira = trpc.integrations.testJira.useMutation();
-  const syncJira = trpc.tickets.syncJira.useMutation();
+  const testJira = trpc.integrations.testJira.useMutation({
+    onError: (err) => toast.push({ kind: 'error', title: 'Test failed', message: err.message }),
+  });
+  const syncJira = trpc.tickets.syncJira.useMutation({
+    onSuccess: () => toast.push({ kind: 'success', title: 'Jira sync complete' }),
+    onError: (err) => toast.push({ kind: 'error', title: 'Sync failed', message: err.message }),
+  });
+
+  // When a testJira result comes in, preselect any keys the user already had saved.
+  useEffect(() => {
+    if (testJira.data && selectedJiraProjects.length === 0) {
+      const existing = jiraConfig.data?.projectKeys ?? [];
+      setSelectedJiraProjects(existing);
+    }
+  }, [testJira.data, jiraConfig.data?.projectKeys]);
 
   const handleSaveSlack = (e: FormEvent) => {
     e.preventDefault();
@@ -56,13 +85,28 @@ export function IntegrationsPage() {
 
   const handleSaveJira = (e: FormEvent) => {
     e.preventDefault();
+    // Prefer the checkbox selection when we have a live project list; fall back to the text input.
+    const effectiveKeys =
+      testJira.data && selectedJiraProjects.length > 0
+        ? selectedJiraProjects
+        : jiraProjectKeys
+            .split(',')
+            .map((k) => k.trim())
+            .filter(Boolean);
+
     saveJira.mutate({
       baseUrl: jiraBaseUrl,
       email: jiraEmail,
       apiToken: jiraApiToken,
-      projectKeys: jiraProjectKeys.split(',').map((k) => k.trim()).filter(Boolean),
+      projectKeys: effectiveKeys,
       syncInterval: jiraSyncInterval,
     });
+  };
+
+  const toggleJiraProject = (key: string) => {
+    setSelectedJiraProjects((prev) =>
+      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
+    );
   };
 
   const StatusBadge = ({ connected }: { connected: boolean }) => (
@@ -213,13 +257,37 @@ export function IntegrationsPage() {
             required
             className="min-h-input w-full rounded border border-border bg-surface-primary px-3 text-base text-text-primary placeholder:text-text-tertiary"
           />
-          <input
-            value={jiraProjectKeys}
-            onChange={(e) => setJiraProjectKeys(e.target.value)}
-            placeholder="Project keys (comma-separated: DW, EX, AC, QA)"
-            required
-            className="min-h-input w-full rounded border border-border bg-surface-primary px-3 text-base text-text-primary placeholder:text-text-tertiary"
-          />
+          {testJira.data ? (
+            <fieldset className="rounded border border-border bg-surface-secondary p-3">
+              <legend className="px-1 text-xs text-text-tertiary">
+                Projects to sync ({selectedJiraProjects.length} of {testJira.data.projects.length})
+              </legend>
+              <div className="max-h-44 space-y-1 overflow-y-auto">
+                {testJira.data.projects.map((p) => (
+                  <label
+                    key={p.key}
+                    className="flex items-center gap-2 rounded p-1 text-sm text-text-secondary hover:bg-surface-primary"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedJiraProjects.includes(p.key)}
+                      onChange={() => toggleJiraProject(p.key)}
+                      className="h-4 w-4 rounded accent-brand-600"
+                    />
+                    <span className="font-mono text-xs text-text-primary">{p.key}</span>
+                    <span className="truncate text-text-tertiary">{p.name ?? ''}</span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+          ) : (
+            <input
+              value={jiraProjectKeys}
+              onChange={(e) => setJiraProjectKeys(e.target.value)}
+              placeholder="Project keys (comma-separated: DW, EX, AC, QA) — or hit Test connection to pick from a list"
+              className="min-h-input w-full rounded border border-border bg-surface-primary px-3 text-base text-text-primary placeholder:text-text-tertiary"
+            />
+          )}
           <select
             value={jiraSyncInterval}
             onChange={(e) => setJiraSyncInterval(Number(e.target.value))}

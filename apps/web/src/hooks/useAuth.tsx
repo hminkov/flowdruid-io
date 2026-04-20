@@ -5,9 +5,11 @@ interface User {
   id: string;
   email: string;
   name: string;
+  initials?: string;
   role: 'ADMIN' | 'TEAM_LEAD' | 'DEVELOPER';
   orgId: string;
   teamId: string | null;
+  availability?: 'AVAILABLE' | 'BUSY' | 'REMOTE' | 'ON_LEAVE';
 }
 
 interface AuthContextType {

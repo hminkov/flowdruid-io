@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { trpc } from '../lib/trpc';
 import { useAuth } from '../hooks/useAuth';
 import { useUserDetail } from '../hooks/useUserDetail';
+import { useConfirm, useToast } from '../components/ui';
 import {
   CheckIcon,
   ChevronLeftIcon,
@@ -47,16 +48,36 @@ export function ParkingPage() {
 
   const spotsQuery = trpc.resources.parkingSpots.useQuery();
   const utils = trpc.useUtils();
+  const toast = useToast();
+  const confirm = useConfirm();
   const assignmentsQuery = trpc.resources.parkingAssignments.useQuery({
     startDate: toIso(weekStart),
     endDate: toIso(weekEnd),
   });
   const claim = trpc.resources.claimParking.useMutation({
-    onSuccess: () => utils.resources.parkingAssignments.invalidate(),
+    onSuccess: () => {
+      utils.resources.parkingAssignments.invalidate();
+      toast.push({ kind: 'success', title: 'Spot claimed' });
+    },
+    onError: (err) => toast.push({ kind: 'error', title: 'Claim failed', message: err.message }),
   });
   const release = trpc.resources.releaseParking.useMutation({
-    onSuccess: () => utils.resources.parkingAssignments.invalidate(),
+    onSuccess: () => {
+      utils.resources.parkingAssignments.invalidate();
+      toast.push({ kind: 'success', title: 'Spot released' });
+    },
+    onError: (err) => toast.push({ kind: 'error', title: 'Release failed', message: err.message }),
   });
+
+  const handleRelease = async (spotId: string, date: string, label: string) => {
+    const ok = await confirm({
+      title: `Release ${label}?`,
+      message: 'It will become available for anyone to claim.',
+      confirmLabel: 'Release',
+      tone: 'danger',
+    });
+    if (ok) release.mutate({ spotId, date });
+  };
 
   const shiftWeek = (deltaWeeks: number) => {
     const w = new Date(weekStart);
@@ -204,10 +225,11 @@ export function ParkingPage() {
                     {isMine && (
                       <button
                         onClick={() =>
-                          release.mutate({
-                            spotId: spot.id,
-                            date: toIso(date),
-                          })
+                          handleRelease(
+                            spot.id,
+                            toIso(date),
+                            `${spot.name} on ${date.toLocaleDateString()}`
+                          )
                         }
                         aria-label="Release"
                         className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-text-tertiary hover:bg-danger-bg hover:text-danger-text"

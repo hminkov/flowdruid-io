@@ -121,7 +121,25 @@ export const authRouter = router({
     return { success: true };
   }),
 
-  me: protectedProcedure.query(({ ctx }) => {
-    return ctx.user;
+  me: protectedProcedure.query(async ({ ctx }) => {
+    // Fetch fresh from DB so mutable fields (availability, name, etc.) stay in sync,
+    // not just whatever was in the JWT at login time.
+    const user = await ctx.prisma.user.findUnique({
+      where: { id: ctx.user.id },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        initials: true,
+        role: true,
+        orgId: true,
+        teamId: true,
+        availability: true,
+      },
+    });
+    if (!user) {
+      throw new TRPCError({ code: 'UNAUTHORIZED', message: 'User not found' });
+    }
+    return user;
   }),
 });

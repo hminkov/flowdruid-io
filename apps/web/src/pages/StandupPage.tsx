@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { trpc } from '../lib/trpc';
 import { useAuth } from '../hooks/useAuth';
+import { useToast } from '../components/ui';
 import { AlertIcon, MegaphoneIcon, SendIcon, SpinnerIcon, ZapIcon } from '../components/icons';
 
 export function StandupPage() {
@@ -17,6 +18,7 @@ export function StandupPage() {
     date: new Date().toISOString().slice(0, 10),
   });
 
+  const toast = useToast();
   const postMutation = trpc.standups.post.useMutation({
     onSuccess: () => {
       utils.standups.today.invalidate();
@@ -25,7 +27,9 @@ export function StandupPage() {
       setToday('');
       setBlockers('');
       setCapacityPct(50);
+      toast.push({ kind: 'success', title: 'Standup posted' });
     },
+    onError: (err) => toast.push({ kind: 'error', title: 'Post failed', message: err.message }),
   });
 
   const handleSubmit = (e: FormEvent) => {

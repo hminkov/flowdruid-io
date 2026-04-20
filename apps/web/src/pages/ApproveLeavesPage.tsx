@@ -1,4 +1,5 @@
 import { trpc } from '../lib/trpc';
+import { useConfirm, useToast } from '../components/ui';
 import { CalendarIcon, CheckIcon, InfoIcon, XIcon } from '../components/icons';
 
 const statusTones: Record<string, string> = {
@@ -17,13 +18,33 @@ const leaveTypeTones: Record<string, string> = {
 
 export function ApproveLeavesPage() {
   const utils = trpc.useUtils();
+  const toast = useToast();
+  const confirm = useConfirm();
   const pendingQuery = trpc.leaves.pending.useQuery();
   const approveMutation = trpc.leaves.approve.useMutation({
-    onSuccess: () => utils.leaves.pending.invalidate(),
+    onSuccess: () => {
+      utils.leaves.pending.invalidate();
+      toast.push({ kind: 'success', title: 'Leave approved' });
+    },
+    onError: (err) => toast.push({ kind: 'error', title: 'Approve failed', message: err.message }),
   });
   const denyMutation = trpc.leaves.deny.useMutation({
-    onSuccess: () => utils.leaves.pending.invalidate(),
+    onSuccess: () => {
+      utils.leaves.pending.invalidate();
+      toast.push({ kind: 'success', title: 'Leave denied' });
+    },
+    onError: (err) => toast.push({ kind: 'error', title: 'Deny failed', message: err.message }),
   });
+
+  const handleDeny = async (leaveId: string, name: string, range: string) => {
+    const ok = await confirm({
+      title: `Deny ${name}'s leave?`,
+      message: `Range: ${range}. They'll be notified via Slack.`,
+      confirmLabel: 'Deny',
+      tone: 'danger',
+    });
+    if (ok) denyMutation.mutate({ leaveId });
+  };
 
   const items = pendingQuery.data ?? [];
 
@@ -88,7 +109,13 @@ export function ApproveLeavesPage() {
                 Approve
               </button>
               <button
-                onClick={() => denyMutation.mutate({ leaveId: leave.id })}
+                onClick={() =>
+                  handleDeny(
+                    leave.id,
+                    leave.user.name,
+                    `${new Date(leave.startDate).toLocaleDateString()} — ${new Date(leave.endDate).toLocaleDateString()}`
+                  )
+                }
                 disabled={denyMutation.isPending}
                 className="flex min-h-input items-center gap-1.5 rounded border border-border bg-surface-primary px-3 text-base text-text-secondary transition-colors duration-fast hover:border-danger-text/30 hover:bg-danger-bg hover:text-danger-text disabled:opacity-60"
               >
