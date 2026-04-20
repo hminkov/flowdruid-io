@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { trpc } from '../../lib/trpc';
 import { useAuth } from '../../hooks/useAuth';
 import { useUserDetail } from '../../hooks/useUserDetail';
@@ -42,7 +43,23 @@ export function TicketDetailModal({
   const { user } = useAuth();
   const { openUser } = useUserDetail();
   const toast = useToast();
+  const navigate = useNavigate();
+  const location = useLocation();
   const open = ticket !== null;
+
+  // Jump to the task board with this ticket pre-opened. If we're already
+  // there, just update the query param — otherwise navigate with it.
+  const openOnBoard = () => {
+    if (!ticket) return;
+    if (location.pathname === '/tasks') {
+      const next = new URLSearchParams(location.search);
+      next.set('open', ticket.id);
+      navigate({ pathname: '/tasks', search: `?${next.toString()}` }, { replace: true });
+    } else {
+      navigate(`/tasks?open=${encodeURIComponent(ticket.id)}`);
+    }
+    onClose();
+  };
 
   const [showSuggestForm, setShowSuggestForm] = useState(false);
   const [selectedUser, setSelectedUser] = useState('');
@@ -302,6 +319,16 @@ export function TicketDetailModal({
             <h2 className="text-lg">{ticket.title}</h2>
           </div>
           <div className="flex shrink-0 items-center gap-1">
+            {location.pathname !== '/tasks' && (
+              <button
+                onClick={openOnBoard}
+                title="Open this ticket on the task board"
+                className="flex h-8 items-center gap-1 rounded-md border border-border bg-surface-primary px-2.5 text-xs text-text-secondary transition-colors duration-fast hover:border-brand-500 hover:text-text-primary"
+              >
+                Open on board
+                <ArrowRightIcon className="h-3 w-3" />
+              </button>
+            )}
             <button
               onClick={copyLink}
               title="Copy share link"

@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { Suspense, lazy, useEffect, useMemo, useState } from 'react';
 import { trpc } from '../lib/trpc';
 import { useUserDetail } from '../hooks/useUserDetail';
 import {
@@ -10,6 +10,13 @@ import {
   XIcon,
   ZapIcon,
 } from './icons';
+import type { Ticket } from '../features/tasks/types';
+
+const TicketDetailModal = lazy(() =>
+  import('../features/tasks/TicketDetailModal').then((m) => ({
+    default: m.TicketDetailModal,
+  })),
+);
 
 const availabilityToneMap: Record<string, string> = {
   AVAILABLE: 'bg-success-bg text-success-text',
@@ -67,6 +74,7 @@ export function TeamDetailDrawer({
   const open = teamId !== null;
   const todayIso = new Date().toISOString().slice(0, 10);
   const { openUser } = useUserDetail();
+  const [openTicket, setOpenTicket] = useState<Ticket | null>(null);
 
   const teamsQuery = trpc.teams.list.useQuery(undefined, { enabled: open });
   const standupsQuery = trpc.standups.list.useQuery(
@@ -302,9 +310,11 @@ export function TeamDetailDrawer({
                     </div>
                     <div className="space-y-1.5">
                       {group.slice(0, 6).map((t) => (
-                        <div
+                        <button
                           key={t.id}
-                          className="flex items-start gap-2 rounded border border-border bg-surface-primary p-2"
+                          type="button"
+                          onClick={() => setOpenTicket(t as Ticket)}
+                          className="flex w-full items-start gap-2 rounded border border-border bg-surface-primary p-2 text-left transition-colors duration-fast hover:border-border-strong hover:bg-surface-secondary"
                         >
                           <span
                             className={`mt-1 inline-block h-[7px] w-[7px] shrink-0 rounded-full ${PRIORITY_DOT[t.priority]}`}
@@ -326,7 +336,7 @@ export function TeamDetailDrawer({
                               </span>
                             </div>
                           </div>
-                        </div>
+                        </button>
                       ))}
                       {group.length > 6 && (
                         <p className="text-xs text-text-tertiary">
@@ -346,6 +356,15 @@ export function TeamDetailDrawer({
           </div>
         </div>
       </aside>
+
+      {openTicket && (
+        <Suspense fallback={null}>
+          <TicketDetailModal
+            ticket={openTicket}
+            onClose={() => setOpenTicket(null)}
+          />
+        </Suspense>
+      )}
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { Suspense, lazy, useEffect, useMemo, useState } from 'react';
 import { trpc } from '../lib/trpc';
 import {
   AlertIcon,
@@ -18,6 +18,13 @@ import {
   PriorityDot,
   paletteFor,
 } from './ui';
+import type { Ticket } from '../features/tasks/types';
+
+const TicketDetailModal = lazy(() =>
+  import('../features/tasks/TicketDetailModal').then((m) => ({
+    default: m.TicketDetailModal,
+  })),
+);
 
 const STATUS_ORDER = ['IN_PROGRESS', 'IN_REVIEW', 'TODO', 'DONE'] as const;
 const STATUS_LABELS: Record<string, string> = {
@@ -57,6 +64,7 @@ export function UserDetailDrawer({
   const open = userId !== null;
   const today = new Date().toISOString().slice(0, 10);
   const [activityWindow, setActivityWindow] = useState<ActivityWindow>('month');
+  const [openTicket, setOpenTicket] = useState<Ticket | null>(null);
 
   const teamsQuery = trpc.teams.list.useQuery(undefined, { enabled: open });
   const ticketsQuery = trpc.tickets.list.useQuery(
@@ -254,9 +262,11 @@ export function UserDetailDrawer({
                 {activity.tickets.length > 0 && (
                   <div className="mt-3 space-y-1">
                     {activity.tickets.slice(0, 5).map((t) => (
-                      <div
+                      <button
                         key={t.id}
-                        className="flex items-center gap-2 rounded border border-border bg-surface-primary p-2"
+                        type="button"
+                        onClick={() => setOpenTicket(t as Ticket)}
+                        className="flex w-full items-center gap-2 rounded border border-border bg-surface-primary p-2 text-left transition-colors duration-fast hover:border-border-strong hover:bg-surface-secondary"
                       >
                         <PriorityDot priority={t.priority} />
                         <span
@@ -272,7 +282,7 @@ export function UserDetailDrawer({
                         <span className="ml-auto shrink-0 text-xs text-text-tertiary">
                           +{(t as typeof t & { complexityPoints?: number | null }).complexityPoints ?? PRIORITY_SCORE[t.priority]}
                         </span>
-                      </div>
+                      </button>
                     ))}
                     {activity.tickets.length > 5 && (
                       <p className="text-xs text-text-tertiary">
@@ -318,9 +328,11 @@ export function UserDetailDrawer({
                         </div>
                         <div className="space-y-1.5">
                           {group.map((t) => (
-                            <div
+                            <button
                               key={t.id}
-                              className="flex items-start gap-2 rounded border border-border bg-surface-primary p-2"
+                              type="button"
+                              onClick={() => setOpenTicket(t as Ticket)}
+                              className="flex w-full items-start gap-2 rounded border border-border bg-surface-primary p-2 text-left transition-colors duration-fast hover:border-border-strong hover:bg-surface-secondary"
                             >
                               <div className="mt-1"><PriorityDot priority={t.priority} /></div>
                               <div className="min-w-0 flex-1">
@@ -344,7 +356,7 @@ export function UserDetailDrawer({
                                   </p>
                                 )}
                               </div>
-                            </div>
+                            </button>
                           ))}
                         </div>
                       </div>
@@ -356,6 +368,15 @@ export function UserDetailDrawer({
           )}
         </div>
       </aside>
+
+      {openTicket && (
+        <Suspense fallback={null}>
+          <TicketDetailModal
+            ticket={openTicket}
+            onClose={() => setOpenTicket(null)}
+          />
+        </Suspense>
+      )}
     </div>
   );
 }
