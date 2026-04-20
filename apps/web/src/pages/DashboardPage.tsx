@@ -641,13 +641,13 @@ export function DashboardPage() {
                             >
                               {m.initials}
                             </span>
-                            {m.availability === 'ON_LEAVE' && (
+                            {availabilityEmojiMap[m.availability] && (
                               <span
-                                title="On leave"
-                                aria-label="On leave"
+                                title={m.availability.toLowerCase().replace('_', ' ')}
+                                aria-label={m.availability.toLowerCase().replace('_', ' ')}
                                 className="absolute -right-0.5 -bottom-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-surface-primary text-[9px] leading-none ring-1 ring-surface-primary"
                               >
-                                🌴
+                                {availabilityEmojiMap[m.availability]}
                               </span>
                             )}
                           </span>
@@ -656,6 +656,11 @@ export function DashboardPage() {
                             {m.availability === 'ON_LEAVE' && (
                               <span className="rounded-pill bg-warning-bg px-1.5 py-0.5 text-[9px] text-warning-text">
                                 on leave
+                              </span>
+                            )}
+                            {m.availability === 'REMOTE' && (
+                              <span className="rounded-pill bg-info-bg px-1.5 py-0.5 text-[9px] text-info-text">
+                                remote
                               </span>
                             )}
                           </span>
@@ -1318,13 +1323,13 @@ function MemberCard({
             >
               {member.initials}
             </span>
-            {member.availability === 'ON_LEAVE' && (
+            {availabilityEmojiMap[member.availability] && (
               <span
-                title="On leave"
-                aria-label="On leave"
+                title={member.availability.toLowerCase().replace('_', ' ')}
+                aria-label={member.availability.toLowerCase().replace('_', ' ')}
                 className="absolute -right-1 -bottom-1 flex h-4 w-4 items-center justify-center rounded-full bg-surface-primary text-[11px] leading-none ring-2 ring-surface-primary"
               >
-                🌴
+                {availabilityEmojiMap[member.availability]}
               </span>
             )}
           </span>
@@ -1332,6 +1337,9 @@ function MemberCard({
             <div className="truncate text-md font-medium text-text-primary">{member.name}</div>
             {member.availability === 'ON_LEAVE' && (
               <div className="truncate text-[11px] text-warning-text">On leave today</div>
+            )}
+            {member.availability === 'REMOTE' && (
+              <div className="truncate text-[11px] text-info-text">Working remote today</div>
             )}
           </div>
         </button>
