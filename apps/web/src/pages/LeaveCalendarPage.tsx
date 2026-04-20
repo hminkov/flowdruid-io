@@ -1,8 +1,10 @@
 import { useState, useMemo } from 'react';
 import { trpc } from '../lib/trpc';
+import { useAuth } from '../hooks/useAuth';
 import { useUserDetail } from '../hooks/useUserDetail';
 import {
   CalendarIcon,
+  CheckIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   HomeIcon,
@@ -23,6 +25,14 @@ const leaveTypeLabel: Record<string, string> = {
   PARTIAL_PM: 'Partial PM',
   REMOTE: 'Remote',
   SICK: 'Sick',
+};
+
+const leaveTypeEmoji: Record<string, string> = {
+  ANNUAL: '🌴',
+  SICK: '🤒',
+  REMOTE: '🏠',
+  PARTIAL_AM: '⏱️',
+  PARTIAL_PM: '⏱️',
 };
 
 const avatarPalettes = [
@@ -57,6 +67,7 @@ const MONTH_NAMES = [
 
 export function LeaveCalendarPage() {
   const { openUser } = useUserDetail();
+  const { user: me } = useAuth();
   const [month, setMonth] = useState(() => {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
@@ -76,6 +87,32 @@ export function LeaveCalendarPage() {
     endDate,
     teamId: teamFilter || undefined,
   });
+
+  // Separate "today on my team" query — independent of the month/team
+  // filter above so the strip below the calendar always reflects who's
+  // actually out on the caller's own team right now.
+  const myTeamTodayStart = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d.toISOString();
+  }, []);
+  const myTeamTodayEnd = useMemo(() => {
+    const d = new Date();
+    d.setHours(23, 59, 59, 999);
+    return d.toISOString();
+  }, []);
+  const myTeamTodayQuery = trpc.leaves.calendar.useQuery(
+    {
+      startDate: myTeamTodayStart,
+      endDate: myTeamTodayEnd,
+      teamId: me?.teamId ?? undefined,
+    },
+    { enabled: !!me?.teamId },
+  );
+  const myTeam = useMemo(
+    () => teamsQuery.data?.find((t) => t.id === me?.teamId),
+    [teamsQuery.data, me?.teamId],
+  );
 
   const daysInMonth = new Date(year, mon, 0).getDate();
   const firstDayOfWeek = new Date(year, mon - 1, 1).getDay();
@@ -343,6 +380,85 @@ export function LeaveCalendarPage() {
                 </div>
               </div>
             </div>
+          )}
+
+          {/* Who's out today on my team */}
+          {me?.teamId && (
+            <section className="mt-4 rounded-lg border border-border bg-surface-primary p-4">
+              <header className="mb-3 flex items-center justify-between gap-2">
+                <h2 className="flex items-center gap-2 text-md">
+                  <CalendarIcon className="h-4 w-4 text-text-tertiary" />
+                  Today on {myTeam?.name ?? 'my team'}
+                </h2>
+                <span className="text-xs text-text-tertiary">
+                  {myTeamTodayQuery.data?.length ?? 0} out of{' '}
+                  {myTeam?.members.length ?? 0} members
+                </span>
+              </header>
+              {(myTeamTodayQuery.data?.length ?? 0) === 0 ? (
+                <div className="flex items-center gap-3 rounded-md bg-success-bg/50 p-3 text-success-text">
+                  <CheckIcon className="h-4 w-4 shrink-0" />
+                  <p className="text-sm">
+                    The whole team is available today. No one is on leave or remote.
+                  </p>
+                </div>
+              ) : (
+                <ul className="space-y-1.5">
+                  {myTeamTodayQuery.data?.map((leave) => {
+                    const palette = paletteFor(leave.user.id);
+                    const emoji = leaveTypeEmoji[leave.type];
+                    return (
+                      <li key={leave.id}>
+                        <button
+                          type="button"
+                          onClick={() => openUser(leave.user.id)}
+                          className="flex w-full items-center gap-3 rounded-md border border-border bg-surface-secondary p-2.5 text-left transition-colors duration-fast hover:border-border-strong hover:bg-surface-primary"
+                        >
+                          <span className="relative shrink-0">
+                            <span
+                              className="flex h-8 w-8 items-center justify-center rounded-full text-xs"
+                              style={{ background: palette.bg, color: palette.text }}
+                            >
+                              {leave.user.initials}
+                            </span>
+                            {emoji && (
+                              <span
+                                title={leaveTypeLabel[leave.type]}
+                                aria-label={leaveTypeLabel[leave.type]}
+                                className="absolute -right-1 -bottom-1 flex h-4 w-4 items-center justify-center rounded-full bg-surface-primary text-[11px] leading-none ring-2 ring-surface-primary"
+                              >
+                                {emoji}
+                              </span>
+                            )}
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <div className="truncate text-sm font-medium text-text-primary">
+                              {leave.user.name}
+                            </div>
+                            <div className="truncate text-xs text-text-tertiary">
+                              {new Date(leave.startDate).toLocaleDateString(undefined, {
+                                month: 'short',
+                                day: 'numeric',
+                              })}
+                              {' — '}
+                              {new Date(leave.endDate).toLocaleDateString(undefined, {
+                                month: 'short',
+                                day: 'numeric',
+                              })}
+                            </div>
+                          </div>
+                          <span
+                            className={`shrink-0 rounded-pill px-2 py-0.5 text-[11px] font-medium ${leaveTypeTones[leave.type]}`}
+                          >
+                            {leaveTypeLabel[leave.type]}
+                          </span>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </section>
           )}
         </>
       ) : (

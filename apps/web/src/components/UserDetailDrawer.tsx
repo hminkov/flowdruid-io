@@ -13,6 +13,7 @@ import {
 import {
   Avatar,
   AvailabilityBadge,
+  AvailabilityGlyph,
   CapacityBar,
   PriorityDot,
   paletteFor,
@@ -134,7 +135,17 @@ export function UserDetailDrawer({
               </span>
             )}
             <div className="min-w-0">
-              <div className="truncate text-lg text-text-primary">{user?.name ?? 'Loading…'}</div>
+              <div className="flex items-center gap-2">
+                <span className="truncate text-lg text-text-primary">{user?.name ?? 'Loading…'}</span>
+                {user && (
+                  <span
+                    title={user.availability.toLowerCase().replace('_', ' ')}
+                    className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-surface-secondary ring-1 ring-border"
+                  >
+                    <AvailabilityGlyph status={user.availability} size="sm" />
+                  </span>
+                )}
+              </div>
               <div className="mt-1 text-xs text-text-tertiary">{user?.team.name ?? ''}</div>
             </div>
           </div>
