@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { trpc } from '../lib/trpc';
+import { useAuth } from '../hooks/useAuth';
 import { useUserDetail } from '../hooks/useUserDetail';
-import { BriefcaseIcon, CheckIcon, InfoIcon, LinkIcon, RefreshIcon } from '../components/icons';
+import { QaBookingModal } from '../features/resources/QaBookingModal';
+import { BriefcaseIcon, CheckIcon, InfoIcon, LinkIcon, PlusIcon, RefreshIcon } from '../components/icons';
 import type { QaBookingStatus } from '@flowdruid/shared';
 
 const statusLabel: Record<QaBookingStatus, string> = {
@@ -36,10 +38,30 @@ const paletteFor = (id: string) => {
   return avatarPalettes[Math.abs(hash) % avatarPalettes.length]!;
 };
 
+type Booking = {
+  id: string;
+  environmentId: string;
+  service: string;
+  feature: string | null;
+  devOwnerId: string | null;
+  qaOwnerId: string | null;
+  status: QaBookingStatus;
+  notes: string | null;
+  branch: string | null;
+  devOwner: { id: string; name: string; initials: string } | null;
+  qaOwner: { id: string; name: string; initials: string } | null;
+};
+
 export function QaEnvironmentsPage() {
   const [statusFilter, setStatusFilter] = useState<QaBookingStatus | 'all'>('all');
   const envQuery = trpc.resources.qaEnvironments.useQuery();
   const { openUser } = useUserDetail();
+  const { user } = useAuth();
+  const canEdit = user?.role === 'ADMIN' || user?.role === 'TEAM_LEAD';
+
+  // Editor state — either a booking (edit) or an envId (create)
+  const [editing, setEditing] = useState<Booking | null>(null);
+  const [creatingIn, setCreatingIn] = useState<{ id: string; name: string } | null>(null);
 
   const environments = envQuery.data ?? [];
 
@@ -98,16 +120,27 @@ export function QaEnvironmentsPage() {
               key={env.id}
               className="rounded-lg border border-border bg-surface-primary p-4"
             >
-              <div className="mb-3 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="flex h-7 w-7 items-center justify-center rounded-md bg-brand-50 font-mono text-xs text-brand-600">
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <div className="flex min-w-0 items-center gap-2">
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-brand-50 font-mono text-xs text-brand-600">
                     {env.name}
                   </span>
-                  <h3>{env.name}</h3>
+                  <h3 className="truncate">{env.name}</h3>
                 </div>
-                <span className="text-xs text-text-tertiary">
-                  {filteredBookings.length} / {env.bookings.length}
-                </span>
+                <div className="flex shrink-0 items-center gap-2">
+                  <span className="text-xs text-text-tertiary">
+                    {filteredBookings.length} / {env.bookings.length}
+                  </span>
+                  {canEdit && (
+                    <button
+                      onClick={() => setCreatingIn({ id: env.id, name: env.name })}
+                      title={`Add booking to ${env.name}`}
+                      className="flex h-5 w-5 items-center justify-center rounded text-text-tertiary hover:bg-surface-secondary hover:text-text-primary"
+                    >
+                      <PlusIcon className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
               </div>
 
               {filteredBookings.length === 0 ? (
@@ -119,7 +152,10 @@ export function QaEnvironmentsPage() {
                   {filteredBookings.map((b) => (
                     <div
                       key={b.id}
-                      className="rounded border border-border bg-surface-secondary p-2.5"
+                      onClick={() => canEdit && setEditing(b)}
+                      className={`rounded border border-border bg-surface-secondary p-2.5 ${
+                        canEdit ? 'cursor-pointer hover:border-border-strong' : ''
+                      }`}
                     >
                       <div className="mb-1.5 flex items-center justify-between gap-2">
                         <span className="truncate text-md text-text-primary">{b.service}</span>
@@ -141,7 +177,10 @@ export function QaEnvironmentsPage() {
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-text-tertiary">
                         {b.devOwner && (
                           <button
-                            onClick={() => openUser(b.devOwner!.id)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openUser(b.devOwner!.id);
+                            }}
                             className="flex items-center gap-1 hover:text-text-primary"
                           >
                             <span
@@ -158,7 +197,10 @@ export function QaEnvironmentsPage() {
                         )}
                         {b.qaOwner && (
                           <button
-                            onClick={() => openUser(b.qaOwner!.id)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openUser(b.qaOwner!.id);
+                            }}
                             className="flex items-center gap-1 hover:text-text-primary"
                           >
                             <span
@@ -201,6 +243,18 @@ export function QaEnvironmentsPage() {
           This replaces the old "QA Environment Tracker" spreadsheet. Bookings update the same way as Jira tickets.
         </div>
       </div>
+
+      {(editing || creatingIn) && (
+        <QaBookingModal
+          booking={editing}
+          environmentId={creatingIn?.id}
+          environmentName={creatingIn?.name ?? environments.find((e) => e.id === editing?.environmentId)?.name}
+          onClose={() => {
+            setEditing(null);
+            setCreatingIn(null);
+          }}
+        />
+      )}
     </div>
   );
 }

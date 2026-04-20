@@ -2,7 +2,21 @@ import { useMemo, useState } from 'react';
 import { trpc } from '../lib/trpc';
 import { useAuth } from '../hooks/useAuth';
 import { useUserDetail } from '../hooks/useUserDetail';
-import { AlertIcon, CalendarIcon, CheckIcon } from '../components/icons';
+import { ProdSupportModal } from '../features/resources/ProdSupportModal';
+import { AlertIcon, CalendarIcon, CheckIcon, PlusIcon } from '../components/icons';
+
+type RotaEntry = {
+  id: string;
+  teamId: string;
+  weekNumber: number;
+  startDate: string | Date;
+  endDate: string | Date;
+  primaryId: string;
+  secondaryId: string;
+  team: { id: string; name: string };
+  primary: { id: string; name: string; initials: string };
+  secondary: { id: string; name: string; initials: string };
+};
 
 const avatarPalettes = [
   { bg: 'var(--avatar-1-bg)', text: 'var(--avatar-1-text)' },
@@ -31,6 +45,10 @@ export function ProdSupportPage() {
 
   const [teamFilter, setTeamFilter] = useState<string>(user?.teamId ?? 'all');
   const [year] = useState(new Date().getFullYear());
+  const canEdit = user?.role === 'ADMIN' || user?.role === 'TEAM_LEAD';
+
+  const [editing, setEditing] = useState<RotaEntry | null>(null);
+  const [creating, setCreating] = useState<{ teamId: string; teamName: string } | null>(null);
 
   const teamsQuery = trpc.teams.list.useQuery();
   const rotaQuery = trpc.resources.prodSupport.useQuery({
@@ -121,10 +139,20 @@ export function ProdSupportPage() {
           <div className="rounded-lg border border-danger-text/30 bg-danger-bg/30 p-4">
             <div className="mb-3 flex items-center justify-between text-sm">
               <span className="text-text-primary">{now.current.team.name}</span>
-              <span className="flex items-center gap-1 text-text-tertiary">
-                <CalendarIcon className="h-3 w-3" />
-                Week {now.current.weekNumber} · {formatRange(now.current.startDate, now.current.endDate)}
-              </span>
+              <div className="flex items-center gap-3">
+                <span className="flex items-center gap-1 text-text-tertiary">
+                  <CalendarIcon className="h-3 w-3" />
+                  Week {now.current.weekNumber} · {formatRange(now.current.startDate, now.current.endDate)}
+                </span>
+                {canEdit && (
+                  <button
+                    onClick={() => setEditing(now.current as RotaEntry)}
+                    className="rounded-pill border border-border bg-surface-primary px-2 py-0.5 text-xs text-text-secondary hover:text-text-primary"
+                  >
+                    Edit
+                  </button>
+                )}
+              </div>
             </div>
             <div className="flex flex-wrap gap-2">
               {renderPerson(now.current.primary)}
@@ -133,16 +161,44 @@ export function ProdSupportPage() {
           </div>
         ) : (
           <div className="rounded-lg border border-dashed border-border bg-surface-primary p-4 text-center text-sm text-text-tertiary">
-            {teamFilter === 'all'
-              ? 'No one on rota for this week.'
-              : 'This team has no assignment for the current week.'}
+            <p>
+              {teamFilter === 'all'
+                ? 'No one on rota for this week.'
+                : 'This team has no assignment for the current week.'}
+            </p>
+            {canEdit && teamFilter !== 'all' && (
+              <button
+                onClick={() => {
+                  const t = teamsQuery.data?.find((x) => x.id === teamFilter);
+                  if (t) setCreating({ teamId: t.id, teamName: t.name });
+                }}
+                className="mt-2 inline-flex min-h-input items-center gap-1.5 rounded bg-brand-600 px-3 text-sm text-white hover:bg-brand-800"
+              >
+                <PlusIcon className="h-3.5 w-3.5" />
+                Assign a pair
+              </button>
+            )}
           </div>
         )}
       </section>
 
       {/* Upcoming */}
       <section className="mb-6">
-        <h2 className="mb-2">Upcoming</h2>
+        <div className="mb-2 flex items-center justify-between">
+          <h2>Upcoming</h2>
+          {canEdit && teamFilter !== 'all' && (
+            <button
+              onClick={() => {
+                const t = teamsQuery.data?.find((x) => x.id === teamFilter);
+                if (t) setCreating({ teamId: t.id, teamName: t.name });
+              }}
+              className="flex items-center gap-1 rounded-pill border border-border bg-surface-primary px-3 py-1 text-xs text-text-secondary hover:text-text-primary"
+            >
+              <PlusIcon className="h-3 w-3" />
+              Schedule a week
+            </button>
+          )}
+        </div>
         <div className="overflow-hidden rounded-lg border border-border bg-surface-primary">
           {now.upcoming.length === 0 ? (
             <p className="p-4 text-center text-sm text-text-tertiary">Nothing scheduled.</p>
@@ -151,7 +207,10 @@ export function ProdSupportPage() {
               {now.upcoming.map((a) => (
                 <li
                   key={a.id}
-                  className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-3 last:border-b-0"
+                  onClick={() => canEdit && setEditing(a as RotaEntry)}
+                  className={`flex flex-wrap items-center justify-between gap-3 border-b border-border p-3 last:border-b-0 ${
+                    canEdit ? 'cursor-pointer hover:bg-surface-secondary' : ''
+                  }`}
                 >
                   <div className="flex items-center gap-3 text-sm">
                     <span className="rounded-pill bg-surface-secondary px-2 py-0.5 text-xs text-text-tertiary">
@@ -162,7 +221,10 @@ export function ProdSupportPage() {
                       {formatRange(a.startDate, a.endDate)}
                     </span>
                   </div>
-                  <div className="flex flex-wrap gap-2">
+                  <div
+                    className="flex flex-wrap gap-2"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     {renderPerson(a.primary)}
                     {renderPerson(a.secondary)}
                   </div>
@@ -210,6 +272,18 @@ export function ProdSupportPage() {
         <CheckIcon className="h-3 w-3" />
         Replaces the "VIS-2 PROD Support.xlsx" spreadsheet. Per-team pairs handle production defects for their domain.
       </div>
+
+      {(editing || creating) && (
+        <ProdSupportModal
+          existing={editing}
+          teamId={creating?.teamId}
+          teamName={creating?.teamName}
+          onClose={() => {
+            setEditing(null);
+            setCreating(null);
+          }}
+        />
+      )}
     </div>
   );
 }
