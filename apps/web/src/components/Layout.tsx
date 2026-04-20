@@ -306,7 +306,7 @@ export function Layout({ children }: { children: ReactNode }) {
               {apiVersion ? `v${apiVersion}` : '…'}
             </span>
             <span className="truncate">
-              Created by <span className="text-text-secondary">Hristo Minkov</span> :)
+              Created by <span className="text-text-secondary">Hristo Minkov</span>
             </span>
           </div>
         </div>
