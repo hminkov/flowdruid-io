@@ -698,7 +698,7 @@ export function DashboardPage() {
         {/* Table = dense row-style list with more info */}
         {overviewView === 'table' && (
           <ul className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-surface-primary">
-            <li className="hidden sm:flex items-center gap-3 bg-surface-secondary px-3 py-1.5 text-[10px] uppercase tracking-wider text-text-tertiary">
+            <li className="hidden items-center gap-3 bg-surface-secondary px-3 py-1.5 text-[10px] uppercase tracking-wider text-text-tertiary md:flex">
               <span className="w-7" />
               <span className="flex-1">Team</span>
               <span className="w-[88px]">Lead</span>
@@ -744,7 +744,7 @@ export function DashboardPage() {
                     )}
                   </div>
                 </div>
-                <div className="w-[88px] shrink-0 truncate text-xs text-text-tertiary">
+                <div className="hidden w-[88px] shrink-0 truncate text-xs text-text-tertiary md:block">
                   {t.lead ? (
                     <button
                       type="button"
@@ -760,7 +760,7 @@ export function DashboardPage() {
                     '—'
                   )}
                 </div>
-                <div className="flex w-[140px] shrink-0 flex-wrap gap-1">
+                <div className="hidden w-[140px] shrink-0 flex-wrap gap-1 sm:flex">
                   {t.avail > 0 && (
                     <span className="inline-flex items-center gap-1 rounded-pill bg-success-bg px-1.5 py-0.5 text-[10px] text-success-text">
                       <AvailGlyph status="AVAILABLE" size="xs" />
@@ -786,10 +786,10 @@ export function DashboardPage() {
                     </span>
                   )}
                 </div>
-                <div className="w-[70px] shrink-0 text-right text-xs tabular-nums text-text-tertiary">
+                <div className="hidden w-[70px] shrink-0 text-right text-xs tabular-nums text-text-tertiary md:block">
                   {t.standupsPosted}/{t.memberCount}
                 </div>
-                <div className="flex w-[140px] shrink-0 items-center gap-2">
+                <div className="flex w-full shrink-0 items-center gap-2 sm:w-[140px]">
                   <div className="h-1 flex-1 overflow-hidden rounded-full bg-surface-secondary">
                     <div
                       className={`h-full ${capacityTone(t.avgCapacity)}`}
@@ -800,7 +800,7 @@ export function DashboardPage() {
                     {t.avgCapacity}%
                   </span>
                 </div>
-                <ArrowRightIcon className="h-3 w-3 shrink-0 text-text-tertiary" />
+                <ArrowRightIcon className="hidden h-3 w-3 shrink-0 text-text-tertiary sm:block" />
               </li>
             ))}
           </ul>

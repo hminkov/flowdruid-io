@@ -879,17 +879,17 @@ function TableView({
         </button>
       </div>
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[960px] text-sm">
+        <table className="w-full text-sm md:min-w-[960px]">
           <thead className="border-b border-border bg-surface-secondary">
             <tr className="text-left text-xs text-text-tertiary">
               <th className="w-10 p-3"></th>
               <th className="p-3">Service</th>
-              <th className="p-3">Client</th>
-              <th className="p-3">Feature</th>
+              <th className="hidden p-3 lg:table-cell">Client</th>
+              <th className="hidden p-3 xl:table-cell">Feature</th>
               <th className="p-3">Status</th>
-              <th className="p-3">Owners</th>
-              <th className="p-3">Notes</th>
-              <th className="p-3">Updated</th>
+              <th className="hidden p-3 md:table-cell">Owners</th>
+              <th className="hidden p-3 xl:table-cell">Notes</th>
+              <th className="hidden p-3 md:table-cell">Updated</th>
             </tr>
           </thead>
           <tbody>
@@ -1007,21 +1007,38 @@ function TableView({
                         </td>
                         <td className="p-3 align-top font-semibold text-text-primary">
                           {b.service}
+                          {/* On mobile, fold client-tag + feature + updated
+                              below the service name since those columns are
+                              hidden at narrow widths. */}
+                          <div className="mt-1 flex flex-wrap items-center gap-1.5 md:hidden">
+                            {b.clientTag && <ClientTagPill tag={b.clientTag} />}
+                            {b.feature && (
+                              <span className="text-xs text-text-secondary">{b.feature}</span>
+                            )}
+                            <span className="text-[11px] text-text-tertiary tabular-nums">
+                              · {formatRelative(b.updatedAt)}
+                            </span>
+                          </div>
                         </td>
-                        <td className="p-3 align-top">
+                        <td className="hidden p-3 align-top lg:table-cell">
                           {b.clientTag ? (
                             <ClientTagPill tag={b.clientTag} />
                           ) : (
                             <span className="text-text-tertiary">—</span>
                           )}
                         </td>
-                        <td className="p-3 align-top text-text-secondary">{b.feature ?? '—'}</td>
+                        <td className="hidden p-3 align-top text-text-secondary xl:table-cell">
+                          {b.feature ?? '—'}
+                        </td>
                         <td className="p-3 align-top">
                           <span className={`rounded-pill px-2 py-0.5 text-[11px] font-medium ${statusTone[b.status]}`}>
                             {statusLabel[b.status]}
                           </span>
                         </td>
-                        <td className="p-3 align-top" onClick={(e) => e.stopPropagation()}>
+                        <td
+                          className="hidden p-3 align-top md:table-cell"
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           <div className="flex flex-col gap-1.5 text-xs">
                             {b.devOwner && (
                               <OwnerRow
@@ -1042,14 +1059,14 @@ function TableView({
                             )}
                           </div>
                         </td>
-                        <td className="p-3 align-top text-xs text-text-tertiary">
+                        <td className="hidden p-3 align-top text-xs text-text-tertiary xl:table-cell">
                           {b.notes ? (
                             <span className="line-clamp-2">{b.notes}</span>
                           ) : (
                             <span className="opacity-50">—</span>
                           )}
                         </td>
-                        <td className="p-3 align-top text-xs text-text-tertiary tabular-nums">
+                        <td className="hidden p-3 align-top text-xs text-text-tertiary tabular-nums md:table-cell">
                           {formatRelative(b.updatedAt)}
                         </td>
                       </tr>
