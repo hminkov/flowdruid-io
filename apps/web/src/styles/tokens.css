@@ -109,104 +109,112 @@
  * based on the stored preference so there is no flash on first paint.
  */
 
+/*
+ * Dark mode — tuned for a Slack-ish feel:
+ * cool navy surfaces with a faint purple undertone (nods to the brand
+ * hue), near-white text for primary content, and muted semantic chip
+ * backgrounds so status pills whisper rather than shout. Kept in sync
+ * between the media-query and the :root.dark override blocks below.
+ */
+
 @media (prefers-color-scheme: dark) {
   :root:not(.light) {
-    --brand-50:  #1F1B3E;
-    --brand-100: #2D2754;
-    --brand-500: #7F77DD;
-    --brand-600: #7F77DD;
+    --brand-50:  #231E4A;
+    --brand-100: #342B6E;
+    --brand-500: #9B94F0;
+    --brand-600: #8F87EE;
     --brand-800: #CECBF6;
     --brand-900: #EEEDFE;
 
-    --surface-primary:   #1A1A1A;
-    --surface-secondary: #242422;
-    --surface-tertiary:  #2C2C2A;
+    --surface-primary:   #1A1D25;
+    --surface-secondary: #22262F;
+    --surface-tertiary:  #2C313A;
 
-    --border-default: rgba(255, 255, 255, 0.08);
-    --border-strong:  rgba(255, 255, 255, 0.15);
+    --border-default: rgba(255, 255, 255, 0.10);
+    --border-strong:  rgba(255, 255, 255, 0.18);
 
-    --text-primary:   #F1EFE8;
-    --text-secondary: #B4B2A9;
-    --text-tertiary:  #888780;
+    --text-primary:   #E8EAED;
+    --text-secondary: #ADB0B6;
+    --text-tertiary:  #7E828A;
 
-    --success-bg:   #27500A;
-    --success-text: #C0DD97;
+    --success-bg:   #1F3A1E;
+    --success-text: #A8D88B;
 
-    --warning-bg:   #633806;
-    --warning-text: #FAC775;
+    --warning-bg:   #3F2D10;
+    --warning-text: #F4B860;
 
-    --danger-bg:   #791F1F;
-    --danger-text: #F7C1C1;
+    --danger-bg:   #3E1A1A;
+    --danger-text: #F29AA3;
 
-    --info-bg:   #0C447C;
-    --info-text: #B5D4F4;
+    --info-bg:   #152C44;
+    --info-text: #93C5FD;
 
-    --accent-bg:   #72243E;
-    --accent-text: #F4C0D1;
+    --accent-bg:   #3C1A28;
+    --accent-text: #F0A8BE;
 
-    --neutral-bg:   #2C2C2A;
-    --neutral-text: #B4B2A9;
+    --neutral-bg:   #2A2E36;
+    --neutral-text: #B4B7BE;
 
-    --avatar-1-bg: #2D2754; --avatar-1-text: #CECBF6;
-    --avatar-2-bg: #085041; --avatar-2-text: #9FE1CB;
-    --avatar-3-bg: #72243E; --avatar-3-text: #F4C0D1;
-    --avatar-4-bg: #633806; --avatar-4-text: #FAC775;
-    --avatar-5-bg: #0C447C; --avatar-5-text: #B5D4F4;
-    --avatar-6-bg: #444441; --avatar-6-text: #D3D1C7;
+    --avatar-1-bg: #342B6E; --avatar-1-text: #CECBF6;
+    --avatar-2-bg: #0E4A3E; --avatar-2-text: #A4E1CF;
+    --avatar-3-bg: #66223A; --avatar-3-text: #F4BDCF;
+    --avatar-4-bg: #5C3410; --avatar-4-text: #F7C58D;
+    --avatar-5-bg: #143A62; --avatar-5-text: #A9CEF3;
+    --avatar-6-bg: #3A3E47; --avatar-6-text: #D2D5DB;
 
-    --shadow-float: 0 4px 12px rgba(0, 0, 0, 0.4),
-                    0 0 0 0.5px rgba(255, 255, 255, 0.06);
+    --shadow-float: 0 4px 14px rgba(0, 0, 0, 0.55),
+                    0 0 0 0.5px rgba(255, 255, 255, 0.08);
 
-    --overlay-backdrop: rgba(0, 0, 0, 0.65);
+    --overlay-backdrop: rgba(10, 12, 16, 0.72);
   }
 }
 
 :root.dark {
-  --brand-50:  #1F1B3E;
-  --brand-100: #2D2754;
-  --brand-500: #7F77DD;
-  --brand-600: #7F77DD;
+  --brand-50:  #231E4A;
+  --brand-100: #342B6E;
+  --brand-500: #9B94F0;
+  --brand-600: #8F87EE;
   --brand-800: #CECBF6;
   --brand-900: #EEEDFE;
 
-  --surface-primary:   #1A1A1A;
-  --surface-secondary: #242422;
-  --surface-tertiary:  #2C2C2A;
+  --surface-primary:   #1A1D25;
+  --surface-secondary: #22262F;
+  --surface-tertiary:  #2C313A;
 
-  --border-default: rgba(255, 255, 255, 0.08);
-  --border-strong:  rgba(255, 255, 255, 0.15);
+  --border-default: rgba(255, 255, 255, 0.10);
+  --border-strong:  rgba(255, 255, 255, 0.18);
 
-  --text-primary:   #F1EFE8;
-  --text-secondary: #B4B2A9;
-  --text-tertiary:  #888780;
+  --text-primary:   #E8EAED;
+  --text-secondary: #ADB0B6;
+  --text-tertiary:  #7E828A;
 
-  --success-bg:   #27500A;
-  --success-text: #C0DD97;
+  --success-bg:   #1F3A1E;
+  --success-text: #A8D88B;
 
-  --warning-bg:   #633806;
-  --warning-text: #FAC775;
+  --warning-bg:   #3F2D10;
+  --warning-text: #F4B860;
 
-  --danger-bg:   #791F1F;
-  --danger-text: #F7C1C1;
+  --danger-bg:   #3E1A1A;
+  --danger-text: #F29AA3;
 
-  --info-bg:   #0C447C;
-  --info-text: #B5D4F4;
+  --info-bg:   #152C44;
+  --info-text: #93C5FD;
 
-  --accent-bg:   #72243E;
-  --accent-text: #F4C0D1;
+  --accent-bg:   #3C1A28;
+  --accent-text: #F0A8BE;
 
-  --neutral-bg:   #2C2C2A;
-  --neutral-text: #B4B2A9;
+  --neutral-bg:   #2A2E36;
+  --neutral-text: #B4B7BE;
 
-  --avatar-1-bg: #2D2754; --avatar-1-text: #CECBF6;
-  --avatar-2-bg: #085041; --avatar-2-text: #9FE1CB;
-  --avatar-3-bg: #72243E; --avatar-3-text: #F4C0D1;
-  --avatar-4-bg: #633806; --avatar-4-text: #FAC775;
-  --avatar-5-bg: #0C447C; --avatar-5-text: #B5D4F4;
-  --avatar-6-bg: #444441; --avatar-6-text: #D3D1C7;
+  --avatar-1-bg: #342B6E; --avatar-1-text: #CECBF6;
+  --avatar-2-bg: #0E4A3E; --avatar-2-text: #A4E1CF;
+  --avatar-3-bg: #66223A; --avatar-3-text: #F4BDCF;
+  --avatar-4-bg: #5C3410; --avatar-4-text: #F7C58D;
+  --avatar-5-bg: #143A62; --avatar-5-text: #A9CEF3;
+  --avatar-6-bg: #3A3E47; --avatar-6-text: #D2D5DB;
 
-  --shadow-float: 0 4px 12px rgba(0, 0, 0, 0.4),
-                  0 0 0 0.5px rgba(255, 255, 255, 0.06);
+  --shadow-float: 0 4px 14px rgba(0, 0, 0, 0.55),
+                  0 0 0 0.5px rgba(255, 255, 255, 0.08);
 
-  --overlay-backdrop: rgba(0, 0, 0, 0.65);
+  --overlay-backdrop: rgba(10, 12, 16, 0.72);
 }
