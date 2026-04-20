@@ -1,7 +1,7 @@
 // apps/api/prisma/seed.ts
 //
 // Seed data for Flowdruid — Cloudruid internal team.
-// Four business teams: Deposit/Withdrawal, Exchange, Account, QA.
+// Twelve teams matching the Cloudruid org chart.
 // All user passwords are "Password123!" (hashed with bcryptjs cost 10).
 
 import { PrismaClient } from '@prisma/client';
@@ -62,17 +62,42 @@ async function main() {
     data: { name: 'Cloudruid', slug: 'cloudruid' },
   });
 
-  const depositTeam = await prisma.team.create({
-    data: { name: 'Deposit / Withdrawal', orgId: org.id, slackChannelId: 'C01DEP00001' },
+  // 12 teams from team_members.xlsx. The first xlsx column becomes the team lead.
+  const accountTeam = await prisma.team.create({
+    data: { name: 'Account', orgId: org.id, slackChannelId: 'C01ACC00001' },
+  });
+  const yieldTeam = await prisma.team.create({
+    data: { name: 'Yield', orgId: org.id, slackChannelId: 'C01YLD00002' },
+  });
+  const cardPaymentsTeam = await prisma.team.create({
+    data: { name: 'Card Payments', orgId: org.id, slackChannelId: 'C01CRD00003' },
+  });
+  const coinsTeam = await prisma.team.create({
+    data: { name: 'Coins — Fiat & Crypto', orgId: org.id, slackChannelId: 'C01CNS00004' },
   });
   const exchangeTeam = await prisma.team.create({
-    data: { name: 'Exchange', orgId: org.id, slackChannelId: 'C01EXC00002' },
+    data: { name: 'Exchange', orgId: org.id, slackChannelId: 'C01EXC00005' },
   });
-  const accountTeam = await prisma.team.create({
-    data: { name: 'Account', orgId: org.id, slackChannelId: 'C01ACC00003' },
+  const metalbackTeam = await prisma.team.create({
+    data: { name: 'Metalback / Cashback', orgId: org.id, slackChannelId: 'C01MTB00006' },
+  });
+  const kpayTeam = await prisma.team.create({
+    data: { name: 'KPay', orgId: org.id, slackChannelId: 'C01KPY00007' },
+  });
+  const transactionHistoryTeam = await prisma.team.create({
+    data: { name: 'Transaction History & Reporting', orgId: org.id, slackChannelId: 'C01THR00008' },
+  });
+  const mmTeam = await prisma.team.create({
+    data: { name: 'MM team', orgId: org.id, slackChannelId: 'C01MMT00009' },
+  });
+  const feTeam = await prisma.team.create({
+    data: { name: 'FE team', orgId: org.id, slackChannelId: 'C01FET00010' },
+  });
+  const mileniumFalconTeam = await prisma.team.create({
+    data: { name: 'Milenium falcon', orgId: org.id, slackChannelId: 'C01MFT00011' },
   });
   const qaTeam = await prisma.team.create({
-    data: { name: 'QA', orgId: org.id, slackChannelId: 'C01QA000004' },
+    data: { name: 'QA Team', orgId: org.id, slackChannelId: 'C01QA000012' },
   });
 
   type Seed = {
@@ -83,48 +108,68 @@ async function main() {
     availability: 'AVAILABLE' | 'BUSY' | 'REMOTE' | 'ON_LEAVE';
   };
 
+  // Mirrors team_members.xlsx — first-listed person per team becomes TEAM_LEAD.
   const seeds: Seed[] = [
-    // CEO
+    // CEO — no team scope
     { name: 'Borislav Shekerov', email: 'borislav.shekerov@cloudruid.com', role: 'ADMIN', teamId: null, availability: 'AVAILABLE' },
 
-    // Admin (user)
-    { name: 'Hristo Minkov', email: 'hristo.minkov@cloudruid.com', role: 'ADMIN', teamId: depositTeam.id, availability: 'AVAILABLE' },
+    // Account (Sign up / Log in / KYC / MFA)
+    { name: 'Svetoslav Kochev', email: 'svetoslav.kochev@cloudruid.com', role: 'TEAM_LEAD', teamId: accountTeam.id, availability: 'AVAILABLE' },
+    { name: 'Radoslav Dimitrov', email: 'radoslav.dimitrov@cloudruid.com', role: 'DEVELOPER', teamId: accountTeam.id, availability: 'AVAILABLE' },
+    { name: 'Dimitar Tagarev', email: 'dimitar.tagarev@cloudruid.com', role: 'DEVELOPER', teamId: accountTeam.id, availability: 'REMOTE' },
+    { name: 'Ivo Iliev', email: 'ivo.iliev@cloudruid.com', role: 'DEVELOPER', teamId: accountTeam.id, availability: 'AVAILABLE' },
 
-    // Deposit / Withdrawal
-    { name: 'Krasimir Gizdov', email: 'krasimir.gizdov@cloudruid.com', role: 'TEAM_LEAD', teamId: depositTeam.id, availability: 'AVAILABLE' },
-    { name: 'Borislav Iliev', email: 'borislav.iliev@cloudruid.com', role: 'DEVELOPER', teamId: depositTeam.id, availability: 'BUSY' },
-    { name: 'Dimitar Dimitrov', email: 'dimitar.dimitrov@cloudruid.com', role: 'DEVELOPER', teamId: depositTeam.id, availability: 'AVAILABLE' },
-    { name: 'Ivan Backrachev', email: 'ivan.backrachev@cloudruid.com', role: 'DEVELOPER', teamId: depositTeam.id, availability: 'REMOTE' },
-    { name: 'Elitsa Stancheva', email: 'elitsa.stancheva@cloudruid.com', role: 'DEVELOPER', teamId: depositTeam.id, availability: 'AVAILABLE' },
-    { name: 'Ivan Borisov', email: 'ivan.borisov@cloudruid.com', role: 'DEVELOPER', teamId: depositTeam.id, availability: 'AVAILABLE' },
-    { name: 'Tihomir Evgeniev', email: 'tihomir.evgeniev@cloudruid.com', role: 'DEVELOPER', teamId: depositTeam.id, availability: 'BUSY' },
-    { name: 'Dimitar Kolev', email: 'dimitar.kolev@cloudruid.com', role: 'DEVELOPER', teamId: depositTeam.id, availability: 'AVAILABLE' },
-    { name: 'Dimitar Tagarev', email: 'dimitar.tagarev@cloudruid.com', role: 'DEVELOPER', teamId: depositTeam.id, availability: 'REMOTE' },
-    { name: 'Marian Valchinov', email: 'marian.valchinov@cloudruid.com', role: 'DEVELOPER', teamId: depositTeam.id, availability: 'AVAILABLE' },
-    { name: 'Renal Ahmedov', email: 'renal.ahmedov@cloudruid.com', role: 'DEVELOPER', teamId: depositTeam.id, availability: 'REMOTE' },
-    { name: 'Teodor Karakashev', email: 'teodor.karakashev@cloudruid.com', role: 'DEVELOPER', teamId: depositTeam.id, availability: 'AVAILABLE' },
-    { name: 'Nikola Valchinov', email: 'nikola.valchinov@cloudruid.com', role: 'DEVELOPER', teamId: depositTeam.id, availability: 'BUSY' },
-    { name: 'Veselin Velev', email: 'veselin.velev@cloudruid.com', role: 'DEVELOPER', teamId: depositTeam.id, availability: 'AVAILABLE' },
-    { name: 'Boris', email: 'boris@cloudruid.com', role: 'DEVELOPER', teamId: depositTeam.id, availability: 'ON_LEAVE' },
+    // Yield
+    { name: 'Todor Kanev', email: 'todor.kanev@cloudruid.com', role: 'TEAM_LEAD', teamId: yieldTeam.id, availability: 'REMOTE' },
+    { name: 'Keti Hambarliyska', email: 'keti.hambarliyska@cloudruid.com', role: 'DEVELOPER', teamId: yieldTeam.id, availability: 'AVAILABLE' },
+
+    // Card Payments
+    { name: 'Lazar Avramov', email: 'lazar.avramov@cloudruid.com', role: 'TEAM_LEAD', teamId: cardPaymentsTeam.id, availability: 'AVAILABLE' },
+    { name: 'Dimitar Kolev', email: 'dimitar.kolev@cloudruid.com', role: 'DEVELOPER', teamId: cardPaymentsTeam.id, availability: 'AVAILABLE' },
+
+    // Coins — Fiat & Crypto (Deposit / Withdrawal / Send / Receive)
+    { name: 'Krasimir Gizdov', email: 'krasimir.gizdov@cloudruid.com', role: 'TEAM_LEAD', teamId: coinsTeam.id, availability: 'AVAILABLE' },
+    { name: 'Elitsa Stancheva', email: 'elitsa.stancheva@cloudruid.com', role: 'DEVELOPER', teamId: coinsTeam.id, availability: 'AVAILABLE' },
+    { name: 'Ivan Backrachev', email: 'ivan.backrachev@cloudruid.com', role: 'DEVELOPER', teamId: coinsTeam.id, availability: 'REMOTE' },
+    { name: 'Borislav Iliev', email: 'borislav.iliev@cloudruid.com', role: 'DEVELOPER', teamId: coinsTeam.id, availability: 'BUSY' },
+    { name: 'Hristo Minkov', email: 'hristo.minkov@cloudruid.com', role: 'ADMIN', teamId: coinsTeam.id, availability: 'AVAILABLE' },
+    { name: 'Dimitar Dimitrov', email: 'dimitar.dimitrov@cloudruid.com', role: 'DEVELOPER', teamId: coinsTeam.id, availability: 'AVAILABLE' },
 
     // Exchange
-    { name: 'Ivaylo Hadzhiyski', email: 'ivaylo.hadzhiyski@cloudruid.com', role: 'TEAM_LEAD', teamId: exchangeTeam.id, availability: 'AVAILABLE' },
-    { name: 'Panayot Kostov', email: 'panayot.kostov@cloudruid.com', role: 'DEVELOPER', teamId: exchangeTeam.id, availability: 'AVAILABLE' },
+    { name: 'Panayot Kostov', email: 'panayot.kostov@cloudruid.com', role: 'TEAM_LEAD', teamId: exchangeTeam.id, availability: 'AVAILABLE' },
     { name: 'Ralitsa Stancheva', email: 'ralitsa.stancheva@cloudruid.com', role: 'DEVELOPER', teamId: exchangeTeam.id, availability: 'BUSY' },
-    { name: 'Radoslav Dimitrov', email: 'radoslav.dimitrov@cloudruid.com', role: 'DEVELOPER', teamId: exchangeTeam.id, availability: 'AVAILABLE' },
+    { name: 'Ivaylo Hadzhiyski', email: 'ivaylo.hadzhiyski@cloudruid.com', role: 'DEVELOPER', teamId: exchangeTeam.id, availability: 'AVAILABLE' },
+    { name: 'Viktor Neykov', email: 'viktor.neykov@cloudruid.com', role: 'DEVELOPER', teamId: exchangeTeam.id, availability: 'AVAILABLE' },
 
-    // Account
-    { name: 'Svetoslav Kochev', email: 'svetoslav.kochev@cloudruid.com', role: 'TEAM_LEAD', teamId: accountTeam.id, availability: 'AVAILABLE' },
-    { name: 'Ivo Iliev', email: 'ivo.iliev@cloudruid.com', role: 'DEVELOPER', teamId: accountTeam.id, availability: 'AVAILABLE' },
-    { name: 'Todor Kanev', email: 'todor.kanev@cloudruid.com', role: 'DEVELOPER', teamId: accountTeam.id, availability: 'REMOTE' },
-    { name: 'Keti Hambarliyska', email: 'keti.hambarliyska@cloudruid.com', role: 'DEVELOPER', teamId: accountTeam.id, availability: 'AVAILABLE' },
+    // Metalback / Cashback
+    { name: 'Renal Ahmedov', email: 'renal.ahmedov@cloudruid.com', role: 'TEAM_LEAD', teamId: metalbackTeam.id, availability: 'REMOTE' },
+    { name: 'Martin Iliev', email: 'martin.iliev@cloudruid.com', role: 'DEVELOPER', teamId: metalbackTeam.id, availability: 'AVAILABLE' },
 
-    // QA
-    { name: 'Ivelina Georgieva', email: 'ivelina.georgieva@cloudruid.com', role: 'TEAM_LEAD', teamId: qaTeam.id, availability: 'AVAILABLE' },
-    { name: 'Diana Demireva', email: 'diana.demireva@cloudruid.com', role: 'DEVELOPER', teamId: qaTeam.id, availability: 'AVAILABLE' },
-    { name: 'Veronika Kashaykova', email: 'veronika.kashaykova@cloudruid.com', role: 'DEVELOPER', teamId: qaTeam.id, availability: 'AVAILABLE' },
-    { name: 'Yuliia Pylaieva', email: 'yuliia.pylaieva@cloudruid.com', role: 'DEVELOPER', teamId: qaTeam.id, availability: 'ON_LEAVE' },
+    // KPay
+    { name: 'Rado Ivanov', email: 'rado.ivanov@cloudruid.com', role: 'TEAM_LEAD', teamId: kpayTeam.id, availability: 'AVAILABLE' },
+    { name: 'Veronika Kashaykova', email: 'veronika.kashaykova@cloudruid.com', role: 'DEVELOPER', teamId: kpayTeam.id, availability: 'AVAILABLE' },
+
+    // Transaction History & Reporting
+    { name: 'Martin Panayotov', email: 'martin.panayotov@cloudruid.com', role: 'TEAM_LEAD', teamId: transactionHistoryTeam.id, availability: 'AVAILABLE' },
+    { name: 'Ivan Borisov', email: 'ivan.borisov@cloudruid.com', role: 'DEVELOPER', teamId: transactionHistoryTeam.id, availability: 'AVAILABLE' },
+
+    // MM team
+    { name: 'Gabriel Mindev', email: 'gabriel.mindev@cloudruid.com', role: 'TEAM_LEAD', teamId: mmTeam.id, availability: 'AVAILABLE' },
+    { name: 'Aleksandar Angelov', email: 'aleksandar.angelov@cloudruid.com', role: 'DEVELOPER', teamId: mmTeam.id, availability: 'AVAILABLE' },
+
+    // FE team
+    { name: 'Tihomir Evgeniev', email: 'tihomir.evgeniev@cloudruid.com', role: 'TEAM_LEAD', teamId: feTeam.id, availability: 'BUSY' },
+
+    // Milenium falcon
+    { name: 'Marian Valchinov', email: 'marian.valchinov@cloudruid.com', role: 'TEAM_LEAD', teamId: mileniumFalconTeam.id, availability: 'AVAILABLE' },
+    { name: 'Nikola Valchinov', email: 'nikola.valchinov@cloudruid.com', role: 'DEVELOPER', teamId: mileniumFalconTeam.id, availability: 'BUSY' },
+    { name: 'Veselin Velev', email: 'veselin.velev@cloudruid.com', role: 'DEVELOPER', teamId: mileniumFalconTeam.id, availability: 'AVAILABLE' },
+
+    // QA Team
+    { name: 'Yuliia Pylaieva', email: 'yuliia.pylaieva@cloudruid.com', role: 'TEAM_LEAD', teamId: qaTeam.id, availability: 'ON_LEAVE' },
     { name: 'Momchil Dimitrov', email: 'momchil.dimitrov@cloudruid.com', role: 'DEVELOPER', teamId: qaTeam.id, availability: 'AVAILABLE' },
+    { name: 'Ivelina Georgieva', email: 'ivelina.georgieva@cloudruid.com', role: 'DEVELOPER', teamId: qaTeam.id, availability: 'AVAILABLE' },
+    { name: 'Diana Demireva', email: 'diana.demireva@cloudruid.com', role: 'DEVELOPER', teamId: qaTeam.id, availability: 'AVAILABLE' },
   ];
 
   const users: Record<string, { id: string; name: string }> = {};
@@ -168,15 +213,20 @@ async function main() {
   const tihomir = id('tihomir.evgeniev@cloudruid.com');
   const marian = id('marian.valchinov@cloudruid.com');
   const renal = id('renal.ahmedov@cloudruid.com');
-  const teodor = id('teodor.karakashev@cloudruid.com');
   const nikola = id('nikola.valchinov@cloudruid.com');
   const veselin = id('veselin.velev@cloudruid.com');
-  const boris = id('boris@cloudruid.com');
   const keti = id('keti.hambarliyska@cloudruid.com');
   const radoslav = id('radoslav.dimitrov@cloudruid.com');
   const ivanBorisov = id('ivan.borisov@cloudruid.com');
   const dimitarKolev = id('dimitar.kolev@cloudruid.com');
   const dimitarTagarev = id('dimitar.tagarev@cloudruid.com');
+  const lazar = id('lazar.avramov@cloudruid.com');
+  const viktor = id('viktor.neykov@cloudruid.com');
+  const rado = id('rado.ivanov@cloudruid.com');
+  const martinP = id('martin.panayotov@cloudruid.com');
+  const martinI = id('martin.iliev@cloudruid.com');
+  const gabriel = id('gabriel.mindev@cloudruid.com');
+  const aleksandar = id('aleksandar.angelov@cloudruid.com');
 
   // ─── TICKETS — Deposit / Withdrawal ─────────────────────────────────────
   const dw1 = await prisma.ticket.create({
@@ -188,7 +238,7 @@ async function main() {
       description: 'Outbound SEPA calls time out occasionally; implement exponential backoff with idempotency.',
       status: 'IN_PROGRESS',
       priority: 'HIGH',
-      teamId: depositTeam.id,
+      teamId: coinsTeam.id,
       syncedAt: hoursAgo(1),
     },
   });
@@ -204,7 +254,7 @@ async function main() {
       description: 'Edge: deposits credited before required confirmations when node reports stale head.',
       status: 'IN_PROGRESS',
       priority: 'HIGH',
-      teamId: depositTeam.id,
+      teamId: coinsTeam.id,
       syncedAt: hoursAgo(1),
     },
   });
@@ -219,7 +269,7 @@ async function main() {
       description: 'Apply per-currency daily caps and surface the remaining amount in the UI.',
       status: 'IN_REVIEW',
       priority: 'MEDIUM',
-      teamId: depositTeam.id,
+      teamId: coinsTeam.id,
       syncedAt: hoursAgo(1),
     },
   });
@@ -232,7 +282,7 @@ async function main() {
       description: 'Document the triage and manual-credit flow for stuck deposits.',
       status: 'TODO',
       priority: 'LOW',
-      teamId: depositTeam.id,
+      teamId: coinsTeam.id,
     },
   });
 
@@ -353,7 +403,7 @@ async function main() {
       description: 'Verify HMAC on every inbound PSP webhook. Reject unsigned or stale payloads.',
       status: 'IN_PROGRESS',
       priority: 'HIGH',
-      teamId: depositTeam.id,
+      teamId: coinsTeam.id,
       syncedAt: hoursAgo(1),
     },
   });
@@ -370,7 +420,7 @@ async function main() {
       description: 'Extract fee rules into a config table and add per-tier overrides.',
       status: 'IN_PROGRESS',
       priority: 'MEDIUM',
-      teamId: depositTeam.id,
+      teamId: coinsTeam.id,
       syncedAt: hoursAgo(1),
     },
   });
@@ -385,7 +435,7 @@ async function main() {
       description: 'Connect to partner bank SWIFT endpoint; parse MT103 inbound messages into deposits.',
       status: 'TODO',
       priority: 'HIGH',
-      teamId: depositTeam.id,
+      teamId: coinsTeam.id,
       syncedAt: hoursAgo(1),
     },
   });
@@ -401,7 +451,7 @@ async function main() {
       description: 'Support per-transaction drill-through from the daily reconciliation report.',
       status: 'IN_REVIEW',
       priority: 'MEDIUM',
-      teamId: depositTeam.id,
+      teamId: coinsTeam.id,
       syncedAt: hoursAgo(1),
     },
   });
@@ -417,7 +467,7 @@ async function main() {
       description: 'Record every status change on a deposit with actor and source system.',
       status: 'DONE',
       priority: 'LOW',
-      teamId: depositTeam.id,
+      teamId: coinsTeam.id,
       syncedAt: hoursAgo(30),
     },
   });
@@ -430,7 +480,7 @@ async function main() {
       description: 'Step-by-step for the weekly Monday reconciliation call.',
       status: 'TODO',
       priority: 'LOW',
-      teamId: depositTeam.id,
+      teamId: coinsTeam.id,
     },
   });
   await prisma.ticketAssignment.create({ data: { ticketId: dw10.id, userId: ivan } });
@@ -442,7 +492,7 @@ async function main() {
       description: 'Dashboard showing age of the oldest unresolved deposit per PSP.',
       status: 'TODO',
       priority: 'MEDIUM',
-      teamId: depositTeam.id,
+      teamId: coinsTeam.id,
     },
   });
   await prisma.ticketAssignment.create({ data: { ticketId: dw11.id, userId: krasimir } });
@@ -457,7 +507,7 @@ async function main() {
       description: 'Cron lands at 23:00 UTC instead of local time for non-UTC orgs.',
       status: 'IN_PROGRESS',
       priority: 'HIGH',
-      teamId: depositTeam.id,
+      teamId: coinsTeam.id,
       syncedAt: hoursAgo(1),
     },
   });
@@ -751,7 +801,7 @@ async function main() {
   await prisma.standup.create({
     data: {
       userId: krasimir,
-      teamId: depositTeam.id,
+      teamId: coinsTeam.id,
       yesterday: 'Release planning, coordinated SEPA retry spec with Borislav and Dimitar.',
       today: 'DW-042 triage. Available for questions.',
       blockers: null,
@@ -763,7 +813,7 @@ async function main() {
   await prisma.standup.create({
     data: {
       userId: borislav,
-      teamId: depositTeam.id,
+      teamId: coinsTeam.id,
       yesterday: 'Idempotency keys for SEPA retries.',
       today: 'Continuing DW-041. Full day — no capacity for new tasks.',
       blockers: 'Need staging DB dump refreshed — @Krasimir',
@@ -775,7 +825,7 @@ async function main() {
   await prisma.standup.create({
     data: {
       userId: dimitar,
-      teamId: depositTeam.id,
+      teamId: coinsTeam.id,
       yesterday: 'SEPA retry PR reviewed; added test coverage.',
       today: 'Pairing with Borislav on DW-041. Some capacity for reviews.',
       blockers: null,
@@ -787,7 +837,7 @@ async function main() {
   await prisma.standup.create({
     data: {
       userId: ivan,
-      teamId: depositTeam.id,
+      teamId: coinsTeam.id,
       yesterday: 'DW-038 cap enforcement done; PR up for review.',
       today: 'Remote today. Responding to review comments.',
       blockers: null,
@@ -837,7 +887,7 @@ async function main() {
   await prisma.standup.create({
     data: {
       userId: krasimir,
-      teamId: depositTeam.id,
+      teamId: coinsTeam.id,
       yesterday: 'Client call, architecture review for Q3.',
       today: 'Release coordination, onboarding Ivan to the payouts flow.',
       blockers: null,
@@ -848,7 +898,7 @@ async function main() {
   await prisma.standup.create({
     data: {
       userId: borislav,
-      teamId: depositTeam.id,
+      teamId: coinsTeam.id,
       yesterday: 'Backlog grooming, Jira cleanup.',
       today: 'Starting on SEPA retries with Dimitar.',
       blockers: null,
@@ -1034,8 +1084,8 @@ async function main() {
   const rotation = [
     [krasimir, ivayloH, svetli, ivelina, panayot, tihomir, marian],
     [hristo, panayot, svetli, radoslav, borislav, renal, marian],
-    [krasimir, ivayloH, svetli, ivelina, teodor, tihomir, veselin],
-    [hristo, panayot, ivan, keti, dimitar, nikola, boris],
+    [krasimir, ivayloH, svetli, ivelina, lazar, tihomir, veselin],
+    [hristo, panayot, ivan, keti, dimitar, nikola, martinI],
     [krasimir, ivayloH, svetli, ivelina, ivanBorisov, tihomir, marian],
   ] as const;
 
@@ -1103,11 +1153,11 @@ async function main() {
     { env: 'QA5', service: 'KMS', feature: 'KYB backfilling', clientTag: 'v5.2.1', devOwnerId: tihomir, qaOwnerId: null, status: 'TEST_IN_QA', notes: null },
     { env: 'QA6', service: 'Yield engine', feature: 'Automate yield payments push', clientTag: 'v1.0.4', devOwnerId: keti, qaOwnerId: keti, status: 'TEST_IN_QA', notes: null },
     { env: 'QA6', service: 'Account', feature: 'T&C', clientTag: 'v2.1.6', devOwnerId: svetli, qaOwnerId: yuliia, status: 'PUSHED_TO_PROD', notes: null },
-    { env: 'QA7', service: 'Withdrawal-api', feature: 'Payments v2', clientTag: '2026.04.17-rc2', devOwnerId: boris, qaOwnerId: boris, status: 'TEST_IN_QA', notes: null },
+    { env: 'QA7', service: 'Withdrawal-api', feature: 'Payments v2', clientTag: '2026.04.17-rc2', devOwnerId: elitsa, qaOwnerId: momchil, status: 'TEST_IN_QA', notes: null },
     { env: 'QA8', service: 'Fiat deposit services', feature: 'Yellowcard Phase 2.1', clientTag: 'v2.1.0', devOwnerId: dimitar, qaOwnerId: momchil, status: 'READY_FOR_PROD', notes: null },
     { env: 'QA9', service: 'Account', feature: 'New IP email', clientTag: 'v2.1.7', devOwnerId: svetli, qaOwnerId: ivelina, status: 'READY_FOR_PROD', notes: 'Request from Tom' },
     { env: 'QA9', service: 'profit-and-loss-processor', feature: 'New service', clientTag: null, devOwnerId: todor, qaOwnerId: null, status: 'IN_DEVELOPMENT', notes: null },
-    { env: 'QA10', service: 'Debit card payment processing', feature: 'Chargebacks', clientTag: 'v1.3.0', devOwnerId: teodor, qaOwnerId: yuliia, status: 'IN_DEVELOPMENT', notes: null },
+    { env: 'QA10', service: 'Debit card payment processing', feature: 'Chargebacks', clientTag: 'v1.3.0', devOwnerId: lazar, qaOwnerId: yuliia, status: 'IN_DEVELOPMENT', notes: null },
     { env: 'QA10', service: 'Exchange', feature: 'Order amendment fix', clientTag: 'v3.1.3', devOwnerId: ralitsa, qaOwnerId: diana, status: 'TEST_IN_QA', notes: null },
     { env: 'STG', service: 'Kinesis test automation', feature: 'Crypto deposit/withdrawal email MFA', clientTag: '2026.04.19', devOwnerId: momchil, qaOwnerId: null, status: 'IN_DEVELOPMENT', notes: null },
     { env: 'BETA', service: 'KMS - BETA', feature: 'CoinWatch V1 - review', clientTag: 'v0.9.0-beta', devOwnerId: ivayloH, qaOwnerId: ivelina, status: 'TEST_IN_QA', notes: null },
@@ -1151,7 +1201,7 @@ async function main() {
   type Pair = [string, string];
   const rotas: { teamId: string; pairs: Pair[] }[] = [
     {
-      teamId: depositTeam.id,
+      teamId: coinsTeam.id,
       pairs: [
         [dimitar, krasimir],
         [hristo, ivan],
@@ -1170,12 +1220,12 @@ async function main() {
       pairs: [
         [ivayloH, panayot],
         [panayot, ralitsa],
-        [ivayloH, radoslav],
+        [ivayloH, viktor],
         [panayot, ivayloH],
-        [ralitsa, radoslav],
+        [ralitsa, viktor],
         [ivayloH, panayot],
         [panayot, ralitsa],
-        [ivayloH, radoslav],
+        [ivayloH, viktor],
         [panayot, ralitsa],
         [ivayloH, panayot],
       ],
@@ -1184,28 +1234,28 @@ async function main() {
       teamId: accountTeam.id,
       pairs: [
         [svetli, ivayloI],
-        [ivayloI, todor],
-        [svetli, keti],
-        [todor, keti],
+        [ivayloI, radoslav],
+        [svetli, dimitarTagarev],
+        [radoslav, dimitarTagarev],
         [svetli, ivayloI],
-        [ivayloI, todor],
-        [svetli, keti],
-        [todor, svetli],
-        [ivayloI, keti],
-        [svetli, todor],
+        [ivayloI, radoslav],
+        [svetli, dimitarTagarev],
+        [radoslav, svetli],
+        [ivayloI, dimitarTagarev],
+        [svetli, radoslav],
       ],
     },
     {
       teamId: qaTeam.id,
       pairs: [
         [ivelina, diana],
-        [diana, veronika],
+        [diana, yuliia],
         [ivelina, momchil],
-        [veronika, diana],
+        [yuliia, diana],
         [momchil, ivelina],
-        [ivelina, veronika],
+        [ivelina, yuliia],
         [diana, momchil],
-        [veronika, ivelina],
+        [yuliia, ivelina],
         [momchil, diana],
         [ivelina, diana],
       ],
@@ -1374,27 +1424,64 @@ async function main() {
   // One channel per team, every team member joined. A few recent messages each.
   const teamChannels: { teamId: string; members: string[]; name: string }[] = [
     {
-      teamId: depositTeam.id,
-      name: 'Deposit / Withdrawal',
-      members: [
-        hristo, krasimir, borislav, dimitar, ivan, elitsa, ivanBorisov, tihomir,
-        dimitarKolev, dimitarTagarev, marian, renal, teodor, nikola, veselin, boris,
-      ],
+      teamId: accountTeam.id,
+      name: 'Account',
+      members: [svetli, radoslav, dimitarTagarev, ivayloI],
+    },
+    {
+      teamId: yieldTeam.id,
+      name: 'Yield',
+      members: [todor, keti],
+    },
+    {
+      teamId: cardPaymentsTeam.id,
+      name: 'Card Payments',
+      members: [lazar, dimitarKolev],
+    },
+    {
+      teamId: coinsTeam.id,
+      name: 'Coins — Fiat & Crypto',
+      members: [krasimir, elitsa, ivan, borislav, hristo, dimitar],
     },
     {
       teamId: exchangeTeam.id,
       name: 'Exchange',
-      members: [ivayloH, panayot, ralitsa, radoslav],
+      members: [panayot, ralitsa, ivayloH, viktor],
     },
     {
-      teamId: accountTeam.id,
-      name: 'Account',
-      members: [svetli, ivayloI, todor, keti],
+      teamId: metalbackTeam.id,
+      name: 'Metalback / Cashback',
+      members: [renal, martinI],
+    },
+    {
+      teamId: kpayTeam.id,
+      name: 'KPay',
+      members: [rado, veronika],
+    },
+    {
+      teamId: transactionHistoryTeam.id,
+      name: 'Transaction History & Reporting',
+      members: [martinP, ivanBorisov],
+    },
+    {
+      teamId: mmTeam.id,
+      name: 'MM team',
+      members: [gabriel, aleksandar],
+    },
+    {
+      teamId: feTeam.id,
+      name: 'FE team',
+      members: [tihomir],
+    },
+    {
+      teamId: mileniumFalconTeam.id,
+      name: 'Milenium falcon',
+      members: [marian, nikola, veselin],
     },
     {
       teamId: qaTeam.id,
-      name: 'QA',
-      members: [ivelina, diana, veronika, yuliia, momchil],
+      name: 'QA Team',
+      members: [yuliia, momchil, ivelina, diana],
     },
   ];
 
@@ -1416,7 +1503,7 @@ async function main() {
 
   // Seed a handful of messages in the Deposit / Withdrawal channel
   const dwChannel = await prisma.conversation.findFirst({
-    where: { teamId: depositTeam.id, kind: 'TEAM_CHANNEL' },
+    where: { teamId: coinsTeam.id, kind: 'TEAM_CHANNEL' },
   });
   if (dwChannel) {
     const msgs: { authorId: string; body: string; minutesAgo: number }[] = [
@@ -1529,15 +1616,11 @@ async function main() {
 
   console.log('Seed complete.');
   console.log(`  Org:       ${org.name}`);
-  console.log(`  Teams:     4  (Deposit/Withdrawal, Exchange, Account, QA)`);
+  console.log(`  Teams:     12`);
   console.log(`  Users:     ${seeds.length}`);
   console.log('');
   console.log('Login credentials — password for all users: Password123!');
   console.log('  Admin:          hristo.minkov@cloudruid.com');
-  console.log('  Deposit lead:   krasimir.gizdov@cloudruid.com');
-  console.log('  Exchange lead:  ivaylo.hadzhiyski@cloudruid.com');
-  console.log('  Account lead:   svetli@cloudruid.com');
-  console.log('  QA lead:        ivelina.georgieva@cloudruid.com');
 }
 
 main()
