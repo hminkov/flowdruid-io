@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useUserDetail } from '../hooks/useUserDetail';
@@ -5,8 +6,9 @@ import { trpc } from '../lib/trpc';
 import { ThemeToggle } from './ThemeToggle';
 import { HeaderSearch } from './HeaderSearch';
 import { UserMenu } from './UserMenu';
-import { BellIcon } from './icons';
+import { BellIcon, XIcon } from './icons';
 import { Logo } from './ui/Logo';
+import { RouteErrorBoundary } from './ui';
 import type { ReactNode, SVGProps } from 'react';
 
 type IconProps = SVGProps<SVGSVGElement>;
@@ -135,6 +137,11 @@ export function Layout({ children }: { children: ReactNode }) {
   const { openUser } = useUserDetail();
   const location = useLocation();
 
+  const [mobileOpen, setMobileOpen] = useState(false);
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [location.pathname]);
+
   const isLeadOrAdmin = user?.role === 'ADMIN' || user?.role === 'TEAM_LEAD';
   const pendingLeavesQuery = trpc.leaves.pending.useQuery(undefined, { enabled: !!isLeadOrAdmin });
   const pendingCount = pendingLeavesQuery.data?.length ?? 0;
@@ -165,28 +172,48 @@ export function Layout({ children }: { children: ReactNode }) {
     .toUpperCase();
 
   return (
-    <div className="flex h-screen bg-surface-tertiary">
+    <div className="relative flex h-screen bg-surface-tertiary">
+      {/* Mobile backdrop */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 z-drawer bg-[var(--overlay-backdrop)] md:hidden"
+          onClick={() => setMobileOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
       {/* Sidebar */}
-      <aside className="flex w-16 flex-col border-r border-border bg-surface-primary lg:w-64">
-        <div className="flex h-12 items-center border-b border-border px-4">
-          <div className="hidden lg:block">
+      <aside
+        className={`fixed inset-y-0 left-0 z-drawer flex w-64 flex-col border-r border-border bg-surface-primary transition-transform duration-default md:static md:translate-x-0 md:w-16 lg:w-64 ${
+          mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+        }`}
+      >
+        <div className="flex h-12 items-center justify-between border-b border-border px-4">
+          <div className={`${mobileOpen ? 'block' : 'hidden'} lg:block`}>
             <Logo variant="wordmark" size={28} />
           </div>
-          <div className="lg:hidden">
+          <div className={`${mobileOpen ? 'hidden' : 'block'} lg:hidden`}>
             <Logo size={28} />
           </div>
+          <button
+            onClick={() => setMobileOpen(false)}
+            className="flex h-7 w-7 items-center justify-center rounded text-text-tertiary hover:bg-surface-secondary hover:text-text-primary md:hidden"
+            aria-label="Close menu"
+          >
+            <XIcon className="h-4 w-4" />
+          </button>
         </div>
 
         <nav className="flex-1 overflow-y-auto p-2">
           {visibleSections.map((section, idx) => (
             <div key={section.label} className={idx === 0 ? '' : 'mt-4'}>
-              <div className="mb-1 hidden px-3 lg:block">
+              <div className={`mb-1 px-3 ${mobileOpen ? 'block' : 'hidden'} lg:block`}>
                 <span className="text-[10px] uppercase tracking-widest text-text-tertiary">
                   {section.label}
                 </span>
               </div>
-              {idx > 0 && (
-                <div className="mx-2 mb-2 border-t border-border lg:hidden" aria-hidden="true" />
+              {idx > 0 && !mobileOpen && (
+                <div className="mx-2 mb-2 border-t border-border md:block lg:hidden" aria-hidden="true" />
               )}
               <div className="space-y-1">
                 {section.items.map((item) => {
@@ -203,7 +230,9 @@ export function Layout({ children }: { children: ReactNode }) {
                       }`}
                     >
                       <IconCmp className="h-4 w-4 shrink-0" />
-                      <span className="hidden lg:inline">{item.label}</span>
+                      <span className={`${mobileOpen ? 'inline' : 'hidden'} lg:inline`}>
+                        {item.label}
+                      </span>
                     </Link>
                   );
                 })}
@@ -222,7 +251,7 @@ export function Layout({ children }: { children: ReactNode }) {
               <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--avatar-1-bg)] text-xs text-[var(--avatar-1-text)]">
                 {initials}
               </span>
-              <div className="hidden min-w-0 flex-1 lg:block">
+              <div className={`${mobileOpen ? 'block' : 'hidden'} min-w-0 flex-1 lg:block`}>
                 <p className="truncate text-base text-text-primary">{user.name}</p>
                 <p className="text-xs text-text-tertiary">
                   {user.role.replace('_', ' ').toLowerCase()}
@@ -235,7 +264,18 @@ export function Layout({ children }: { children: ReactNode }) {
 
       {/* Main content */}
       <div className="flex flex-1 flex-col overflow-hidden">
-        <header className="flex h-14 items-center gap-4 border-b border-border bg-surface-primary px-6">
+        <header className="flex h-14 items-center gap-2 border-b border-border bg-surface-primary px-3 md:gap-4 md:px-6">
+          {/* Mobile hamburger */}
+          <button
+            onClick={() => setMobileOpen(true)}
+            aria-label="Open menu"
+            className="flex h-8 w-8 items-center justify-center rounded text-text-secondary hover:bg-surface-secondary hover:text-text-primary md:hidden"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+              <path d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+
           {/* Left — breadcrumb */}
           <div className="flex min-w-0 items-center gap-2">
             {currentSection && (
@@ -254,13 +294,13 @@ export function Layout({ children }: { children: ReactNode }) {
             </div>
           </div>
 
-          {/* Center — search */}
-          <div className="mx-auto flex w-full max-w-sm">
+          {/* Center — search (hidden on smallest screens) */}
+          <div className="mx-auto hidden w-full max-w-sm sm:flex">
             <HeaderSearch />
           </div>
 
           {/* Right — actions */}
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="ml-auto flex shrink-0 items-center gap-2 sm:ml-0">
             {isLeadOrAdmin && pendingCount > 0 && (
               <Link
                 to="/admin/leaves"
@@ -278,7 +318,9 @@ export function Layout({ children }: { children: ReactNode }) {
             <UserMenu />
           </div>
         </header>
-        <main className="flex-1 overflow-y-auto p-6">{children}</main>
+        <main className="flex-1 overflow-y-auto p-6">
+          <RouteErrorBoundary>{children}</RouteErrorBoundary>
+        </main>
       </div>
     </div>
   );

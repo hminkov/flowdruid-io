@@ -8,6 +8,7 @@ import {
   TrashIcon,
   UserIcon,
 } from '../components/icons';
+import { useConfirm, useToast } from '../components/ui';
 
 const roleTones: Record<string, string> = {
   ADMIN: 'bg-accent-bg text-accent-text',
@@ -27,20 +28,43 @@ export function UsersRolesPage() {
   const [tempPass, setTempPass] = useState('');
 
   const utils = trpc.useUtils();
+  const toast = useToast();
+  const confirm = useConfirm();
   const usersQuery = trpc.users.list.useQuery();
   const teamsQuery = trpc.teams.list.useQuery();
   const inviteMutation = trpc.users.invite.useMutation({
     onSuccess: (data) => {
       setTempPass(data.tempPassword);
       utils.users.list.invalidate();
+      toast.push({ kind: 'success', title: 'User invited' });
     },
+    onError: (e) => toast.push({ kind: 'error', title: 'Invite failed', message: e.message }),
   });
   const updateMutation = trpc.users.update.useMutation({
-    onSuccess: () => utils.users.list.invalidate(),
+    onSuccess: () => {
+      utils.users.list.invalidate();
+      toast.push({ kind: 'success', title: 'User updated' });
+    },
+    onError: (e) => toast.push({ kind: 'error', title: 'Update failed', message: e.message }),
   });
   const deactivateMutation = trpc.users.deactivate.useMutation({
-    onSuccess: () => utils.users.list.invalidate(),
+    onSuccess: () => {
+      utils.users.list.invalidate();
+      toast.push({ kind: 'success', title: 'User deactivated' });
+    },
+    onError: (e) => toast.push({ kind: 'error', title: 'Deactivation failed', message: e.message }),
   });
+
+  const handleDeactivate = async (userId: string, userName: string) => {
+    const ok = await confirm({
+      title: `Deactivate ${userName}?`,
+      message:
+        "They won't be able to log in. Their tickets, standups, and history stay intact.",
+      confirmLabel: 'Deactivate',
+      tone: 'danger',
+    });
+    if (ok) deactivateMutation.mutate({ userId });
+  };
 
   const handleInvite = (e: FormEvent) => {
     e.preventDefault();
@@ -136,7 +160,7 @@ export function UsersRolesPage() {
                   </td>
                   <td className="p-3 text-right">
                     <button
-                      onClick={() => deactivateMutation.mutate({ userId: u.id })}
+                      onClick={() => handleDeactivate(u.id, u.name)}
                       title="Deactivate"
                       className="inline-flex h-7 w-7 items-center justify-center rounded text-text-tertiary transition-colors duration-fast hover:bg-danger-bg hover:text-danger-text"
                     >

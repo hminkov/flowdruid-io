@@ -10,31 +10,13 @@ import {
   XIcon,
   ZapIcon,
 } from './icons';
-
-const availabilityToneMap: Record<string, string> = {
-  AVAILABLE: 'bg-success-bg text-success-text',
-  BUSY: 'bg-warning-bg text-warning-text',
-  REMOTE: 'bg-info-bg text-info-text',
-  ON_LEAVE: 'bg-danger-bg text-danger-text',
-};
-
-const avatarPalettes = [
-  { bg: 'var(--avatar-1-bg)', text: 'var(--avatar-1-text)' },
-  { bg: 'var(--avatar-2-bg)', text: 'var(--avatar-2-text)' },
-  { bg: 'var(--avatar-3-bg)', text: 'var(--avatar-3-text)' },
-  { bg: 'var(--avatar-4-bg)', text: 'var(--avatar-4-text)' },
-  { bg: 'var(--avatar-5-bg)', text: 'var(--avatar-5-text)' },
-  { bg: 'var(--avatar-6-bg)', text: 'var(--avatar-6-text)' },
-];
-
-const paletteFor = (id: string) => {
-  let hash = 0;
-  for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) | 0;
-  return avatarPalettes[Math.abs(hash) % avatarPalettes.length]!;
-};
-
-const capacityTone = (pct: number) =>
-  pct >= 90 ? 'bg-capacity-full' : pct >= 70 ? 'bg-capacity-high' : 'bg-capacity-normal';
+import {
+  Avatar,
+  AvailabilityBadge,
+  CapacityBar,
+  PriorityDot,
+  paletteFor,
+} from './ui';
 
 const STATUS_ORDER = ['IN_PROGRESS', 'IN_REVIEW', 'TODO', 'DONE'] as const;
 const STATUS_LABELS: Record<string, string> = {
@@ -42,12 +24,6 @@ const STATUS_LABELS: Record<string, string> = {
   IN_PROGRESS: 'In progress',
   IN_REVIEW: 'In review',
   DONE: 'Done',
-};
-
-const PRIORITY_DOT: Record<string, string> = {
-  HIGH: 'bg-priority-high',
-  MEDIUM: 'bg-priority-medium',
-  LOW: 'bg-priority-low',
 };
 
 // Complexity / difficulty scoring — used to award points per completed ticket.
@@ -137,8 +113,6 @@ export function UserDetailDrawer({
 
   if (!open) return null;
 
-  const palette = user ? paletteFor(user.id) : avatarPalettes[0]!;
-
   return (
     <div className="fixed inset-0 z-drawer" role="dialog" aria-modal="true">
       <div
@@ -148,12 +122,13 @@ export function UserDetailDrawer({
       <aside className="animate-drawer-in absolute right-0 top-0 flex h-full w-full max-w-drawer flex-col border-l border-border bg-surface-primary shadow-float">
         <header className="flex items-start justify-between gap-3 border-b border-border p-5">
           <div className="flex min-w-0 items-center gap-3">
-            <span
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-base"
-              style={{ background: palette.bg, color: palette.text }}
-            >
-              {user?.initials ?? '…'}
-            </span>
+            {user ? (
+              <Avatar userId={user.id} initials={user.initials} name={user.name} size={44} />
+            ) : (
+              <span className="flex h-11 w-11 items-center justify-center rounded-full bg-surface-secondary text-text-tertiary">
+                …
+              </span>
+            )}
             <div className="min-w-0">
               <div className="truncate text-lg text-text-primary">{user?.name ?? 'Loading…'}</div>
               <div className="mt-1 text-xs text-text-tertiary">{user?.team.name ?? ''}</div>
@@ -175,28 +150,16 @@ export function UserDetailDrawer({
               <div className="mb-5 rounded-lg border border-border bg-surface-secondary p-3">
                 <div className="mb-2 flex items-center justify-between">
                   <span className="text-xs text-text-tertiary">Availability</span>
-                  <span
-                    className={`rounded-pill px-2 py-0.5 text-xs ${availabilityToneMap[user.availability]}`}
-                  >
-                    {user.availability.replace('_', ' ').toLowerCase()}
-                  </span>
+                  <AvailabilityBadge status={user.availability} />
                 </div>
 
                 {standup ? (
                   <div>
-                    <div className="mb-1.5 flex items-center justify-between text-xs text-text-tertiary">
-                      <span className="flex items-center gap-1">
-                        <ZapIcon className="h-3 w-3" />
-                        Capacity today
-                      </span>
-                      <span className="tabular-nums">{standup.capacityPct}%</span>
+                    <div className="mb-1.5 flex items-center gap-1 text-xs text-text-tertiary">
+                      <ZapIcon className="h-3 w-3" />
+                      Capacity today
                     </div>
-                    <div className="h-1.5 overflow-hidden rounded-full bg-surface-primary">
-                      <div
-                        className={`h-full ${capacityTone(standup.capacityPct)}`}
-                        style={{ width: `${standup.capacityPct}%` }}
-                      />
-                    </div>
+                    <CapacityBar pct={standup.capacityPct} />
                   </div>
                 ) : user.availability === 'ON_LEAVE' ? (
                   <p className="flex items-center gap-1.5 text-xs text-text-tertiary">
@@ -281,9 +244,7 @@ export function UserDetailDrawer({
                         key={t.id}
                         className="flex items-center gap-2 rounded border border-border bg-surface-primary p-2"
                       >
-                        <span
-                          className={`inline-block h-[7px] w-[7px] shrink-0 rounded-full ${PRIORITY_DOT[t.priority]}`}
-                        />
+                        <PriorityDot priority={t.priority} />
                         <span
                           className={`shrink-0 rounded px-1.5 py-0.5 font-mono text-[10px] ${
                             t.source === 'JIRA'
@@ -347,10 +308,7 @@ export function UserDetailDrawer({
                               key={t.id}
                               className="flex items-start gap-2 rounded border border-border bg-surface-primary p-2"
                             >
-                              <span
-                                className={`mt-1 inline-block h-[7px] w-[7px] shrink-0 rounded-full ${PRIORITY_DOT[t.priority]}`}
-                                title={t.priority.toLowerCase()}
-                              />
+                              <div className="mt-1"><PriorityDot priority={t.priority} /></div>
                               <div className="min-w-0 flex-1">
                                 <div className="flex items-center gap-2">
                                   <span

@@ -9,6 +9,7 @@ import { UserDetailProvider } from './hooks/useUserDetail';
 import { TeamDetailProvider } from './hooks/useTeamDetail';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { Layout } from './components/Layout';
+import { ToastProvider, ConfirmProvider, RouteErrorBoundary } from './components/ui';
 import { LoginPage } from './pages/LoginPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { TasksPage } from './pages/TasksPage';
@@ -31,6 +32,8 @@ export function App() {
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
           <AuthProvider>
+            <ToastProvider>
+            <ConfirmProvider>
             <UserDetailProvider>
             <TeamDetailProvider>
             <Routes>
@@ -136,6 +139,8 @@ export function App() {
             </Routes>
             </TeamDetailProvider>
             </UserDetailProvider>
+            </ConfirmProvider>
+            </ToastProvider>
           </AuthProvider>
         </BrowserRouter>
         <ReactQueryDevtools initialIsOpen={false} />
