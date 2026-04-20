@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { trpc } from '../lib/trpc';
 import { useAuth } from '../hooks/useAuth';
 import { useUserDetail } from '../hooks/useUserDetail';
+import { EmptyState } from '../components/ui';
 import {
   CalendarIcon,
   CheckIcon,
@@ -502,10 +503,10 @@ export function LeaveCalendarPage() {
             );
           })}
           {calendarQuery.data?.length === 0 && (
-            <div className="rounded-lg border border-dashed border-border bg-surface-primary p-6 text-center">
-              <HomeIcon className="mx-auto mb-2 h-6 w-6 text-text-tertiary" />
-              <p className="text-sm text-text-secondary">No leave scheduled this month.</p>
-            </div>
+            <EmptyState
+              icon={<HomeIcon className="h-4 w-4" />}
+              message="No leave scheduled this month."
+            />
           )}
         </div>
       )}

@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { trpc } from '../lib/trpc';
 import { useAuth } from '../hooks/useAuth';
 import { useUserDetail } from '../hooks/useUserDetail';
-import { useToast } from '../components/ui';
+import { EmptyState, useToast } from '../components/ui';
 import { AlertIcon, MegaphoneIcon, SendIcon, SpinnerIcon, ZapIcon } from '../components/icons';
 
 export function StandupPage() {
@@ -158,9 +158,10 @@ export function StandupPage() {
           </div>
         ))}
         {standupsQuery.data?.length === 0 && (
-          <div className="rounded-lg border border-dashed border-border bg-surface-primary p-6 text-center text-sm text-text-secondary">
-            No standups posted yet today.
-          </div>
+          <EmptyState
+            icon={<MegaphoneIcon className="h-4 w-4" />}
+            message="No standups posted yet today."
+          />
         )}
       </div>
     </div>
