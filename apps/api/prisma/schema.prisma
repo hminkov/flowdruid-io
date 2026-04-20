@@ -66,6 +66,12 @@ enum ConversationKind {
   TEAM_CHANNEL
 }
 
+enum CoverRequestStatus {
+  OPEN
+  ACCEPTED
+  CANCELLED
+}
+
 enum NotificationType {
   LEAVE_APPROVED
   LEAVE_DENIED
@@ -141,6 +147,8 @@ model User {
   notificationsActed      Notification[]          @relation("NotificationActor")
   conversationMembers     ConversationMember[]
   messages                Message[]
+  coverRequestsMade       CoverRequest[]          @relation("CoverRequester")
+  coverRequestsTaken      CoverRequest[]          @relation("CoverAccepter")
 }
 
 model RefreshToken {
@@ -393,10 +401,29 @@ model ProdSupportAssignment {
   secondaryId String
   createdAt   DateTime @default(now())
 
-  team      Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  primary   User @relation("ProdSupportPrimary", fields: [primaryId], references: [id])
-  secondary User @relation("ProdSupportSecondary", fields: [secondaryId], references: [id])
+  team           Team           @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  primary        User           @relation("ProdSupportPrimary", fields: [primaryId], references: [id])
+  secondary      User           @relation("ProdSupportSecondary", fields: [secondaryId], references: [id])
+  coverRequests  CoverRequest[]
 
   @@unique([teamId, startDate])
   @@index([startDate])
+}
+
+model CoverRequest {
+  id           String             @id @default(cuid())
+  assignmentId String
+  requesterId  String
+  reason       String?
+  status       CoverRequestStatus @default(OPEN)
+  acceptedById String?
+  acceptedAt   DateTime?
+  createdAt    DateTime           @default(now())
+
+  assignment ProdSupportAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  requester  User                  @relation("CoverRequester", fields: [requesterId], references: [id])
+  acceptedBy User?                 @relation("CoverAccepter", fields: [acceptedById], references: [id])
+
+  @@index([assignmentId])
+  @@index([status])
 }

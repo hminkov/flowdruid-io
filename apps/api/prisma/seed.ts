@@ -34,6 +34,7 @@ const initialsOf = (name: string): string => {
 async function main() {
   console.log('Seeding Cloudruid workspace...');
 
+  await prisma.coverRequest.deleteMany();
   await prisma.message.deleteMany();
   await prisma.conversationMember.deleteMany();
   await prisma.conversation.deleteMany();
@@ -1465,6 +1466,41 @@ async function main() {
           primaryId: primary,
           secondaryId: secondary,
         },
+      });
+    }
+  }
+
+  // Demo open cover request so the banner is visible straight after seeding.
+  // Pick the Exchange team's current-week shift (primary = Ivaylo Hadzhiyski).
+  const currentMonday = mondayUtc(new Date(today));
+  const exchangeShift = await prisma.prodSupportAssignment.findUnique({
+    where: { teamId_startDate: { teamId: exchangeTeam.id, startDate: currentMonday } },
+  });
+  if (exchangeShift) {
+    const cover = await prisma.coverRequest.create({
+      data: {
+        assignmentId: exchangeShift.id,
+        requesterId: exchangeShift.primaryId,
+        reason: 'Doctor appointment blocks the afternoon — looking to swap with someone.',
+      },
+    });
+    // Notify every other active member of the Exchange team
+    const teammates = await prisma.user.findMany({
+      where: { teamId: exchangeTeam.id, active: true, id: { not: exchangeShift.primaryId } },
+      select: { id: true },
+    });
+    if (teammates.length > 0) {
+      await prisma.notification.createMany({
+        data: teammates.map((m) => ({
+          userId: m.id,
+          type: 'PROD_SUPPORT_ON_CALL' as const,
+          title: 'Ivaylo Hadzhiyski is looking for cover',
+          body: 'Exchange — doctor appointment blocks the afternoon.',
+          linkPath: '/prod-support',
+          actorId: exchangeShift.primaryId,
+          entityId: cover.id,
+          createdAt: hoursAgo(2),
+        })),
       });
     }
   }

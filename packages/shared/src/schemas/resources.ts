@@ -72,9 +72,36 @@ export const deleteProdSupportSchema = z.object({
   assignmentId: z.string(),
 });
 
+export const autoScheduleMonthSchema = z.object({
+  teamId: z.string(),
+  startDate: z.string(), // YYYY-MM-DD Monday to start from
+  weeks: z.number().int().min(1).max(12).default(4),
+  overwrite: z.boolean().default(false),
+});
+
+export const requestCoverSchema = z.object({
+  assignmentId: z.string(),
+  reason: z.string().max(500).optional(),
+});
+
+export const acceptCoverSchema = z.object({
+  coverRequestId: z.string(),
+});
+
+export const cancelCoverSchema = z.object({
+  coverRequestId: z.string(),
+});
+
+export const listCoverRequestsSchema = z.object({
+  teamId: z.string().optional(),
+  openOnly: z.boolean().default(true),
+});
+
 export type QaBookingStatus = z.infer<typeof qaBookingStatus>;
 export type CreateQaBookingInput = z.infer<typeof createQaBookingSchema>;
 export type UpdateQaBookingInput = z.infer<typeof updateQaBookingSchema>;
 export type CreateProdSupportInput = z.infer<typeof createProdSupportSchema>;
 export type ListParkingInput = z.infer<typeof listParkingSchema>;
 export type ClaimParkingInput = z.infer<typeof claimParkingSchema>;
+export type AutoScheduleMonthInput = z.infer<typeof autoScheduleMonthSchema>;
+export type RequestCoverInput = z.infer<typeof requestCoverSchema>;
