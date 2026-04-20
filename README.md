@@ -1,36 +1,74 @@
 # Flowdruid
 
-Team management platform for tracking tasks, availability, standups, and leave across multiple teams. Integrates with Slack and Jira.
+Team management platform for engineering orgs — tracks standups, capacity, leave, prod-support rota, QA environments, parking, and tickets across every team. Integrates with Slack and Jira.
 
-## Features
+Built for the Cloudruid org: 12 business teams, 34 developers, one admin.
 
-- **Dashboard** — Team availability overview and active tasks at a glance
-- **Task Board** — Kanban board with internal tickets and Jira sync, filterable by source/status/assignee
-- **Standups** — Daily standup posts with capacity tracking and blocker alerts
-- **Leave Management** — Request, approve/deny leave with calendar view and Slack notifications
-- **Jira Integration** — Automatic read-only sync of Jira issues on a configurable interval
-- **Slack Integration** — Notifications for standups, leave approvals, blockers, and company broadcasts
-- **Role-based Access** — Admin, Team Lead, and Developer roles with scoped permissions
+## What's inside
 
-## Tech Stack
+### Planning & visibility
 
-| Layer | Technology |
-|---|---|
-| Frontend | React 18, Vite, TailwindCSS, TanStack Query v5 |
-| Backend | Node.js 20, TypeScript, Express, tRPC v11 |
-| ORM | Prisma 5 |
-| Database | PostgreSQL 16 |
-| Queue / Cache | Redis 7, BullMQ |
-| Auth | JWT (access + refresh token with httpOnly cookies) |
-| Monorepo | Turborepo, pnpm workspaces |
-| Containerisation | Docker, Docker Compose |
+- **Dashboard** — Expandable team panels with a compact/grid/table toggle, per-member capacity (mocked from standups when not posted), clickable stat-cards that open anchored popovers (Available now, On leave, In progress, Teams) with built-in search.
+- **Task Board** — Kanban with drag-and-drop via `dnd-kit`, Jira + internal tickets side-by-side, filter chips for source / status / assignee, deep-link support via `?open=<ticketId>`.
+- **Ticket overview modal** — Opens from any person or team drawer, any member card, or the board. Shows description, assignees, suggestions, cover requests, and complexity points. "Open on board" jumps to the task board with the ticket highlighted.
+- **Standups** — Daily post with capacity slider and blocker flag; author profile clickable everywhere it appears.
+- **Leave management** — Request, approve/deny, month calendar + list views, and a "Today on my team" strip under the calendar that lists who is out with 🌴 / 🤒 / 🏠 / ⏱️ glyphs (or confirms the whole team is available).
+- **Users & roles admin** — Invite users, change roles, deactivate; every person row opens the detail drawer.
 
-## Project Structure
+### Resources
+
+- **QA environments** — One KBE branch per env; each env holds multiple service bookings with status (New → In development → Test in QA → Paused → Ready for prod → Pushed to prod), client tag, dev & QA owners, and a last-activity heat strip. Compact / grid / table views; the table groups bookings by env with expandable panels and persists collapse state per user.
+- **Parking** — Admin-managed spots with a per-day rotation; one-slot-per-day rule enforced server-side.
+- **Prod-support rota** — Per-team weekly schedule with an auto-schedule-month action (random pair, skips existing weeks unless `overwrite`). Cover requests fan out to the team channel + notification inbox, show the requester's team inline, and can be accepted by any team-mate.
+
+### Inbox & messaging
+
+- **Inbox** — Notifications for leave reviews, ticket status, prod-support on-call, blockers, cover requests; unread badge on the sidebar bell polls every 30 s.
+- **Messages** — DM + per-team channel `Conversation` / `Message` tables with member gating; unread markers drive the same inbox indicator.
+
+### Integrations
+
+- **Slack** — Webhook-driven events (workers in BullMQ), notifications for standups, leave approvals, blockers, cover requests, and company broadcasts.
+- **Jira** — Background sync on a configurable interval; read-only import of tickets from specified projects.
+
+### Presence & identity
+
+- **Availability glyphs** — Red-dot busy, green-dot available (both with a pulsing halo), 🏠 for remote, 🌴 for on-leave. Shown as a sticker-style overlay on avatars in the user drawer.
+- **Clickable-by-default names** — Every rendered person name across the app opens the user detail drawer (with stop-propagation in nested rows so the inner name drills into the person, not the outer row).
+- **Click through to the drawer** — The drawer shows availability, today's standup, assigned tickets grouped by status, and a month/year activity window with complexity-weighted score.
+
+### UX & design system
+
+- **Design tokens** in `apps/web/src/styles/tokens.css` — every colour, radius, and motion value is a CSS custom property, wired into `tailwind.config.ts`. No hardcoded hex outside that file.
+- **Three-way theme toggle** — follow OS, force light, or force dark. Sidebar mirrors the login hero's deep-navy in dark mode for brand continuity.
+- **Shared primitives** — `Avatar`, `AvatarStack`, `UserPill`, `AvailabilityBadge`, `AvailabilityGlyph`, `CapacityBar`, `PriorityDot`, `StatusPill`, `EmptyState`, `Toast`, `ConfirmDialog`, `RouteErrorBoundary`.
+- **A11y** — Modal + drawer layers respect ESC and click-outside, role="dialog"/"aria-modal" set where applicable, keyboard focus on primary inputs in every modal.
+
+### Workbench
+
+- **Sidebar footer** shows the running API version (read from `/health` which pulls `process.env.npm_package_version`) with a `Created by Hristo Minkov` credit.
+
+## Tech stack
+
+| Layer             | Technology                                          |
+| ----------------- | --------------------------------------------------- |
+| Frontend          | React 18, Vite, TailwindCSS, TanStack Query v5      |
+| Backend           | Node.js 20, TypeScript, Express, tRPC v11           |
+| ORM               | Prisma 5                                            |
+| Database          | PostgreSQL 16                                       |
+| Queue / cache     | Redis 7, BullMQ                                     |
+| Auth              | JWT access + refresh tokens (httpOnly refresh)      |
+| Monorepo          | Turborepo, pnpm workspaces                          |
+| Containerisation  | Docker, Docker Compose                              |
+| Drag & drop       | `dnd-kit`                                           |
+| Shared validation | Zod schemas in `packages/shared`                    |
+
+## Project structure
 
 ```
 flowdruid/
 ├── apps/
-│   ├── api/          # Express + tRPC backend
+│   ├── api/          # Express + tRPC backend, Prisma schema, BullMQ workers
 │   └── web/          # React frontend
 ├── packages/
 │   └── shared/       # Zod schemas + shared types
@@ -40,7 +78,7 @@ flowdruid/
 └── .github/workflows/        # CI/CD
 ```
 
-## Getting Started
+## Getting started
 
 ### Prerequisites
 
@@ -48,9 +86,10 @@ flowdruid/
 - pnpm 9+
 - Docker & Docker Compose
 
-### Local Development
+### Local development
 
-1. **Clone and install dependencies**
+1. **Clone and install**
+
    ```bash
    git clone https://github.com/hminkov/flowdruid-io.git
    cd flowdruid-io
@@ -58,29 +97,37 @@ flowdruid/
    ```
 
 2. **Start Postgres and Redis**
+
    ```bash
    docker compose up postgres redis -d
    ```
 
-3. **Set up environment variables**
+3. **Environment variables**
+
    ```bash
    cp apps/api/.env.example apps/api/.env
    cp apps/web/.env.example apps/web/.env
    ```
+
    Edit `apps/api/.env` and set `JWT_SECRET`, `REFRESH_TOKEN_SECRET`, and `ENCRYPTION_KEY`.
 
-4. **Run database migrations**
+4. **Database**
+
    ```bash
    pnpm db:migrate
+   pnpm --filter @flowdruid/api exec tsx prisma/seed.ts
    ```
 
-5. **Start the dev servers**
+   Seed creates the Cloudruid org (12 teams, 35 users including `hristo.minkov@cloudruid.com` as admin). All seeded users share the password `Password123!`.
+
+5. **Run the dev servers**
+
    ```bash
    pnpm dev
    ```
-   - Frontend: http://localhost:5173
-   - API: http://localhost:3000
-   - Health check: http://localhost:3000/health
+
+   - Web: http://localhost:5173
+   - API: http://localhost:3000 (health: `/health` returns status + version)
 
 ### Docker (full stack)
 
@@ -88,35 +135,37 @@ flowdruid/
 docker compose up
 ```
 
-This starts all services: frontend, API, Postgres, and Redis.
-
-## Environment Variables
+## Environment variables
 
 ### API (`apps/api/.env`)
 
-| Variable | Description |
-|---|---|
-| `DATABASE_URL` | PostgreSQL connection string |
-| `REDIS_URL` | Redis connection string |
-| `JWT_SECRET` | Secret for signing access tokens |
-| `REFRESH_TOKEN_SECRET` | Secret for signing refresh tokens |
-| `ENCRYPTION_KEY` | 32-byte hex key for encrypting Slack/Jira tokens at rest |
-| `PORT` | API server port (default: 3000) |
-| `NODE_ENV` | `development` or `production` |
+| Variable               | Description                                         |
+| ---------------------- | --------------------------------------------------- |
+| `DATABASE_URL`         | PostgreSQL connection string                        |
+| `REDIS_URL`            | Redis connection string                             |
+| `JWT_SECRET`           | Secret for signing access tokens                    |
+| `REFRESH_TOKEN_SECRET` | Secret for signing refresh tokens                   |
+| `ENCRYPTION_KEY`       | 32-byte hex key for Slack/Jira tokens at rest       |
+| `PORT`                 | API server port (default: 3000)                     |
+| `NODE_ENV`             | `development` or `production`                       |
 
 ### Web (`apps/web/.env`)
 
-| Variable | Description |
-|---|---|
-| `VITE_API_URL` | API base URL (default: http://localhost:3000) |
+| Variable       | Description                                       |
+| -------------- | ------------------------------------------------- |
+| `VITE_API_URL` | API base URL (default: http://localhost:3000)     |
 
-## Production Deployment
+## Production deployment
 
 ```bash
 docker compose -f docker-compose.prod.yml up -d
 ```
 
-Uses Nginx with Certbot for TLS termination. Environment variables are loaded from `.env.prod` (not committed).
+Uses Nginx with Certbot for TLS termination. Production env vars are loaded from `.env.prod` (not committed).
+
+## Milestones
+
+See [MILESTONES.md](MILESTONES.md) for a chronological log of completed phases and iteration milestones.
 
 ## License
 

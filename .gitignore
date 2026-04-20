@@ -9,3 +9,11 @@ dist/
 coverage/
 tmp/
 .next/
+
+# Local-only working notes — not for public release
+CLAUDE.md
+claude.md
+**/CLAUDE.md
+**/claude.md
+*-implementation-plan.md
+tickets/
