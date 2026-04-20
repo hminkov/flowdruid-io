@@ -26,6 +26,13 @@
   --surface-secondary: #F7F6F3;
   --surface-tertiary:  #F1EFE8;
 
+  /*
+   * --sidebar-bg is the left-nav background. It mirrors surface-primary
+   * in light mode but in dark mode shifts to the deep-navy brand hue
+   * used on the login hero, so the chrome reads the same across both.
+   */
+  --sidebar-bg: var(--surface-primary);
+
   /* ─── Borders ─── */
   --border-default: rgba(0, 0, 0, 0.08);
   --border-strong:  rgba(0, 0, 0, 0.15);
@@ -131,6 +138,9 @@
     --surface-secondary: #232529;
     --surface-tertiary:  #2D2F34;
 
+    /* Matches the login hero so the left nav keeps its identity in dark mode. */
+    --sidebar-bg: #1A163F;
+
     --border-default: rgba(255, 255, 255, 0.09);
     --border-strong:  rgba(255, 255, 255, 0.16);
 
@@ -181,6 +191,9 @@
   --surface-primary:   #1A1D21;
   --surface-secondary: #232529;
   --surface-tertiary:  #2D2F34;
+
+  /* Matches the login hero so the left nav keeps its identity in dark mode. */
+  --sidebar-bg: #1A163F;
 
   --border-default: rgba(255, 255, 255, 0.09);
   --border-strong:  rgba(255, 255, 255, 0.16);
