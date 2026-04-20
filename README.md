@@ -135,6 +135,57 @@ flowdruid/
 docker compose up
 ```
 
+## Testing with the seeded data
+
+The seed builds a realistic Cloudruid org so every feature has something to show out of the box. Re-run it any time you want a clean slate:
+
+```bash
+pnpm --filter @flowdruid/api exec tsx prisma/seed.ts
+```
+
+### Accounts to log in with
+
+All seeded users share the password **`Password123!`**. Emails follow `firstname.lastname@cloudruid.com`.
+
+| Role                 | Email                                      | Use to exercise                                          |
+| -------------------- | ------------------------------------------ | -------------------------------------------------------- |
+| **Admin**            | `hristo.minkov@cloudruid.com`              | Every admin-only page, role changes, integrations config |
+| Team lead (Coins)    | `krasimir.gizdov@cloudruid.com`            | Team-lead views, approving leaves for Coins              |
+| Team lead (Account)  | `svetoslav.kochev@cloudruid.com`           | Another team-lead scope                                  |
+| Team lead (QA)       | `yuliia.pylaieva@cloudruid.com`            | QA team — **seeded as 🌴 ON_LEAVE** (palm-tree badge)    |
+| Developer            | `ivan.backrachev@cloudruid.com`            | Default developer view                                   |
+| Developer (remote)   | `dimitar.tagarev@cloudruid.com`            | **Seeded as 🏠 REMOTE** (house badge)                    |
+
+### Suggested five-minute tour
+
+Log in as `hristo.minkov@cloudruid.com` and try:
+
+1. **Dashboard** — expand a team panel, click a team-member's ticket to open the overview, then click **Open on board** to jump to `/tasks` with the modal pre-opened.
+2. **Stat cards** — click **Available now**, **On leave**, **In progress**, or **Teams** on the dashboard stat strip. Each opens a searchable popover anchored under the card.
+3. **QA environments** — toggle the Grid / Compact / Table views. In Table view, expand / collapse env groups. Click "Add service" on any env to create a booking.
+4. **Leave calendar** — below the calendar grid, see the **Today on &lt;your team&gt;** strip. Yuliia should show with 🌴 for the Cloudruid admin user since the admin has no team; swap to `krasimir.gizdov@cloudruid.com` to see a team-specific view.
+5. **Prod-support rota** — go to Prod support, click "Request cover" on any assignment, then log in as a team-mate (same team) and accept the request.
+6. **Keyboard shortcuts** — press `?` to open the help overlay. Try `g d` → dashboard, `g t` → tasks, `/` to focus the global search.
+7. **User drawer** — click any person's name anywhere in the app (names are clickable across every surface). The avatar in the drawer carries a pulsing red/green dot or an emoji showing their status.
+8. **Dark mode** — toggle via the theme switcher in the top-right (system / light / dark). The left nav shifts to the login-hero navy in dark mode.
+
+### Things the seed cannot fake
+
+The following need real external credentials to work end-to-end. Today they're stubs:
+
+- **Slack outbound** — leave-approval, blocker, and cover-request notifications currently write to the in-app `Notification` inbox. No message actually reaches Slack (see `flowdruid-implementation-plan.md` §C.1 for the wiring plan).
+- **Jira sync** — every Jira-flagged ticket (`DW-XXX`) is seeded directly. The Jira worker is scheduled but makes no outbound calls without a `JiraConfig` row (see plan §C.3).
+- **Email fallback** — no email worker is wired yet (plan §C.12).
+
+### Resetting
+
+```bash
+# Nuke and re-seed
+docker compose exec postgres psql -U postgres -d flowdruid -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
+pnpm db:migrate
+pnpm --filter @flowdruid/api exec tsx prisma/seed.ts
+```
+
 ## Environment variables
 
 ### API (`apps/api/.env`)
