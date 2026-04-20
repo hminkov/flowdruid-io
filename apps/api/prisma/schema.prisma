@@ -61,6 +61,11 @@ enum QaBookingStatus {
   PAUSED
 }
 
+enum ConversationKind {
+  DM
+  TEAM_CHANNEL
+}
+
 enum NotificationType {
   LEAVE_APPROVED
   LEAVE_DENIED
@@ -87,6 +92,7 @@ model Organisation {
   jiraConfig      JiraConfig?
   qaEnvironments  QaEnvironment[]
   parkingSpots    ParkingSpot[]
+  conversations   Conversation[]
 }
 
 model Team {
@@ -101,6 +107,7 @@ model Team {
   tickets           Ticket[]
   standups          Standup[]
   prodSupportShifts ProdSupportAssignment[]
+  channel           Conversation?
 }
 
 model User {
@@ -132,6 +139,8 @@ model User {
   prodSupportSecondary    ProdSupportAssignment[] @relation("ProdSupportSecondary")
   notifications           Notification[]          @relation("NotificationReceiver")
   notificationsActed      Notification[]          @relation("NotificationActor")
+  conversationMembers     ConversationMember[]
+  messages                Message[]
 }
 
 model RefreshToken {
@@ -306,6 +315,52 @@ model ParkingAssignment {
 
   @@unique([spotId, date])
   @@index([date])
+}
+
+// ─── Messaging (DMs + team channels) ──────────────────────────────────────
+model Conversation {
+  id        String           @id @default(cuid())
+  orgId     String
+  kind      ConversationKind
+  name      String?
+  teamId    String?          @unique
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  org      Organisation         @relation(fields: [orgId], references: [id])
+  team     Team?                @relation(fields: [teamId], references: [id])
+  members  ConversationMember[]
+  messages Message[]
+
+  @@index([orgId])
+}
+
+model ConversationMember {
+  conversationId String
+  userId         String
+  joinedAt       DateTime  @default(now())
+  lastReadAt     DateTime?
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id])
+
+  @@id([conversationId, userId])
+  @@index([userId])
+}
+
+model Message {
+  id             String    @id @default(cuid())
+  conversationId String
+  authorId       String
+  body           String
+  editedAt       DateTime?
+  deletedAt      DateTime?
+  createdAt      DateTime  @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  author       User         @relation(fields: [authorId], references: [id])
+
+  @@index([conversationId, createdAt])
 }
 
 // ─── Notifications (inbox feed) ───────────────────────────────────────────

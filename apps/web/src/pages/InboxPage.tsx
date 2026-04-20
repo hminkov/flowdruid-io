@@ -1,13 +1,13 @@
-import { useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { trpc } from '../lib/trpc';
 import { usePersistedState } from '../hooks/usePersistedState';
 import { Avatar, EmptyState, useToast } from '../components/ui';
+import { MessagesTab } from '../features/messaging/MessagesTab';
 import {
   AlertIcon,
   BellIcon,
   BriefcaseIcon,
-  CalendarIcon,
   CheckIcon,
   InfoIcon,
   LinkIcon,
@@ -223,20 +223,7 @@ export function InboxPage() {
           </ul>
         </div>
       ) : (
-        <EmptyState
-          icon={<SendIcon className="h-4 w-4" />}
-          title="Messages coming in Phase 4b"
-          message="Direct messages and team channels ship in the next sub-phase. The schema, routes, and provider wiring are already in place under the hood."
-          cta={
-            <Link
-              to="/inbox?tab=notifications"
-              onClick={() => setTab('notifications')}
-              className="flex min-h-input items-center gap-1.5 rounded bg-brand-600 px-3 text-sm text-white hover:bg-brand-800"
-            >
-              Back to notifications
-            </Link>
-          }
-        />
+        <MessagesTab />
       )}
     </div>
   );

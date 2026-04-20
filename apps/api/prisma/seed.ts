@@ -34,6 +34,9 @@ const initialsOf = (name: string): string => {
 async function main() {
   console.log('Seeding Cloudruid workspace...');
 
+  await prisma.message.deleteMany();
+  await prisma.conversationMember.deleteMany();
+  await prisma.conversation.deleteMany();
   await prisma.notification.deleteMany();
   await prisma.assignmentSuggestion.deleteMany();
   await prisma.ticketAssignment.deleteMany();
@@ -1343,6 +1346,105 @@ async function main() {
     actorId: hristo,
     hoursAgo: 8,
   });
+
+  // ─── MESSAGING (team channels + sample DMs) ──────────────────────────────
+  // One channel per team, every team member joined. A few recent messages each.
+  const teamChannels: { teamId: string; members: string[]; name: string }[] = [
+    {
+      teamId: depositTeam.id,
+      name: 'Deposit / Withdrawal',
+      members: [
+        hristo, krasimir, borislav, dimitar, ivan, elitsa, ivanBorisov, tihomir,
+        dimitarKolev, dimitarTagarev, marian, renal, teodor, nikola, veselin, boris,
+      ],
+    },
+    {
+      teamId: exchangeTeam.id,
+      name: 'Exchange',
+      members: [ivayloH, panayot, ralitsa, radoslav],
+    },
+    {
+      teamId: accountTeam.id,
+      name: 'Account',
+      members: [svetli, ivayloI, todor, keti],
+    },
+    {
+      teamId: qaTeam.id,
+      name: 'QA',
+      members: [ivelina, diana, veronika, yuliia, momchil],
+    },
+  ];
+
+  for (const ch of teamChannels) {
+    const conv = await prisma.conversation.create({
+      data: {
+        orgId: org.id,
+        kind: 'TEAM_CHANNEL',
+        teamId: ch.teamId,
+        name: ch.name,
+      },
+    });
+    for (const memberId of ch.members) {
+      await prisma.conversationMember.create({
+        data: { conversationId: conv.id, userId: memberId },
+      });
+    }
+  }
+
+  // Seed a handful of messages in the Deposit / Withdrawal channel
+  const dwChannel = await prisma.conversation.findFirst({
+    where: { teamId: depositTeam.id, kind: 'TEAM_CHANNEL' },
+  });
+  if (dwChannel) {
+    const msgs: { authorId: string; body: string; minutesAgo: number }[] = [
+      { authorId: krasimir, body: 'Morning team — SEPA retry lands today, heads up.', minutesAgo: 180 },
+      { authorId: borislav, body: 'Blocked on staging DB dump — @Krasi can you refresh?', minutesAgo: 150 },
+      { authorId: krasimir, body: 'Refreshed. You should be unblocked now.', minutesAgo: 140 },
+      { authorId: dimitar, body: 'Will review DW-045 this afternoon', minutesAgo: 90 },
+      { authorId: ivan, body: 'Remote today. Coffee is over-engineered.', minutesAgo: 60 },
+      { authorId: borislav, body: 'Thanks ✅ Pushed the fix.', minutesAgo: 20 },
+    ];
+    for (const m of msgs) {
+      await prisma.message.create({
+        data: {
+          conversationId: dwChannel.id,
+          authorId: m.authorId,
+          body: m.body,
+          createdAt: new Date(Date.now() - m.minutesAgo * 60_000),
+        },
+      });
+    }
+    // Mark Krasimir's last read as now (so he sees unread count 0), leave others as null (unread)
+    await prisma.conversationMember.update({
+      where: { conversationId_userId: { conversationId: dwChannel.id, userId: krasimir } },
+      data: { lastReadAt: new Date() },
+    });
+  }
+
+  // Sample DM: Hristo ↔ Krasimir
+  const dm = await prisma.conversation.create({
+    data: {
+      orgId: org.id,
+      kind: 'DM',
+      members: { create: [{ userId: hristo }, { userId: krasimir }] },
+    },
+  });
+  const dmMsgs: { authorId: string; body: string; minutesAgo: number }[] = [
+    { authorId: krasimir, body: 'Quick sync on Q3 roadmap tomorrow?', minutesAgo: 240 },
+    { authorId: hristo, body: 'Works. 10:00 OK?', minutesAgo: 220 },
+    { authorId: krasimir, body: 'Perfect. Will share slides before.', minutesAgo: 210 },
+    { authorId: hristo, body: '👍', minutesAgo: 200 },
+  ];
+  for (const m of dmMsgs) {
+    await prisma.message.create({
+      data: {
+        conversationId: dm.id,
+        authorId: m.authorId,
+        body: m.body,
+        createdAt: new Date(Date.now() - m.minutesAgo * 60_000),
+      },
+    });
+  }
 
   const baseMonday = mondayUtc(new Date(today));
   // Start 4 weeks back so there is history + future
