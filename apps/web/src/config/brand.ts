@@ -9,13 +9,13 @@
  * (login page, first-paint) where the auth context isn't available.
  */
 
-export const APP_BRAND = import.meta.env.VITE_APP_BRAND ?? 'Cloudruid';
+export const APP_BRAND = import.meta.env.VITE_APP_BRAND ?? 'Acme';
 
 export const APP_EMAIL_DOMAIN =
-  import.meta.env.VITE_APP_EMAIL_DOMAIN ?? 'cloudruid.com';
+  import.meta.env.VITE_APP_EMAIL_DOMAIN ?? 'acme.com';
 
 export const JIRA_BASE_URL =
-  import.meta.env.VITE_JIRA_BASE_URL ?? 'https://cloudruid.atlassian.net';
+  import.meta.env.VITE_JIRA_BASE_URL ?? 'https://acme.atlassian.net';
 
 // Helper: `placeholder={emailPlaceholder()}` → "you@cloudruid.com"
 export const emailPlaceholder = (local = 'you') => `${local}@${APP_EMAIL_DOMAIN}`;

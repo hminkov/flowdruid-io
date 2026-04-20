@@ -2,7 +2,7 @@
 
 Team management platform for engineering orgs — tracks standups, capacity, leave, prod-support rota, QA environments, parking, and tickets across every team. Integrates with Slack and Jira.
 
-Built for the Cloudruid org: 12 business teams, 34 developers, one admin.
+Ships with a fictional 12-team demo seed (35 users, all `password = Password123!`) so every feature has data to render against out of the box.
 
 ## What's inside
 
@@ -137,7 +137,7 @@ docker compose up
 
 ## Testing with the seeded data
 
-The seed builds a realistic Cloudruid org so every feature has something to show out of the box. Re-run it any time you want a clean slate:
+The seed builds a fictional `Acme` workspace with 12 teams, 35 users, sample tickets, standups, leaves, QA bookings, parking spots, and a prod-support rota — every feature has data to render against. Re-run any time for a clean slate:
 
 ```bash
 pnpm --filter @flowdruid/api exec tsx prisma/seed.ts
@@ -145,25 +145,25 @@ pnpm --filter @flowdruid/api exec tsx prisma/seed.ts
 
 ### Accounts to log in with
 
-All seeded users share the password **`Password123!`**. Emails follow `firstname.lastname@cloudruid.com`.
+All seeded users share the password **`Password123!`**. Emails follow `firstname.lastname@acme.com`.
 
-| Role                 | Email                                      | Use to exercise                                          |
-| -------------------- | ------------------------------------------ | -------------------------------------------------------- |
-| **Admin**            | `hristo.minkov@cloudruid.com`              | Every admin-only page, role changes, integrations config |
-| Team lead (Coins)    | `krasimir.gizdov@cloudruid.com`            | Team-lead views, approving leaves for Coins              |
-| Team lead (Account)  | `svetoslav.kochev@cloudruid.com`           | Another team-lead scope                                  |
-| Team lead (QA)       | `yuliia.pylaieva@cloudruid.com`            | QA team — **seeded as 🌴 ON_LEAVE** (palm-tree badge)    |
-| Developer            | `ivan.backrachev@cloudruid.com`            | Default developer view                                   |
-| Developer (remote)   | `dimitar.tagarev@cloudruid.com`            | **Seeded as 🏠 REMOTE** (house badge)                    |
+| Role                 | Email                       | Use to exercise                                          |
+| -------------------- | --------------------------- | -------------------------------------------------------- |
+| **Admin**            | `alex.morgan@acme.com`      | Every admin-only page, role changes, integrations config |
+| Team lead (Coins)    | `peter.novak@acme.com`      | Team-lead views, approving leaves for Coins              |
+| Team lead (Account)  | `nathan.price@acme.com`     | Another team-lead scope                                  |
+| Team lead (QA)       | `nina.kowalski@acme.com`    | QA team — **seeded as 🌴 ON_LEAVE** (palm-tree badge)    |
+| Developer            | `marcus.klein@acme.com`     | Default developer view (Coins team)                      |
+| Developer (remote)   | `thomas.kelly@acme.com`     | **Seeded as 🏠 REMOTE** (house badge)                    |
 
 ### Suggested five-minute tour
 
-Log in as `hristo.minkov@cloudruid.com` and try:
+Log in as `alex.morgan@acme.com` and try:
 
 1. **Dashboard** — expand a team panel, click a team-member's ticket to open the overview, then click **Open on board** to jump to `/tasks` with the modal pre-opened.
 2. **Stat cards** — click **Available now**, **On leave**, **In progress**, or **Teams** on the dashboard stat strip. Each opens a searchable popover anchored under the card.
 3. **QA environments** — toggle the Grid / Compact / Table views. In Table view, expand / collapse env groups. Click "Add service" on any env to create a booking.
-4. **Leave calendar** — below the calendar grid, see the **Today on &lt;your team&gt;** strip. Yuliia should show with 🌴 for the Cloudruid admin user since the admin has no team; swap to `krasimir.gizdov@cloudruid.com` to see a team-specific view.
+4. **Leave calendar** — below the calendar grid, see the **Today on &lt;your team&gt;** strip. Log in as `peter.novak@acme.com` to see a populated team-specific view.
 5. **Prod-support rota** — go to Prod support, click "Request cover" on any assignment, then log in as a team-mate (same team) and accept the request.
 6. **Keyboard shortcuts** — press `?` to open the help overlay. Try `g d` → dashboard, `g t` → tasks, `/` to focus the global search.
 7. **User drawer** — click any person's name anywhere in the app (names are clickable across every surface). The avatar in the drawer carries a pulsing red/green dot or an emoji showing their status.
@@ -173,9 +173,9 @@ Log in as `hristo.minkov@cloudruid.com` and try:
 
 The following need real external credentials to work end-to-end. Today they're stubs:
 
-- **Slack outbound** — leave-approval, blocker, and cover-request notifications currently write to the in-app `Notification` inbox. No message actually reaches Slack (see `flowdruid-implementation-plan.md` §C.1 for the wiring plan).
-- **Jira sync** — every Jira-flagged ticket (`DW-XXX`) is seeded directly. The Jira worker is scheduled but makes no outbound calls without a `JiraConfig` row (see plan §C.3).
-- **Email fallback** — no email worker is wired yet (plan §C.12).
+- **Slack outbound** — leave-approval, blocker, and cover-request notifications currently write to the in-app `Notification` inbox. No message reaches Slack until the integration is wired and an admin connects via the Settings page.
+- **Jira sync** — every Jira-flagged ticket (`DW-XXX`) is seeded directly. The Jira worker is scheduled but makes no outbound calls without a `JiraConfig` row.
+- **Email fallback** — no email worker is wired yet.
 
 ### Resetting
 
@@ -213,10 +213,6 @@ docker compose -f docker-compose.prod.yml up -d
 ```
 
 Uses Nginx with Certbot for TLS termination. Production env vars are loaded from `.env.prod` (not committed).
-
-## Milestones
-
-See [MILESTONES.md](MILESTONES.md) for a chronological log of completed phases and iteration milestones.
 
 ## License
 

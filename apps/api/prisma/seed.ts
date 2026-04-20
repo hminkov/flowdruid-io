@@ -1,7 +1,8 @@
 // apps/api/prisma/seed.ts
 //
-// Seed data for Flowdruid — Cloudruid internal team.
-// Twelve teams matching the Cloudruid org chart.
+// Seed data for Flowdruid — fictional demo org (Acme).
+// Twelve teams matching the sample org chart. Names, emails, and
+// org details are all fictional; swap freely for your own fork.
 // All user passwords are "Password123!" (hashed with bcryptjs cost 10).
 
 import { PrismaClient } from '@prisma/client';
@@ -32,7 +33,7 @@ const initialsOf = (name: string): string => {
 };
 
 async function main() {
-  console.log('Seeding Cloudruid workspace...');
+  console.log('Seeding Acme demo workspace...');
 
   await prisma.coverRequest.deleteMany();
   await prisma.message.deleteMany();
@@ -59,7 +60,7 @@ async function main() {
   const passwordHash = await bcrypt.hash('Password123!', 10);
 
   const org = await prisma.organisation.create({
-    data: { name: 'Cloudruid', slug: 'cloudruid' },
+    data: { name: 'Acme', slug: 'acme' },
   });
 
   // 12 teams from team_members.xlsx. The first xlsx column becomes the team lead.
@@ -108,68 +109,68 @@ async function main() {
     availability: 'AVAILABLE' | 'BUSY' | 'REMOTE' | 'ON_LEAVE';
   };
 
-  // Mirrors team_members.xlsx — first-listed person per team becomes TEAM_LEAD.
+  // Fictional demo org. Adjust freely — first-listed person per team becomes TEAM_LEAD.
   const seeds: Seed[] = [
     // CEO — no team scope
-    { name: 'Borislav Shekerov', email: 'borislav.shekerov@cloudruid.com', role: 'ADMIN', teamId: null, availability: 'AVAILABLE' },
+    { name: 'William Graham', email: 'william.graham@acme.com', role: 'ADMIN', teamId: null, availability: 'AVAILABLE' },
 
     // Account (Sign up / Log in / KYC / MFA)
-    { name: 'Svetoslav Kochev', email: 'svetoslav.kochev@cloudruid.com', role: 'TEAM_LEAD', teamId: accountTeam.id, availability: 'AVAILABLE' },
-    { name: 'Radoslav Dimitrov', email: 'radoslav.dimitrov@cloudruid.com', role: 'DEVELOPER', teamId: accountTeam.id, availability: 'AVAILABLE' },
-    { name: 'Dimitar Tagarev', email: 'dimitar.tagarev@cloudruid.com', role: 'DEVELOPER', teamId: accountTeam.id, availability: 'REMOTE' },
-    { name: 'Ivo Iliev', email: 'ivo.iliev@cloudruid.com', role: 'DEVELOPER', teamId: accountTeam.id, availability: 'AVAILABLE' },
+    { name: 'Nathan Price', email: 'nathan.price@acme.com', role: 'TEAM_LEAD', teamId: accountTeam.id, availability: 'AVAILABLE' },
+    { name: 'Grace Sullmarcus', email: 'grace.sullmarcus@acme.com', role: 'DEVELOPER', teamId: accountTeam.id, availability: 'AVAILABLE' },
+    { name: 'Thomas Kelly', email: 'thomas.kelly@acme.com', role: 'DEVELOPER', teamId: accountTeam.id, availability: 'REMOTE' },
+    { name: 'Emily Watson', email: 'emily.watson@acme.com', role: 'DEVELOPER', teamId: accountTeam.id, availability: 'AVAILABLE' },
 
     // Yield
-    { name: 'Todor Kanev', email: 'todor.kanev@cloudruid.com', role: 'TEAM_LEAD', teamId: yieldTeam.id, availability: 'REMOTE' },
-    { name: 'Keti Hambarliyska', email: 'keti.hambarliyska@cloudruid.com', role: 'DEVELOPER', teamId: yieldTeam.id, availability: 'AVAILABLE' },
+    { name: 'Daniel Brooks', email: 'daniel.brooks@acme.com', role: 'TEAM_LEAD', teamId: yieldTeam.id, availability: 'REMOTE' },
+    { name: 'Chloe Martin', email: 'chloe.martin@acme.com', role: 'DEVELOPER', teamId: yieldTeam.id, availability: 'AVAILABLE' },
 
     // Card Payments
-    { name: 'Lazar Avramov', email: 'lazar.avramov@cloudruid.com', role: 'TEAM_LEAD', teamId: cardPaymentsTeam.id, availability: 'AVAILABLE' },
-    { name: 'Dimitar Kolev', email: 'dimitar.kolev@cloudruid.com', role: 'DEVELOPER', teamId: cardPaymentsTeam.id, availability: 'AVAILABLE' },
+    { name: 'Henry Carter', email: 'henry.carter@acme.com', role: 'TEAM_LEAD', teamId: cardPaymentsTeam.id, availability: 'AVAILABLE' },
+    { name: 'Sarah Mitchell', email: 'sarah.mitchell@acme.com', role: 'DEVELOPER', teamId: cardPaymentsTeam.id, availability: 'AVAILABLE' },
 
     // Coins — Fiat & Crypto (Deposit / Withdrawal / Send / Receive)
-    { name: 'Krasimir Gizdov', email: 'krasimir.gizdov@cloudruid.com', role: 'TEAM_LEAD', teamId: coinsTeam.id, availability: 'AVAILABLE' },
-    { name: 'Elitsa Stancheva', email: 'elitsa.stancheva@cloudruid.com', role: 'DEVELOPER', teamId: coinsTeam.id, availability: 'AVAILABLE' },
-    { name: 'Ivan Backrachev', email: 'ivan.backrachev@cloudruid.com', role: 'DEVELOPER', teamId: coinsTeam.id, availability: 'REMOTE' },
-    { name: 'Borislav Iliev', email: 'borislav.iliev@cloudruid.com', role: 'DEVELOPER', teamId: coinsTeam.id, availability: 'BUSY' },
-    { name: 'Hristo Minkov', email: 'hristo.minkov@cloudruid.com', role: 'ADMIN', teamId: coinsTeam.id, availability: 'AVAILABLE' },
-    { name: 'Dimitar Dimitrov', email: 'dimitar.dimitrov@cloudruid.com', role: 'DEVELOPER', teamId: coinsTeam.id, availability: 'AVAILABLE' },
+    { name: 'Peter Novak', email: 'peter.novak@acme.com', role: 'TEAM_LEAD', teamId: coinsTeam.id, availability: 'AVAILABLE' },
+    { name: 'Anna Rossi', email: 'anna.rossi@acme.com', role: 'DEVELOPER', teamId: coinsTeam.id, availability: 'AVAILABLE' },
+    { name: 'Marcus Klein', email: 'marcus.klein@acme.com', role: 'DEVELOPER', teamId: coinsTeam.id, availability: 'REMOTE' },
+    { name: 'David Fischer', email: 'david.fischer@acme.com', role: 'DEVELOPER', teamId: coinsTeam.id, availability: 'BUSY' },
+    { name: 'Alex Morgan', email: 'alex.morgan@acme.com', role: 'ADMIN', teamId: coinsTeam.id, availability: 'AVAILABLE' },
+    { name: 'Rachel Green', email: 'rachel.green@acme.com', role: 'DEVELOPER', teamId: coinsTeam.id, availability: 'AVAILABLE' },
 
     // Exchange
-    { name: 'Panayot Kostov', email: 'panayot.kostov@cloudruid.com', role: 'TEAM_LEAD', teamId: exchangeTeam.id, availability: 'AVAILABLE' },
-    { name: 'Ralitsa Stancheva', email: 'ralitsa.stancheva@cloudruid.com', role: 'DEVELOPER', teamId: exchangeTeam.id, availability: 'BUSY' },
-    { name: 'Ivaylo Hadzhiyski', email: 'ivaylo.hadzhiyski@cloudruid.com', role: 'DEVELOPER', teamId: exchangeTeam.id, availability: 'AVAILABLE' },
-    { name: 'Viktor Neykov', email: 'viktor.neykov@cloudruid.com', role: 'DEVELOPER', teamId: exchangeTeam.id, availability: 'AVAILABLE' },
+    { name: 'James Wilson', email: 'james.wilson@acme.com', role: 'TEAM_LEAD', teamId: exchangeTeam.id, availability: 'AVAILABLE' },
+    { name: 'Sofia Almeida', email: 'sofia.almeida@acme.com', role: 'DEVELOPER', teamId: exchangeTeam.id, availability: 'BUSY' },
+    { name: 'Mateo Silva', email: 'mateo.silva@acme.com', role: 'DEVELOPER', teamId: exchangeTeam.id, availability: 'AVAILABLE' },
+    { name: 'Lucas Moretti', email: 'lucas.moretti@acme.com', role: 'DEVELOPER', teamId: exchangeTeam.id, availability: 'AVAILABLE' },
 
     // Metalback / Cashback
-    { name: 'Renal Ahmedov', email: 'renal.ahmedov@cloudruid.com', role: 'TEAM_LEAD', teamId: metalbackTeam.id, availability: 'REMOTE' },
-    { name: 'Martin Iliev', email: 'martin.iliev@cloudruid.com', role: 'DEVELOPER', teamId: metalbackTeam.id, availability: 'AVAILABLE' },
+    { name: 'Ryan Harper', email: 'ryan.harper@acme.com', role: 'TEAM_LEAD', teamId: metalbackTeam.id, availability: 'REMOTE' },
+    { name: 'Victor Owens', email: 'victor.owens@acme.com', role: 'DEVELOPER', teamId: metalbackTeam.id, availability: 'AVAILABLE' },
 
     // KPay
-    { name: 'Rado Ivanov', email: 'rado.ivanov@cloudruid.com', role: 'TEAM_LEAD', teamId: kpayTeam.id, availability: 'AVAILABLE' },
-    { name: 'Veronika Kashaykova', email: 'veronika.kashaykova@cloudruid.com', role: 'DEVELOPER', teamId: kpayTeam.id, availability: 'AVAILABLE' },
+    { name: 'Michael Reyes', email: 'michael.reyes@acme.com', role: 'TEAM_LEAD', teamId: kpayTeam.id, availability: 'AVAILABLE' },
+    { name: 'Laura Santos', email: 'laura.santos@acme.com', role: 'DEVELOPER', teamId: kpayTeam.id, availability: 'AVAILABLE' },
 
     // Transaction History & Reporting
-    { name: 'Martin Panayotov', email: 'martin.panayotov@cloudruid.com', role: 'TEAM_LEAD', teamId: transactionHistoryTeam.id, availability: 'AVAILABLE' },
-    { name: 'Ivan Borisov', email: 'ivan.borisov@cloudruid.com', role: 'DEVELOPER', teamId: transactionHistoryTeam.id, availability: 'AVAILABLE' },
+    { name: 'Adam Bishop', email: 'adam.bishop@acme.com', role: 'TEAM_LEAD', teamId: transactionHistoryTeam.id, availability: 'AVAILABLE' },
+    { name: 'Jack Rhodes', email: 'jack.rhodes@acme.com', role: 'DEVELOPER', teamId: transactionHistoryTeam.id, availability: 'AVAILABLE' },
 
     // MM team
-    { name: 'Gabriel Mindev', email: 'gabriel.mindev@cloudruid.com', role: 'TEAM_LEAD', teamId: mmTeam.id, availability: 'AVAILABLE' },
-    { name: 'Aleksandar Angelov', email: 'aleksandar.angelov@cloudruid.com', role: 'DEVELOPER', teamId: mmTeam.id, availability: 'AVAILABLE' },
+    { name: 'Leo Vaughn', email: 'leo.vaughn@acme.com', role: 'TEAM_LEAD', teamId: mmTeam.id, availability: 'AVAILABLE' },
+    { name: 'Sean OBrien', email: 'sean.obrien@acme.com', role: 'DEVELOPER', teamId: mmTeam.id, availability: 'AVAILABLE' },
 
     // FE team
-    { name: 'Tihomir Evgeniev', email: 'tihomir.evgeniev@cloudruid.com', role: 'TEAM_LEAD', teamId: feTeam.id, availability: 'BUSY' },
+    { name: 'Elena Vargas', email: 'elena.vargas@acme.com', role: 'TEAM_LEAD', teamId: feTeam.id, availability: 'BUSY' },
 
     // Milenium falcon
-    { name: 'Marian Valchinov', email: 'marian.valchinov@cloudruid.com', role: 'TEAM_LEAD', teamId: mileniumFalconTeam.id, availability: 'AVAILABLE' },
-    { name: 'Nikola Valchinov', email: 'nikola.valchinov@cloudruid.com', role: 'DEVELOPER', teamId: mileniumFalconTeam.id, availability: 'BUSY' },
-    { name: 'Veselin Velev', email: 'veselin.velev@cloudruid.com', role: 'DEVELOPER', teamId: mileniumFalconTeam.id, availability: 'AVAILABLE' },
+    { name: 'Ian Fletcher', email: 'ian.fletcher@acme.com', role: 'TEAM_LEAD', teamId: mileniumFalconTeam.id, availability: 'AVAILABLE' },
+    { name: 'Owen Fletcher', email: 'owen.fletcher@acme.com', role: 'DEVELOPER', teamId: mileniumFalconTeam.id, availability: 'BUSY' },
+    { name: 'Caleb Stone', email: 'caleb.stone@acme.com', role: 'DEVELOPER', teamId: mileniumFalconTeam.id, availability: 'AVAILABLE' },
 
     // QA Team
-    { name: 'Yuliia Pylaieva', email: 'yuliia.pylaieva@cloudruid.com', role: 'TEAM_LEAD', teamId: qaTeam.id, availability: 'ON_LEAVE' },
-    { name: 'Momchil Dimitrov', email: 'momchil.dimitrov@cloudruid.com', role: 'DEVELOPER', teamId: qaTeam.id, availability: 'AVAILABLE' },
-    { name: 'Ivelina Georgieva', email: 'ivelina.georgieva@cloudruid.com', role: 'DEVELOPER', teamId: qaTeam.id, availability: 'AVAILABLE' },
-    { name: 'Diana Demireva', email: 'diana.demireva@cloudruid.com', role: 'DEVELOPER', teamId: qaTeam.id, availability: 'AVAILABLE' },
+    { name: 'Nina Kowalski', email: 'nina.kowalski@acme.com', role: 'TEAM_LEAD', teamId: qaTeam.id, availability: 'ON_LEAVE' },
+    { name: 'Toby Harris', email: 'toby.harris@acme.com', role: 'DEVELOPER', teamId: qaTeam.id, availability: 'AVAILABLE' },
+    { name: 'Helena Ortiz', email: 'helena.ortiz@acme.com', role: 'DEVELOPER', teamId: qaTeam.id, availability: 'AVAILABLE' },
+    { name: 'Julia Weber', email: 'julia.weber@acme.com', role: 'DEVELOPER', teamId: qaTeam.id, availability: 'AVAILABLE' },
   ];
 
   const users: Record<string, { id: string; name: string }> = {};
@@ -191,42 +192,42 @@ async function main() {
 
   const id = (email: string) => users[email]!.id;
 
-  const hristo = id('hristo.minkov@cloudruid.com');
-  const krasimir = id('krasimir.gizdov@cloudruid.com');
-  const borislav = id('borislav.iliev@cloudruid.com');
-  const dimitar = id('dimitar.dimitrov@cloudruid.com');
-  const ivan = id('ivan.backrachev@cloudruid.com');
-  const ivayloH = id('ivaylo.hadzhiyski@cloudruid.com');
-  const panayot = id('panayot.kostov@cloudruid.com');
-  const elitsa = id('elitsa.stancheva@cloudruid.com');
-  const ralitsa = id('ralitsa.stancheva@cloudruid.com');
-  const svetli = id('svetoslav.kochev@cloudruid.com');
-  const ivayloI = id('ivo.iliev@cloudruid.com');
-  const todor = id('todor.kanev@cloudruid.com');
-  const ivelina = id('ivelina.georgieva@cloudruid.com');
-  const diana = id('diana.demireva@cloudruid.com');
-  const veronika = id('veronika.kashaykova@cloudruid.com');
-  const yuliia = id('yuliia.pylaieva@cloudruid.com');
-  const momchil = id('momchil.dimitrov@cloudruid.com');
+  const alex = id('alex.morgan@acme.com');
+  const peter = id('peter.novak@acme.com');
+  const david = id('david.fischer@acme.com');
+  const rachel = id('rachel.green@acme.com');
+  const marcus = id('marcus.klein@acme.com');
+  const mateo = id('mateo.silva@acme.com');
+  const james = id('james.wilson@acme.com');
+  const anna = id('anna.rossi@acme.com');
+  const sofia = id('sofia.almeida@acme.com');
+  const nathan = id('nathan.price@acme.com');
+  const emily = id('emily.watson@acme.com');
+  const daniel = id('daniel.brooks@acme.com');
+  const helena = id('helena.ortiz@acme.com');
+  const julia = id('julia.weber@acme.com');
+  const laura = id('laura.santos@acme.com');
+  const nina = id('nina.kowalski@acme.com');
+  const toby = id('toby.harris@acme.com');
 
   // Extra members pulled in to back the Resources seeds (parking, QA, prod-support)
-  const tihomir = id('tihomir.evgeniev@cloudruid.com');
-  const marian = id('marian.valchinov@cloudruid.com');
-  const renal = id('renal.ahmedov@cloudruid.com');
-  const nikola = id('nikola.valchinov@cloudruid.com');
-  const veselin = id('veselin.velev@cloudruid.com');
-  const keti = id('keti.hambarliyska@cloudruid.com');
-  const radoslav = id('radoslav.dimitrov@cloudruid.com');
-  const ivanBorisov = id('ivan.borisov@cloudruid.com');
-  const dimitarKolev = id('dimitar.kolev@cloudruid.com');
-  const dimitarTagarev = id('dimitar.tagarev@cloudruid.com');
-  const lazar = id('lazar.avramov@cloudruid.com');
-  const viktor = id('viktor.neykov@cloudruid.com');
-  const rado = id('rado.ivanov@cloudruid.com');
-  const martinP = id('martin.panayotov@cloudruid.com');
-  const martinI = id('martin.iliev@cloudruid.com');
-  const gabriel = id('gabriel.mindev@cloudruid.com');
-  const aleksandar = id('aleksandar.angelov@cloudruid.com');
+  const elena = id('elena.vargas@acme.com');
+  const ian = id('ian.fletcher@acme.com');
+  const ryan = id('ryan.harper@acme.com');
+  const owen = id('owen.fletcher@acme.com');
+  const caleb = id('caleb.stone@acme.com');
+  const chloe = id('chloe.martin@acme.com');
+  const grace = id('grace.sullmarcus@acme.com');
+  const jackRhodes = id('jack.rhodes@acme.com');
+  const sarahMitchell = id('sarah.mitchell@acme.com');
+  const thomasKelly = id('thomas.kelly@acme.com');
+  const henry = id('henry.carter@acme.com');
+  const lucas = id('lucas.moretti@acme.com');
+  const michael= id('michael.reyes@acme.com');
+  const adamBishop = id('adam.bishop@acme.com');
+  const victorOwens = id('victor.owens@acme.com');
+  const leo = id('leo.vaughn@acme.com');
+  const sean = id('sean.obrien@acme.com');
 
   // ─── TICKETS — Deposit / Withdrawal ─────────────────────────────────────
   const dw1 = await prisma.ticket.create({
@@ -242,8 +243,8 @@ async function main() {
       syncedAt: hoursAgo(1),
     },
   });
-  await prisma.ticketAssignment.create({ data: { ticketId: dw1.id, userId: borislav } });
-  await prisma.ticketAssignment.create({ data: { ticketId: dw1.id, userId: dimitar } });
+  await prisma.ticketAssignment.create({ data: { ticketId: dw1.id, userId: david } });
+  await prisma.ticketAssignment.create({ data: { ticketId: dw1.id, userId: rachel } });
 
   const dw2 = await prisma.ticket.create({
     data: {
@@ -258,7 +259,7 @@ async function main() {
       syncedAt: hoursAgo(1),
     },
   });
-  await prisma.ticketAssignment.create({ data: { ticketId: dw2.id, userId: krasimir } });
+  await prisma.ticketAssignment.create({ data: { ticketId: dw2.id, userId: peter } });
 
   const dw3 = await prisma.ticket.create({
     data: {
@@ -273,7 +274,7 @@ async function main() {
       syncedAt: hoursAgo(1),
     },
   });
-  await prisma.ticketAssignment.create({ data: { ticketId: dw3.id, userId: ivan } });
+  await prisma.ticketAssignment.create({ data: { ticketId: dw3.id, userId: marcus } });
 
   await prisma.ticket.create({
     data: {
@@ -300,8 +301,8 @@ async function main() {
       syncedAt: hoursAgo(1),
     },
   });
-  await prisma.ticketAssignment.create({ data: { ticketId: ex1.id, userId: ivayloH } });
-  await prisma.ticketAssignment.create({ data: { ticketId: ex1.id, userId: panayot } });
+  await prisma.ticketAssignment.create({ data: { ticketId: ex1.id, userId: mateo } });
+  await prisma.ticketAssignment.create({ data: { ticketId: ex1.id, userId: james } });
 
   const ex2 = await prisma.ticket.create({
     data: {
@@ -316,7 +317,7 @@ async function main() {
       syncedAt: hoursAgo(1),
     },
   });
-  await prisma.ticketAssignment.create({ data: { ticketId: ex2.id, userId: ralitsa } });
+  await prisma.ticketAssignment.create({ data: { ticketId: ex2.id, userId: sofia } });
 
   // ─── TICKETS — Account ──────────────────────────────────────────────────
   const ac1 = await prisma.ticket.create({
@@ -332,7 +333,7 @@ async function main() {
       syncedAt: hoursAgo(1),
     },
   });
-  await prisma.ticketAssignment.create({ data: { ticketId: ac1.id, userId: svetli } });
+  await prisma.ticketAssignment.create({ data: { ticketId: ac1.id, userId: nathan } });
 
   const ac2 = await prisma.ticket.create({
     data: {
@@ -347,8 +348,8 @@ async function main() {
       syncedAt: hoursAgo(1),
     },
   });
-  await prisma.ticketAssignment.create({ data: { ticketId: ac2.id, userId: ivayloI } });
-  await prisma.ticketAssignment.create({ data: { ticketId: ac2.id, userId: todor } });
+  await prisma.ticketAssignment.create({ data: { ticketId: ac2.id, userId: emily } });
+  await prisma.ticketAssignment.create({ data: { ticketId: ac2.id, userId: daniel } });
 
   // ─── TICKETS — QA ───────────────────────────────────────────────────────
   const qa1 = await prisma.ticket.create({
@@ -364,7 +365,7 @@ async function main() {
       syncedAt: hoursAgo(1),
     },
   });
-  await prisma.ticketAssignment.create({ data: { ticketId: qa1.id, userId: ivelina } });
+  await prisma.ticketAssignment.create({ data: { ticketId: qa1.id, userId: helena } });
 
   const qa2 = await prisma.ticket.create({
     data: {
@@ -379,8 +380,8 @@ async function main() {
       syncedAt: hoursAgo(1),
     },
   });
-  await prisma.ticketAssignment.create({ data: { ticketId: qa2.id, userId: diana } });
-  await prisma.ticketAssignment.create({ data: { ticketId: qa2.id, userId: momchil } });
+  await prisma.ticketAssignment.create({ data: { ticketId: qa2.id, userId: julia } });
+  await prisma.ticketAssignment.create({ data: { ticketId: qa2.id, userId: toby } });
 
   const qa3 = await prisma.ticket.create({
     data: {
@@ -391,7 +392,7 @@ async function main() {
       teamId: qaTeam.id,
     },
   });
-  await prisma.ticketAssignment.create({ data: { ticketId: qa3.id, userId: veronika } });
+  await prisma.ticketAssignment.create({ data: { ticketId: qa3.id, userId: laura } });
 
   // ─── MORE TICKETS — Deposit / Withdrawal ────────────────────────────────
   const dw5 = await prisma.ticket.create({
@@ -407,9 +408,9 @@ async function main() {
       syncedAt: hoursAgo(1),
     },
   });
-  await prisma.ticketAssignment.create({ data: { ticketId: dw5.id, userId: borislav } });
-  await prisma.ticketAssignment.create({ data: { ticketId: dw5.id, userId: ivan } });
-  await prisma.ticketAssignment.create({ data: { ticketId: dw5.id, userId: elitsa } });
+  await prisma.ticketAssignment.create({ data: { ticketId: dw5.id, userId: david } });
+  await prisma.ticketAssignment.create({ data: { ticketId: dw5.id, userId: marcus } });
+  await prisma.ticketAssignment.create({ data: { ticketId: dw5.id, userId: anna } });
 
   const dw6 = await prisma.ticket.create({
     data: {
@@ -424,7 +425,7 @@ async function main() {
       syncedAt: hoursAgo(1),
     },
   });
-  await prisma.ticketAssignment.create({ data: { ticketId: dw6.id, userId: dimitar } });
+  await prisma.ticketAssignment.create({ data: { ticketId: dw6.id, userId: rachel } });
 
   const dw7 = await prisma.ticket.create({
     data: {
@@ -439,8 +440,8 @@ async function main() {
       syncedAt: hoursAgo(1),
     },
   });
-  await prisma.ticketAssignment.create({ data: { ticketId: dw7.id, userId: krasimir } });
-  await prisma.ticketAssignment.create({ data: { ticketId: dw7.id, userId: elitsa } });
+  await prisma.ticketAssignment.create({ data: { ticketId: dw7.id, userId: peter } });
+  await prisma.ticketAssignment.create({ data: { ticketId: dw7.id, userId: anna } });
 
   const dw8 = await prisma.ticket.create({
     data: {
@@ -455,8 +456,8 @@ async function main() {
       syncedAt: hoursAgo(1),
     },
   });
-  await prisma.ticketAssignment.create({ data: { ticketId: dw8.id, userId: dimitar } });
-  await prisma.ticketAssignment.create({ data: { ticketId: dw8.id, userId: elitsa } });
+  await prisma.ticketAssignment.create({ data: { ticketId: dw8.id, userId: rachel } });
+  await prisma.ticketAssignment.create({ data: { ticketId: dw8.id, userId: anna } });
 
   const dw9 = await prisma.ticket.create({
     data: {
@@ -471,7 +472,7 @@ async function main() {
       syncedAt: hoursAgo(30),
     },
   });
-  await prisma.ticketAssignment.create({ data: { ticketId: dw9.id, userId: borislav } });
+  await prisma.ticketAssignment.create({ data: { ticketId: dw9.id, userId: david } });
 
   const dw10 = await prisma.ticket.create({
     data: {
@@ -483,7 +484,7 @@ async function main() {
       teamId: coinsTeam.id,
     },
   });
-  await prisma.ticketAssignment.create({ data: { ticketId: dw10.id, userId: ivan } });
+  await prisma.ticketAssignment.create({ data: { ticketId: dw10.id, userId: marcus } });
 
   const dw11 = await prisma.ticket.create({
     data: {
@@ -495,8 +496,8 @@ async function main() {
       teamId: coinsTeam.id,
     },
   });
-  await prisma.ticketAssignment.create({ data: { ticketId: dw11.id, userId: krasimir } });
-  await prisma.ticketAssignment.create({ data: { ticketId: dw11.id, userId: ivan } });
+  await prisma.ticketAssignment.create({ data: { ticketId: dw11.id, userId: peter } });
+  await prisma.ticketAssignment.create({ data: { ticketId: dw11.id, userId: marcus } });
 
   const dw12 = await prisma.ticket.create({
     data: {
@@ -511,7 +512,7 @@ async function main() {
       syncedAt: hoursAgo(1),
     },
   });
-  await prisma.ticketAssignment.create({ data: { ticketId: dw12.id, userId: elitsa } });
+  await prisma.ticketAssignment.create({ data: { ticketId: dw12.id, userId: anna } });
 
   // ─── MORE TICKETS — Exchange ────────────────────────────────────────────
   const ex3 = await prisma.ticket.create({
@@ -527,9 +528,9 @@ async function main() {
       syncedAt: hoursAgo(1),
     },
   });
-  await prisma.ticketAssignment.create({ data: { ticketId: ex3.id, userId: ivayloH } });
-  await prisma.ticketAssignment.create({ data: { ticketId: ex3.id, userId: panayot } });
-  await prisma.ticketAssignment.create({ data: { ticketId: ex3.id, userId: ralitsa } });
+  await prisma.ticketAssignment.create({ data: { ticketId: ex3.id, userId: mateo } });
+  await prisma.ticketAssignment.create({ data: { ticketId: ex3.id, userId: james } });
+  await prisma.ticketAssignment.create({ data: { ticketId: ex3.id, userId: sofia } });
 
   const ex4 = await prisma.ticket.create({
     data: {
@@ -544,7 +545,7 @@ async function main() {
       syncedAt: hoursAgo(1),
     },
   });
-  await prisma.ticketAssignment.create({ data: { ticketId: ex4.id, userId: panayot } });
+  await prisma.ticketAssignment.create({ data: { ticketId: ex4.id, userId: james } });
 
   const ex5 = await prisma.ticket.create({
     data: {
@@ -559,7 +560,7 @@ async function main() {
       syncedAt: hoursAgo(1),
     },
   });
-  await prisma.ticketAssignment.create({ data: { ticketId: ex5.id, userId: ivayloH } });
+  await prisma.ticketAssignment.create({ data: { ticketId: ex5.id, userId: mateo } });
 
   const ex6 = await prisma.ticket.create({
     data: {
@@ -574,7 +575,7 @@ async function main() {
       syncedAt: hoursAgo(48),
     },
   });
-  await prisma.ticketAssignment.create({ data: { ticketId: ex6.id, userId: ralitsa } });
+  await prisma.ticketAssignment.create({ data: { ticketId: ex6.id, userId: sofia } });
 
   const ex7 = await prisma.ticket.create({
     data: {
@@ -586,8 +587,8 @@ async function main() {
       teamId: exchangeTeam.id,
     },
   });
-  await prisma.ticketAssignment.create({ data: { ticketId: ex7.id, userId: panayot } });
-  await prisma.ticketAssignment.create({ data: { ticketId: ex7.id, userId: ralitsa } });
+  await prisma.ticketAssignment.create({ data: { ticketId: ex7.id, userId: james } });
+  await prisma.ticketAssignment.create({ data: { ticketId: ex7.id, userId: sofia } });
 
   const ex8 = await prisma.ticket.create({
     data: {
@@ -602,8 +603,8 @@ async function main() {
       syncedAt: hoursAgo(1),
     },
   });
-  await prisma.ticketAssignment.create({ data: { ticketId: ex8.id, userId: ivayloH } });
-  await prisma.ticketAssignment.create({ data: { ticketId: ex8.id, userId: ralitsa } });
+  await prisma.ticketAssignment.create({ data: { ticketId: ex8.id, userId: mateo } });
+  await prisma.ticketAssignment.create({ data: { ticketId: ex8.id, userId: sofia } });
 
   // ─── MORE TICKETS — Account ─────────────────────────────────────────────
   const ac3 = await prisma.ticket.create({
@@ -619,7 +620,7 @@ async function main() {
       syncedAt: hoursAgo(1),
     },
   });
-  await prisma.ticketAssignment.create({ data: { ticketId: ac3.id, userId: svetli } });
+  await prisma.ticketAssignment.create({ data: { ticketId: ac3.id, userId: nathan } });
 
   const ac4 = await prisma.ticket.create({
     data: {
@@ -634,7 +635,7 @@ async function main() {
       syncedAt: hoursAgo(1),
     },
   });
-  await prisma.ticketAssignment.create({ data: { ticketId: ac4.id, userId: ivayloI } });
+  await prisma.ticketAssignment.create({ data: { ticketId: ac4.id, userId: emily } });
 
   const ac5 = await prisma.ticket.create({
     data: {
@@ -649,7 +650,7 @@ async function main() {
       syncedAt: hoursAgo(1),
     },
   });
-  await prisma.ticketAssignment.create({ data: { ticketId: ac5.id, userId: todor } });
+  await prisma.ticketAssignment.create({ data: { ticketId: ac5.id, userId: daniel } });
 
   const ac6 = await prisma.ticket.create({
     data: {
@@ -664,8 +665,8 @@ async function main() {
       syncedAt: hoursAgo(72),
     },
   });
-  await prisma.ticketAssignment.create({ data: { ticketId: ac6.id, userId: svetli } });
-  await prisma.ticketAssignment.create({ data: { ticketId: ac6.id, userId: ivayloI } });
+  await prisma.ticketAssignment.create({ data: { ticketId: ac6.id, userId: nathan } });
+  await prisma.ticketAssignment.create({ data: { ticketId: ac6.id, userId: emily } });
 
   const ac7 = await prisma.ticket.create({
     data: {
@@ -677,7 +678,7 @@ async function main() {
       teamId: accountTeam.id,
     },
   });
-  await prisma.ticketAssignment.create({ data: { ticketId: ac7.id, userId: svetli } });
+  await prisma.ticketAssignment.create({ data: { ticketId: ac7.id, userId: nathan } });
 
   const ac8 = await prisma.ticket.create({
     data: {
@@ -692,7 +693,7 @@ async function main() {
       syncedAt: hoursAgo(1),
     },
   });
-  await prisma.ticketAssignment.create({ data: { ticketId: ac8.id, userId: todor } });
+  await prisma.ticketAssignment.create({ data: { ticketId: ac8.id, userId: daniel } });
 
   // ─── MORE TICKETS — QA ──────────────────────────────────────────────────
   const qa4 = await prisma.ticket.create({
@@ -708,8 +709,8 @@ async function main() {
       syncedAt: hoursAgo(1),
     },
   });
-  await prisma.ticketAssignment.create({ data: { ticketId: qa4.id, userId: ivelina } });
-  await prisma.ticketAssignment.create({ data: { ticketId: qa4.id, userId: diana } });
+  await prisma.ticketAssignment.create({ data: { ticketId: qa4.id, userId: helena } });
+  await prisma.ticketAssignment.create({ data: { ticketId: qa4.id, userId: julia } });
 
   const qa5 = await prisma.ticket.create({
     data: {
@@ -724,7 +725,7 @@ async function main() {
       syncedAt: hoursAgo(1),
     },
   });
-  await prisma.ticketAssignment.create({ data: { ticketId: qa5.id, userId: veronika } });
+  await prisma.ticketAssignment.create({ data: { ticketId: qa5.id, userId: laura } });
 
   const qa6 = await prisma.ticket.create({
     data: {
@@ -739,7 +740,7 @@ async function main() {
       syncedAt: hoursAgo(1),
     },
   });
-  await prisma.ticketAssignment.create({ data: { ticketId: qa6.id, userId: momchil } });
+  await prisma.ticketAssignment.create({ data: { ticketId: qa6.id, userId: toby } });
 
   const qa7 = await prisma.ticket.create({
     data: {
@@ -754,8 +755,8 @@ async function main() {
       syncedAt: hoursAgo(1),
     },
   });
-  await prisma.ticketAssignment.create({ data: { ticketId: qa7.id, userId: diana } });
-  await prisma.ticketAssignment.create({ data: { ticketId: qa7.id, userId: veronika } });
+  await prisma.ticketAssignment.create({ data: { ticketId: qa7.id, userId: julia } });
+  await prisma.ticketAssignment.create({ data: { ticketId: qa7.id, userId: laura } });
 
   const qa8 = await prisma.ticket.create({
     data: {
@@ -767,7 +768,7 @@ async function main() {
       teamId: qaTeam.id,
     },
   });
-  await prisma.ticketAssignment.create({ data: { ticketId: qa8.id, userId: yuliia } });
+  await prisma.ticketAssignment.create({ data: { ticketId: qa8.id, userId: nina } });
 
   const qa9 = await prisma.ticket.create({
     data: {
@@ -782,8 +783,8 @@ async function main() {
       syncedAt: hoursAgo(48),
     },
   });
-  await prisma.ticketAssignment.create({ data: { ticketId: qa9.id, userId: momchil } });
-  await prisma.ticketAssignment.create({ data: { ticketId: qa9.id, userId: ivelina } });
+  await prisma.ticketAssignment.create({ data: { ticketId: qa9.id, userId: toby } });
+  await prisma.ticketAssignment.create({ data: { ticketId: qa9.id, userId: helena } });
 
   const qa10 = await prisma.ticket.create({
     data: {
@@ -795,14 +796,14 @@ async function main() {
       teamId: qaTeam.id,
     },
   });
-  await prisma.ticketAssignment.create({ data: { ticketId: qa10.id, userId: ivelina } });
+  await prisma.ticketAssignment.create({ data: { ticketId: qa10.id, userId: helena } });
 
   // ─── STANDUPS — today ───────────────────────────────────────────────────
   await prisma.standup.create({
     data: {
-      userId: krasimir,
+      userId: peter,
       teamId: coinsTeam.id,
-      yesterday: 'Release planning, coordinated SEPA retry spec with Borislav and Dimitar.',
+      yesterday: 'Release planning, coordinated SEPA retry spec with David and Rachel.',
       today: 'DW-042 triage. Available for questions.',
       blockers: null,
       capacityPct: 60,
@@ -812,11 +813,11 @@ async function main() {
 
   await prisma.standup.create({
     data: {
-      userId: borislav,
+      userId: david,
       teamId: coinsTeam.id,
       yesterday: 'Idempotency keys for SEPA retries.',
       today: 'Continuing DW-041. Full day — no capacity for new tasks.',
-      blockers: 'Need staging DB dump refreshed — @Krasimir',
+      blockers: 'Need staging DB dump refreshed — @Peter',
       capacityPct: 95,
       postedAt: hoursAgo(5),
     },
@@ -824,10 +825,10 @@ async function main() {
 
   await prisma.standup.create({
     data: {
-      userId: dimitar,
+      userId: rachel,
       teamId: coinsTeam.id,
       yesterday: 'SEPA retry PR reviewed; added test coverage.',
-      today: 'Pairing with Borislav on DW-041. Some capacity for reviews.',
+      today: 'Pairing with David on DW-041. Some capacity for reviews.',
       blockers: null,
       capacityPct: 70,
       postedAt: hoursAgo(4),
@@ -836,7 +837,7 @@ async function main() {
 
   await prisma.standup.create({
     data: {
-      userId: ivan,
+      userId: marcus,
       teamId: coinsTeam.id,
       yesterday: 'DW-038 cap enforcement done; PR up for review.',
       today: 'Remote today. Responding to review comments.',
@@ -848,9 +849,9 @@ async function main() {
 
   await prisma.standup.create({
     data: {
-      userId: ivayloH,
+      userId: mateo,
       teamId: exchangeTeam.id,
-      yesterday: 'Planning partial fill UX with Panayot.',
+      yesterday: 'Planning partial fill UX with James.',
       today: 'Implementing incremental fill events on EX-017.',
       blockers: null,
       capacityPct: 70,
@@ -860,10 +861,10 @@ async function main() {
 
   await prisma.standup.create({
     data: {
-      userId: ivelina,
+      userId: helena,
       teamId: qaTeam.id,
       yesterday: 'Investigated flaky withdrawal tests — suspect is queue backpressure.',
-      today: 'Reproducing QA-015 under load; assigning fixtures to Momchil.',
+      today: 'Reproducing QA-015 under load; assigning fixtures to Toby.',
       blockers: null,
       capacityPct: 60,
       postedAt: hoursAgo(2),
@@ -872,7 +873,7 @@ async function main() {
 
   await prisma.standup.create({
     data: {
-      userId: svetli,
+      userId: nathan,
       teamId: accountTeam.id,
       yesterday: 'Specced out 2FA recovery codes.',
       today: 'KYC reminder job — schedule and copy review.',
@@ -886,10 +887,10 @@ async function main() {
   const yesterday = daysFromToday(-1);
   await prisma.standup.create({
     data: {
-      userId: krasimir,
+      userId: peter,
       teamId: coinsTeam.id,
       yesterday: 'Client call, architecture review for Q3.',
-      today: 'Release coordination, onboarding Ivan to the payouts flow.',
+      today: 'Release coordination, onboarding Marcus to the payouts flow.',
       blockers: null,
       capacityPct: 55,
       postedAt: new Date(yesterday.getTime() + 9.5 * 3600 * 1000),
@@ -897,10 +898,10 @@ async function main() {
   });
   await prisma.standup.create({
     data: {
-      userId: borislav,
+      userId: david,
       teamId: coinsTeam.id,
       yesterday: 'Backlog grooming, Jira cleanup.',
-      today: 'Starting on SEPA retries with Dimitar.',
+      today: 'Starting on SEPA retries with Rachel.',
       blockers: null,
       capacityPct: 80,
       postedAt: new Date(yesterday.getTime() + 9.3 * 3600 * 1000),
@@ -908,53 +909,53 @@ async function main() {
   });
 
   // ─── LEAVES ─────────────────────────────────────────────────────────────
-  // Yuliia currently on annual leave
+  // Nina currently on annual leave
   await prisma.leaveRequest.create({
     data: {
-      userId: yuliia,
+      userId: nina,
       type: 'ANNUAL',
       status: 'APPROVED',
       startDate: daysFromToday(-2),
       endDate: daysFromToday(2),
       note: 'Pre-planned family trip.',
-      reviewedBy: ivelina,
+      reviewedBy: helena,
       reviewedAt: daysFromToday(-10),
       notifySlack: true,
     },
   });
 
-  // Ivan remote day today
+  // Marcus remote day today
   await prisma.leaveRequest.create({
     data: {
-      userId: ivan,
+      userId: marcus,
       type: 'REMOTE',
       status: 'APPROVED',
       startDate: today,
       endDate: today,
-      reviewedBy: krasimir,
+      reviewedBy: peter,
       reviewedAt: daysFromToday(-3),
       notifySlack: true,
     },
   });
 
-  // Borislav partial day last week
+  // David partial day last week
   await prisma.leaveRequest.create({
     data: {
-      userId: borislav,
+      userId: david,
       type: 'PARTIAL_PM',
       status: 'APPROVED',
       startDate: daysFromToday(-7),
       endDate: daysFromToday(-7),
       note: 'Doctor appointment.',
-      reviewedBy: krasimir,
+      reviewedBy: peter,
       reviewedAt: daysFromToday(-9),
     },
   });
 
-  // PENDING — Elitsa partial day
+  // PENDING — Anna partial day
   await prisma.leaveRequest.create({
     data: {
-      userId: elitsa,
+      userId: anna,
       type: 'PARTIAL_AM',
       status: 'PENDING',
       startDate: daysFromToday(2),
@@ -964,10 +965,10 @@ async function main() {
     },
   });
 
-  // PENDING — Dimitar annual leave
+  // PENDING — Rachel annual leave
   await prisma.leaveRequest.create({
     data: {
-      userId: dimitar,
+      userId: rachel,
       type: 'ANNUAL',
       status: 'PENDING',
       startDate: daysFromToday(6),
@@ -977,10 +978,10 @@ async function main() {
     },
   });
 
-  // PENDING — Todor remote day
+  // PENDING — Daniel remote day
   await prisma.leaveRequest.create({
     data: {
-      userId: todor,
+      userId: daniel,
       type: 'REMOTE',
       status: 'PENDING',
       startDate: daysFromToday(13),
@@ -989,16 +990,16 @@ async function main() {
     },
   });
 
-  // Diana approved remote block
+  // Julia approved remote block
   await prisma.leaveRequest.create({
     data: {
-      userId: diana,
+      userId: julia,
       type: 'REMOTE',
       status: 'APPROVED',
       startDate: daysFromToday(5),
       endDate: daysFromToday(9),
       note: 'Working from the coast this week.',
-      reviewedBy: ivelina,
+      reviewedBy: helena,
       reviewedAt: daysFromToday(-1),
     },
   });
@@ -1006,24 +1007,24 @@ async function main() {
   // Future scheduled
   await prisma.leaveRequest.create({
     data: {
-      userId: yuliia,
+      userId: nina,
       type: 'ANNUAL',
       status: 'APPROVED',
       startDate: daysFromToday(21),
       endDate: daysFromToday(23),
-      reviewedBy: ivelina,
+      reviewedBy: helena,
       reviewedAt: daysFromToday(-5),
     },
   });
 
   await prisma.leaveRequest.create({
     data: {
-      userId: krasimir,
+      userId: peter,
       type: 'REMOTE',
       status: 'APPROVED',
       startDate: daysFromToday(27),
       endDate: daysFromToday(28),
-      reviewedBy: hristo,
+      reviewedBy: alex,
       reviewedAt: daysFromToday(-2),
     },
   });
@@ -1045,8 +1046,8 @@ async function main() {
   await prisma.jiraConfig.create({
     data: {
       orgId: org.id,
-      baseUrl: 'https://cloudruid.atlassian.net',
-      email: 'hristo.minkov@cloudruid.com',
+      baseUrl: 'https://acme.atlassian.net',
+      email: 'alex.morgan@acme.com',
       apiToken: 'PLACEHOLDER-REPLACE-VIA-UI',
       projectKeys: ['DW', 'EX', 'AC', 'QA'],
       syncInterval: 15,
@@ -1082,11 +1083,11 @@ async function main() {
   }
 
   const rotation = [
-    [krasimir, ivayloH, svetli, ivelina, panayot, tihomir, marian],
-    [hristo, panayot, svetli, radoslav, borislav, renal, marian],
-    [krasimir, ivayloH, svetli, ivelina, lazar, tihomir, veselin],
-    [hristo, panayot, ivan, keti, dimitar, nikola, martinI],
-    [krasimir, ivayloH, svetli, ivelina, ivanBorisov, tihomir, marian],
+    [peter, mateo, nathan, helena, james, elena, ian],
+    [alex, james, nathan, grace, david, ryan, ian],
+    [peter, mateo, nathan, helena, henry, elena, caleb],
+    [alex, james, marcus, chloe, rachel, owen, victorOwens],
+    [peter, mateo, nathan, helena, jackRhodes, elena, ian],
   ] as const;
 
   for (let wi = 0; wi < parkingWeeks.length; wi++) {
@@ -1140,27 +1141,27 @@ async function main() {
   }
 
   const qaBookings = [
-    { env: 'QA1', service: 'Account management', feature: 'Gateway 21 project', clientTag: 'v2.4.1', devOwnerId: renal, qaOwnerId: diana, status: 'IN_DEVELOPMENT', notes: 'Phase 2' },
-    { env: 'QA1', service: 'Salesforce integration service', feature: 'Gateway 21 project', clientTag: 'v1.9.0-rc3', devOwnerId: ivanBorisov, qaOwnerId: null, status: 'PAUSED', notes: 'Blocked because of Gateway21' },
-    { env: 'QA2', service: 'Exchange services', feature: 'Health check endpoint', clientTag: 'v3.1.2', devOwnerId: panayot, qaOwnerId: null, status: 'IN_DEVELOPMENT', notes: null },
-    { env: 'QA2', service: 'withdrawal services', feature: 'Migrate to new Fireblocks SDK', clientTag: null, devOwnerId: borislav, qaOwnerId: null, status: 'PAUSED', notes: null },
-    { env: 'QA2', service: 'account services', feature: 'Email MFA', clientTag: 'v4.0.0', devOwnerId: borislav, qaOwnerId: diana, status: 'IN_DEVELOPMENT', notes: 'Released V1' },
-    { env: 'QA3', service: 'Fiat deposit processing', feature: 'Fraud Questionnaire', clientTag: 'v2.0.7', devOwnerId: elitsa, qaOwnerId: null, status: 'IN_DEVELOPMENT', notes: null },
-    { env: 'QA3', service: 'Exchange', feature: 'Maintenance guard', clientTag: null, devOwnerId: panayot, qaOwnerId: panayot, status: 'IN_DEVELOPMENT', notes: null },
-    { env: 'QA4', service: 'Merchant services', feature: 'Merchant V2 Dashboard', clientTag: 'v3.4.0-beta.2', devOwnerId: radoslav, qaOwnerId: null, status: 'TEST_IN_QA', notes: null },
-    { env: 'QA4', service: 'Account', feature: 'MFA improvements', clientTag: 'v2.1.5', devOwnerId: ivayloI, qaOwnerId: yuliia, status: 'TEST_IN_QA', notes: null },
-    { env: 'QA5', service: 'Account management', feature: 'KYB backfilling + account closure', clientTag: 'v2.4.0', devOwnerId: radoslav, qaOwnerId: null, status: 'TEST_IN_QA', notes: null },
-    { env: 'QA5', service: 'KMS', feature: 'KYB backfilling', clientTag: 'v5.2.1', devOwnerId: tihomir, qaOwnerId: null, status: 'TEST_IN_QA', notes: null },
-    { env: 'QA6', service: 'Yield engine', feature: 'Automate yield payments push', clientTag: 'v1.0.4', devOwnerId: keti, qaOwnerId: keti, status: 'TEST_IN_QA', notes: null },
-    { env: 'QA6', service: 'Account', feature: 'T&C', clientTag: 'v2.1.6', devOwnerId: svetli, qaOwnerId: yuliia, status: 'PUSHED_TO_PROD', notes: null },
-    { env: 'QA7', service: 'Withdrawal-api', feature: 'Payments v2', clientTag: '2026.04.17-rc2', devOwnerId: elitsa, qaOwnerId: momchil, status: 'TEST_IN_QA', notes: null },
-    { env: 'QA8', service: 'Fiat deposit services', feature: 'Yellowcard Phase 2.1', clientTag: 'v2.1.0', devOwnerId: dimitar, qaOwnerId: momchil, status: 'READY_FOR_PROD', notes: null },
-    { env: 'QA9', service: 'Account', feature: 'New IP email', clientTag: 'v2.1.7', devOwnerId: svetli, qaOwnerId: ivelina, status: 'READY_FOR_PROD', notes: 'Request from Tom' },
-    { env: 'QA9', service: 'profit-and-loss-processor', feature: 'New service', clientTag: null, devOwnerId: todor, qaOwnerId: null, status: 'IN_DEVELOPMENT', notes: null },
-    { env: 'QA10', service: 'Debit card payment processing', feature: 'Chargebacks', clientTag: 'v1.3.0', devOwnerId: lazar, qaOwnerId: yuliia, status: 'IN_DEVELOPMENT', notes: null },
-    { env: 'QA10', service: 'Exchange', feature: 'Order amendment fix', clientTag: 'v3.1.3', devOwnerId: ralitsa, qaOwnerId: diana, status: 'TEST_IN_QA', notes: null },
-    { env: 'STG', service: 'Kinesis test automation', feature: 'Crypto deposit/withdrawal email MFA', clientTag: '2026.04.19', devOwnerId: momchil, qaOwnerId: null, status: 'IN_DEVELOPMENT', notes: null },
-    { env: 'BETA', service: 'KMS - BETA', feature: 'CoinWatch V1 - review', clientTag: 'v0.9.0-beta', devOwnerId: ivayloH, qaOwnerId: ivelina, status: 'TEST_IN_QA', notes: null },
+    { env: 'QA1', service: 'Account management', feature: 'Gateway 21 project', clientTag: 'v2.4.1', devOwnerId: ryan, qaOwnerId: julia, status: 'IN_DEVELOPMENT', notes: 'Phase 2' },
+    { env: 'QA1', service: 'Salesforce integration service', feature: 'Gateway 21 project', clientTag: 'v1.9.0-rc3', devOwnerId: jackRhodes, qaOwnerId: null, status: 'PAUSED', notes: 'Blocked because of Gateway21' },
+    { env: 'QA2', service: 'Exchange services', feature: 'Health check endpoint', clientTag: 'v3.1.2', devOwnerId: james, qaOwnerId: null, status: 'IN_DEVELOPMENT', notes: null },
+    { env: 'QA2', service: 'withdrawal services', feature: 'Migrate to new Fireblocks SDK', clientTag: null, devOwnerId: david, qaOwnerId: null, status: 'PAUSED', notes: null },
+    { env: 'QA2', service: 'account services', feature: 'Email MFA', clientTag: 'v4.0.0', devOwnerId: david, qaOwnerId: julia, status: 'IN_DEVELOPMENT', notes: 'Released V1' },
+    { env: 'QA3', service: 'Fiat deposit processing', feature: 'Fraud Questionnaire', clientTag: 'v2.0.7', devOwnerId: anna, qaOwnerId: null, status: 'IN_DEVELOPMENT', notes: null },
+    { env: 'QA3', service: 'Exchange', feature: 'Maintenance guard', clientTag: null, devOwnerId: james, qaOwnerId: james, status: 'IN_DEVELOPMENT', notes: null },
+    { env: 'QA4', service: 'Merchant services', feature: 'Merchant V2 Dashboard', clientTag: 'v3.4.0-beta.2', devOwnerId: grace, qaOwnerId: null, status: 'TEST_IN_QA', notes: null },
+    { env: 'QA4', service: 'Account', feature: 'MFA improvements', clientTag: 'v2.1.5', devOwnerId: emily, qaOwnerId: nina, status: 'TEST_IN_QA', notes: null },
+    { env: 'QA5', service: 'Account management', feature: 'KYB backfilling + account closure', clientTag: 'v2.4.0', devOwnerId: grace, qaOwnerId: null, status: 'TEST_IN_QA', notes: null },
+    { env: 'QA5', service: 'KMS', feature: 'KYB backfilling', clientTag: 'v5.2.1', devOwnerId: elena, qaOwnerId: null, status: 'TEST_IN_QA', notes: null },
+    { env: 'QA6', service: 'Yield engine', feature: 'Automate yield payments push', clientTag: 'v1.0.4', devOwnerId: chloe, qaOwnerId: chloe, status: 'TEST_IN_QA', notes: null },
+    { env: 'QA6', service: 'Account', feature: 'T&C', clientTag: 'v2.1.6', devOwnerId: nathan, qaOwnerId: nina, status: 'PUSHED_TO_PROD', notes: null },
+    { env: 'QA7', service: 'Withdrawal-api', feature: 'Payments v2', clientTag: '2026.04.17-rc2', devOwnerId: anna, qaOwnerId: toby, status: 'TEST_IN_QA', notes: null },
+    { env: 'QA8', service: 'Fiat deposit services', feature: 'Yellowcard Phase 2.1', clientTag: 'v2.1.0', devOwnerId: rachel, qaOwnerId: toby, status: 'READY_FOR_PROD', notes: null },
+    { env: 'QA9', service: 'Account', feature: 'New IP email', clientTag: 'v2.1.7', devOwnerId: nathan, qaOwnerId: helena, status: 'READY_FOR_PROD', notes: 'Request from Tom' },
+    { env: 'QA9', service: 'profit-and-loss-processor', feature: 'New service', clientTag: null, devOwnerId: daniel, qaOwnerId: null, status: 'IN_DEVELOPMENT', notes: null },
+    { env: 'QA10', service: 'Debit card payment processing', feature: 'Chargebacks', clientTag: 'v1.3.0', devOwnerId: henry, qaOwnerId: nina, status: 'IN_DEVELOPMENT', notes: null },
+    { env: 'QA10', service: 'Exchange', feature: 'Order amendment fix', clientTag: 'v3.1.3', devOwnerId: sofia, qaOwnerId: julia, status: 'TEST_IN_QA', notes: null },
+    { env: 'STG', service: 'Kinesis test automation', feature: 'Crypto deposit/withdrawal email MFA', clientTag: '2026.04.19', devOwnerId: toby, qaOwnerId: null, status: 'IN_DEVELOPMENT', notes: null },
+    { env: 'BETA', service: 'KMS - BETA', feature: 'CoinWatch V1 - review', clientTag: 'v0.9.0-beta', devOwnerId: mateo, qaOwnerId: helena, status: 'TEST_IN_QA', notes: null },
   ] as const;
 
   for (const b of qaBookings) {
@@ -1203,61 +1204,61 @@ async function main() {
     {
       teamId: coinsTeam.id,
       pairs: [
-        [dimitar, krasimir],
-        [hristo, ivan],
-        [borislav, dimitar],
-        [krasimir, elitsa],
-        [hristo, borislav],
-        [krasimir, ivan],
-        [elitsa, dimitar],
-        [hristo, krasimir],
-        [ivan, dimitar],
-        [elitsa, borislav],
+        [rachel, peter],
+        [alex, marcus],
+        [david, rachel],
+        [peter, anna],
+        [alex, david],
+        [peter, marcus],
+        [anna, rachel],
+        [alex, peter],
+        [marcus, rachel],
+        [anna, david],
       ],
     },
     {
       teamId: exchangeTeam.id,
       pairs: [
-        [ivayloH, panayot],
-        [panayot, ralitsa],
-        [ivayloH, viktor],
-        [panayot, ivayloH],
-        [ralitsa, viktor],
-        [ivayloH, panayot],
-        [panayot, ralitsa],
-        [ivayloH, viktor],
-        [panayot, ralitsa],
-        [ivayloH, panayot],
+        [mateo, james],
+        [james, sofia],
+        [mateo, lucas],
+        [james, mateo],
+        [sofia, lucas],
+        [mateo, james],
+        [james, sofia],
+        [mateo, lucas],
+        [james, sofia],
+        [mateo, james],
       ],
     },
     {
       teamId: accountTeam.id,
       pairs: [
-        [svetli, ivayloI],
-        [ivayloI, radoslav],
-        [svetli, dimitarTagarev],
-        [radoslav, dimitarTagarev],
-        [svetli, ivayloI],
-        [ivayloI, radoslav],
-        [svetli, dimitarTagarev],
-        [radoslav, svetli],
-        [ivayloI, dimitarTagarev],
-        [svetli, radoslav],
+        [nathan, emily],
+        [emily, grace],
+        [nathan, thomasKelly],
+        [grace, thomasKelly],
+        [nathan, emily],
+        [emily, grace],
+        [nathan, thomasKelly],
+        [grace, nathan],
+        [emily, thomasKelly],
+        [nathan, grace],
       ],
     },
     {
       teamId: qaTeam.id,
       pairs: [
-        [ivelina, diana],
-        [diana, yuliia],
-        [ivelina, momchil],
-        [yuliia, diana],
-        [momchil, ivelina],
-        [ivelina, yuliia],
-        [diana, momchil],
-        [yuliia, ivelina],
-        [momchil, diana],
-        [ivelina, diana],
+        [helena, julia],
+        [julia, nina],
+        [helena, toby],
+        [nina, julia],
+        [toby, helena],
+        [helena, nina],
+        [julia, toby],
+        [nina, helena],
+        [toby, julia],
+        [helena, julia],
       ],
     },
   ];
@@ -1301,27 +1302,27 @@ async function main() {
     });
   };
 
-  // Hristo (admin)
+  // Alex (admin)
   await notify({
-    userId: hristo,
+    userId: alex,
     type: 'LEAVE_PENDING',
     title: 'Pending leave requests',
-    body: 'Krasimir has 3 leave requests waiting for approval.',
+    body: 'Peter has 3 leave requests waiting for approval.',
     linkPath: '/admin/leaves',
-    actorId: krasimir,
+    actorId: peter,
     hoursAgo: 2,
   });
   await notify({
-    userId: hristo,
+    userId: alex,
     type: 'BLOCKER_ON_TEAM',
-    title: 'Blocker flagged by Borislav',
-    body: 'Need staging DB dump refreshed — tagged @Krasimir',
+    title: 'Blocker flagged by David',
+    body: 'Need staging DB dump refreshed — tagged @Peter',
     linkPath: '/standup',
-    actorId: borislav,
+    actorId: david,
     hoursAgo: 5,
   });
   await notify({
-    userId: hristo,
+    userId: alex,
     type: 'GENERIC',
     title: 'Welcome to Flowdruid!',
     body: 'Explore the dashboard, task board, and leave calendar.',
@@ -1329,26 +1330,26 @@ async function main() {
     read: true,
   });
 
-  // Krasimir (lead)
+  // Peter (lead)
   await notify({
-    userId: krasimir,
+    userId: peter,
     type: 'LEAVE_PENDING',
     title: '3 leave requests to review',
-    body: 'Elitsa, Dimitar, and Todor are waiting.',
+    body: 'Anna, Rachel, and Daniel are waiting.',
     linkPath: '/admin/leaves',
     hoursAgo: 3,
   });
   await notify({
-    userId: krasimir,
+    userId: peter,
     type: 'TICKET_SUGGESTED',
-    title: 'Borislav suggested you for a ticket',
+    title: 'David suggested you for a ticket',
     body: 'CR-042 — Client publish — repo update',
     linkPath: '/t/placeholder',
-    actorId: borislav,
+    actorId: david,
     hoursAgo: 1,
   });
   await notify({
-    userId: krasimir,
+    userId: peter,
     type: 'PROD_SUPPORT_ON_CALL',
     title: "You're on call this week",
     body: 'Deposit / Withdrawal team — primary this week.',
@@ -1356,40 +1357,40 @@ async function main() {
     hoursAgo: 24,
   });
 
-  // Borislav
+  // David
   await notify({
-    userId: borislav,
+    userId: david,
     type: 'TICKET_ASSIGNED',
-    title: 'Dimitar assigned you to DW-045',
+    title: 'Rachel assigned you to DW-045',
     body: 'Webhook signature verification',
     linkPath: '/tasks',
-    actorId: dimitar,
+    actorId: rachel,
     hoursAgo: 6,
   });
   await notify({
-    userId: borislav,
+    userId: david,
     type: 'STANDUP_MENTION',
-    title: 'Krasimir mentioned you in standup',
+    title: 'Peter mentioned you in standup',
     body: 'Pairing on fiat deposit processing today.',
     linkPath: '/standup',
-    actorId: krasimir,
+    actorId: peter,
     hoursAgo: 7,
   });
 
-  // Elitsa
+  // Anna
   await notify({
-    userId: elitsa,
+    userId: anna,
     type: 'LEAVE_APPROVED',
     title: 'Your leave request was approved',
     body: 'Partial AM on Wednesday — enjoy the dentist visit.',
     linkPath: '/leave/request',
-    actorId: krasimir,
+    actorId: peter,
     hoursAgo: 4,
   });
 
-  // Dimitar
+  // Rachel
   await notify({
-    userId: dimitar,
+    userId: rachel,
     type: 'TICKET_STATUS',
     title: 'CR-033 moved to Done',
     body: 'Auth token refresh edge case closed.',
@@ -1398,25 +1399,25 @@ async function main() {
     read: true,
   });
 
-  // Ivelina (QA lead)
+  // Helena (QA lead)
   await notify({
-    userId: ivelina,
+    userId: helena,
     type: 'LEAVE_PENDING',
-    title: 'Yuliia requested annual leave',
+    title: 'Nina requested annual leave',
     body: 'Review on /admin/leaves',
     linkPath: '/admin/leaves',
-    actorId: yuliia,
+    actorId: nina,
     hoursAgo: 3,
   });
 
-  // Svetli (Account lead)
+  // Nathan (Account lead)
   await notify({
-    userId: svetli,
+    userId: nathan,
     type: 'TICKET_SUGGESTED',
-    title: 'Hristo suggested you for AC-024',
+    title: 'Alex suggested you for AC-024',
     body: 'Email verification — link expiry tuning',
     linkPath: '/t/placeholder',
-    actorId: hristo,
+    actorId: alex,
     hoursAgo: 8,
   });
 
@@ -1426,62 +1427,62 @@ async function main() {
     {
       teamId: accountTeam.id,
       name: 'Account',
-      members: [svetli, radoslav, dimitarTagarev, ivayloI],
+      members: [nathan, grace, thomasKelly, emily],
     },
     {
       teamId: yieldTeam.id,
       name: 'Yield',
-      members: [todor, keti],
+      members: [daniel, chloe],
     },
     {
       teamId: cardPaymentsTeam.id,
       name: 'Card Payments',
-      members: [lazar, dimitarKolev],
+      members: [henry, sarahMitchell],
     },
     {
       teamId: coinsTeam.id,
       name: 'Coins — Fiat & Crypto',
-      members: [krasimir, elitsa, ivan, borislav, hristo, dimitar],
+      members: [peter, anna, marcus, david, alex, rachel],
     },
     {
       teamId: exchangeTeam.id,
       name: 'Exchange',
-      members: [panayot, ralitsa, ivayloH, viktor],
+      members: [james, sofia, mateo, lucas],
     },
     {
       teamId: metalbackTeam.id,
       name: 'Metalback / Cashback',
-      members: [renal, martinI],
+      members: [ryan, victorOwens],
     },
     {
       teamId: kpayTeam.id,
       name: 'KPay',
-      members: [rado, veronika],
+      members: [michael, laura],
     },
     {
       teamId: transactionHistoryTeam.id,
       name: 'Transaction History & Reporting',
-      members: [martinP, ivanBorisov],
+      members: [adamBishop, jackRhodes],
     },
     {
       teamId: mmTeam.id,
       name: 'MM team',
-      members: [gabriel, aleksandar],
+      members: [leo, sean],
     },
     {
       teamId: feTeam.id,
       name: 'FE team',
-      members: [tihomir],
+      members: [elena],
     },
     {
       teamId: mileniumFalconTeam.id,
       name: 'Milenium falcon',
-      members: [marian, nikola, veselin],
+      members: [ian, owen, caleb],
     },
     {
       teamId: qaTeam.id,
       name: 'QA Team',
-      members: [yuliia, momchil, ivelina, diana],
+      members: [nina, toby, helena, julia],
     },
   ];
 
@@ -1507,12 +1508,12 @@ async function main() {
   });
   if (dwChannel) {
     const msgs: { authorId: string; body: string; minutesAgo: number }[] = [
-      { authorId: krasimir, body: 'Morning team — SEPA retry lands today, heads up.', minutesAgo: 180 },
-      { authorId: borislav, body: 'Blocked on staging DB dump — @Krasi can you refresh?', minutesAgo: 150 },
-      { authorId: krasimir, body: 'Refreshed. You should be unblocked now.', minutesAgo: 140 },
-      { authorId: dimitar, body: 'Will review DW-045 this afternoon', minutesAgo: 90 },
-      { authorId: ivan, body: 'Remote today. Coffee is over-engineered.', minutesAgo: 60 },
-      { authorId: borislav, body: 'Thanks ✅ Pushed the fix.', minutesAgo: 20 },
+      { authorId: peter, body: 'Morning team — SEPA retry lands today, heads up.', minutesAgo: 180 },
+      { authorId: david, body: 'Blocked on staging DB dump — @Krasi can you refresh?', minutesAgo: 150 },
+      { authorId: peter, body: 'Refreshed. You should be unblocked now.', minutesAgo: 140 },
+      { authorId: rachel, body: 'Will review DW-045 this afternoon', minutesAgo: 90 },
+      { authorId: marcus, body: 'Remote today. Coffee is over-engineered.', minutesAgo: 60 },
+      { authorId: david, body: 'Thanks ✅ Pushed the fix.', minutesAgo: 20 },
     ];
     for (const m of msgs) {
       await prisma.message.create({
@@ -1524,26 +1525,26 @@ async function main() {
         },
       });
     }
-    // Mark Krasimir's last read as now (so he sees unread count 0), leave others as null (unread)
+    // Mark Peter's last read as now (so he sees unread count 0), leave others as null (unread)
     await prisma.conversationMember.update({
-      where: { conversationId_userId: { conversationId: dwChannel.id, userId: krasimir } },
+      where: { conversationId_userId: { conversationId: dwChannel.id, userId: peter } },
       data: { lastReadAt: new Date() },
     });
   }
 
-  // Sample DM: Hristo ↔ Krasimir
+  // Sample DM: Alex ↔ Peter
   const dm = await prisma.conversation.create({
     data: {
       orgId: org.id,
       kind: 'DM',
-      members: { create: [{ userId: hristo }, { userId: krasimir }] },
+      members: { create: [{ userId: alex }, { userId: peter }] },
     },
   });
   const dmMsgs: { authorId: string; body: string; minutesAgo: number }[] = [
-    { authorId: krasimir, body: 'Quick sync on Q3 roadmap tomorrow?', minutesAgo: 240 },
-    { authorId: hristo, body: 'Works. 10:00 OK?', minutesAgo: 220 },
-    { authorId: krasimir, body: 'Perfect. Will share slides before.', minutesAgo: 210 },
-    { authorId: hristo, body: '👍', minutesAgo: 200 },
+    { authorId: peter, body: 'Quick sync on Q3 roadmap tomorrow?', minutesAgo: 240 },
+    { authorId: alex, body: 'Works. 10:00 OK?', minutesAgo: 220 },
+    { authorId: peter, body: 'Perfect. Will share slides before.', minutesAgo: 210 },
+    { authorId: alex, body: '👍', minutesAgo: 200 },
   ];
   for (const m of dmMsgs) {
     await prisma.message.create({
@@ -1580,7 +1581,7 @@ async function main() {
   }
 
   // Demo open cover request so the banner is visible straight after seeding.
-  // Pick the Exchange team's current-week shift (primary = Ivaylo Hadzhiyski).
+  // Pick the Exchange team's current-week shift (primary = Mateo Silva).
   const currentMonday = mondayUtc(new Date(today));
   const exchangeShift = await prisma.prodSupportAssignment.findUnique({
     where: { teamId_startDate: { teamId: exchangeTeam.id, startDate: currentMonday } },
@@ -1603,7 +1604,7 @@ async function main() {
         data: teammates.map((m) => ({
           userId: m.id,
           type: 'PROD_SUPPORT_ON_CALL' as const,
-          title: 'Ivaylo Hadzhiyski is looking for cover',
+          title: 'Mateo Silva is looking for cover',
           body: 'Exchange — doctor appointment blocks the afternoon.',
           linkPath: '/prod-support',
           actorId: exchangeShift.primaryId,
@@ -1620,7 +1621,7 @@ async function main() {
   console.log(`  Users:     ${seeds.length}`);
   console.log('');
   console.log('Login credentials — password for all users: Password123!');
-  console.log('  Admin:          hristo.minkov@cloudruid.com');
+  console.log('  Admin:          alex.morgan@acme.com');
 }
 
 main()
