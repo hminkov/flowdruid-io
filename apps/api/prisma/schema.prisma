@@ -146,18 +146,19 @@ model LeaveRequest {
 }
 
 model Ticket {
-  id          String         @id @default(cuid())
-  source      TicketSource   @default(INTERNAL)
-  jiraKey     String?        @unique
-  jiraId      String?        @unique
-  title       String
-  description String?
-  status      TicketStatus   @default(TODO)
-  priority    TicketPriority @default(MEDIUM)
-  teamId      String
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
-  syncedAt    DateTime?
+  id               String         @id @default(cuid())
+  source           TicketSource   @default(INTERNAL)
+  jiraKey          String?        @unique
+  jiraId           String?        @unique
+  title            String
+  description      String?
+  status           TicketStatus   @default(TODO)
+  priority         TicketPriority @default(MEDIUM)
+  teamId           String
+  complexityPoints Int?           // 1–10, nullable until groomed
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  syncedAt         DateTime?
 
   team        Team                   @relation(fields: [teamId], references: [id])
   assignees   TicketAssignment[]

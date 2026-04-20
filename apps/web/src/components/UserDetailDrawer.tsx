@@ -90,14 +90,18 @@ export function UserDetailDrawer({
   }, [ticketsQuery.data]);
 
   // Activity — tickets marked DONE whose updatedAt falls inside the window.
-  // Score = sum of priority weights (HIGH=5, MEDIUM=3, LOW=1).
+  // Score = sum of complexityPoints where set, otherwise falls back to priority weights.
   const activity = useMemo(() => {
     const doneTickets = ticketsByStatus.DONE ?? [];
     const cutoff = Date.now() - WINDOW_DAYS[activityWindow] * 24 * 60 * 60 * 1000;
     const inWindow = doneTickets.filter(
       (t) => new Date(t.updatedAt).getTime() >= cutoff
     );
-    const score = inWindow.reduce((sum, t) => sum + (PRIORITY_SCORE[t.priority] ?? 0), 0);
+    const score = inWindow.reduce((sum, t) => {
+      const tx = t as typeof t & { complexityPoints?: number | null };
+      if (typeof tx.complexityPoints === 'number') return sum + tx.complexityPoints;
+      return sum + (PRIORITY_SCORE[t.priority] ?? 0);
+    }, 0);
     return { tickets: inWindow, score };
   }, [ticketsByStatus.DONE, activityWindow]);
 
@@ -232,7 +236,7 @@ export function UserDetailDrawer({
                     </div>
                     <div className="text-2xl text-text-primary">{activity.score}</div>
                     <div className="text-xs text-text-tertiary">
-                      HIGH 5 · MED 3 · LOW 1
+                      Complexity pts, fallback by priority
                     </div>
                   </div>
                 </div>
@@ -256,7 +260,7 @@ export function UserDetailDrawer({
                         </span>
                         <span className="truncate text-xs text-text-primary">{t.title}</span>
                         <span className="ml-auto shrink-0 text-xs text-text-tertiary">
-                          +{PRIORITY_SCORE[t.priority]}
+                          +{(t as typeof t & { complexityPoints?: number | null }).complexityPoints ?? PRIORITY_SCORE[t.priority]}
                         </span>
                       </div>
                     ))}

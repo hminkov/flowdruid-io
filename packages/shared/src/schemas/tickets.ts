@@ -14,6 +14,7 @@ export const updateTicketSchema = z.object({
   description: z.string().nullable().optional(),
   status: z.enum(['TODO', 'IN_PROGRESS', 'IN_REVIEW', 'DONE']).optional(),
   priority: z.enum(['LOW', 'MEDIUM', 'HIGH']).optional(),
+  complexityPoints: z.number().int().min(1).max(10).nullable().optional(),
 });
 
 export const listTicketsSchema = z.object({

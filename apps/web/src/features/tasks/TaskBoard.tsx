@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   DndContext,
   DragOverlay,
@@ -26,11 +27,26 @@ type Props = {
     status?: TicketStatus;
     assigneeId?: string;
   };
+  /** When set on mount, auto-opens the ticket with this id (deep-link / shared URL). */
+  initialOpenId?: string | null;
 };
 
-export function TaskBoard({ tickets, listArgs }: Props) {
+export function TaskBoard({ tickets, listArgs, initialOpenId }: Props) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [openTicket, setOpenTicket] = useState<Ticket | null>(null);
+  const [, setSearchParams] = useSearchParams();
+
+  // Auto-open from ?open=<id> exactly once, as soon as the ticket is in the loaded list.
+  const hasAutoOpened = useState({ done: false })[0];
+  useEffect(() => {
+    if (hasAutoOpened.done) return;
+    if (!initialOpenId) return;
+    const t = tickets.find((x) => x.id === initialOpenId);
+    if (t) {
+      setOpenTicket(t);
+      hasAutoOpened.done = true;
+    }
+  }, [initialOpenId, tickets, hasAutoOpened]);
 
   const updateStatus = useUpdateTicketStatus(listArgs);
 
@@ -125,7 +141,18 @@ export function TaskBoard({ tickets, listArgs }: Props) {
         {activeTicket ? <TicketCardDisplay ticket={activeTicket} dragging /> : null}
       </DragOverlay>
 
-      <TicketDetailModal ticket={currentOpen} onClose={() => setOpenTicket(null)} />
+      <TicketDetailModal
+        ticket={currentOpen}
+        onClose={() => {
+          setOpenTicket(null);
+          // Also strip ?open= from the URL so a reload doesn't re-open it
+          setSearchParams((prev) => {
+            const next = new URLSearchParams(prev);
+            next.delete('open');
+            return next;
+          }, { replace: true });
+        }}
+      />
     </DndContext>
   );
 }

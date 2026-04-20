@@ -23,6 +23,7 @@ import { AllTeamsPage } from './pages/AllTeamsPage';
 import { QaEnvironmentsPage } from './pages/QaEnvironmentsPage';
 import { ParkingPage } from './pages/ParkingPage';
 import { ProdSupportPage } from './pages/ProdSupportPage';
+import { TicketShortlinkPage } from './pages/TicketShortlinkPage';
 
 export function App() {
   const [trpcClient] = useState(createTrpcClient);
@@ -39,6 +40,14 @@ export function App() {
             <Routes>
               <Route path="/login" element={<LoginPage />} />
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
+              <Route
+                path="/t/:ticketId"
+                element={
+                  <ProtectedRoute>
+                    <TicketShortlinkPage />
+                  </ProtectedRoute>
+                }
+              />
 
               <Route
                 path="/dashboard"
