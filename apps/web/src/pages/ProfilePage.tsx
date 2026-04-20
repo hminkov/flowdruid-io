@@ -3,6 +3,7 @@ import { useAuth } from '../hooks/useAuth';
 import { usePersistedLocalState } from '../hooks/usePersistedState';
 import { trpc } from '../lib/trpc';
 import { Avatar, AvailabilityBadge, useToast } from '../components/ui';
+import { APP_BRAND } from '../config/brand';
 import {
   AlertIcon,
   CheckIcon,
@@ -237,7 +238,7 @@ export function ProfilePage() {
       {/* Password change (UI-only) */}
       <section className="rounded-lg border border-border bg-surface-primary p-5">
         <h2 className="mb-1">Change password</h2>
-        <p className="mb-3 text-sm text-text-secondary">Rotate your Cloudruid password.</p>
+        <p className="mb-3 text-sm text-text-secondary">Rotate your {APP_BRAND} password.</p>
         <form onSubmit={handlePasswordSubmit} className="space-y-3">
           <div className="relative">
             <LockIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-tertiary" />

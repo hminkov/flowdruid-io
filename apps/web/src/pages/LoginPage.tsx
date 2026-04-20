@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { Logo } from '../components/ui/Logo';
+import { APP_BRAND, emailPlaceholder } from '../config/brand';
 import {
   AlertIcon,
   ArrowRightIcon,
@@ -59,7 +60,7 @@ export function LoginPage() {
           <div>
             <Logo variant="wordmark" size={48} color="#FFFFFF" />
             <p className="mt-2 text-xs" style={{ color: 'rgba(255,255,255,0.7)' }}>
-              by <span className="tracking-wide">Cloudruid</span>
+              by <span className="tracking-wide">{APP_BRAND}</span>
             </p>
           </div>
 
@@ -96,7 +97,7 @@ export function LoginPage() {
           </div>
 
           <p className="text-xs" style={{ color: 'rgba(255,255,255,0.6)' }}>
-            © {new Date().getFullYear()} Cloudruid · Internal
+            © {new Date().getFullYear()} {APP_BRAND} · Internal
           </p>
         </div>
       </aside>
@@ -106,14 +107,14 @@ export function LoginPage() {
         <div className="w-full max-w-card">
           <div className="mb-6 flex flex-col items-center lg:hidden">
             <Logo variant="wordmark" size={36} />
-            <span className="mt-1 text-xs text-text-tertiary">by Cloudruid</span>
+            <span className="mt-1 text-xs text-text-tertiary">by {APP_BRAND}</span>
           </div>
 
           <div className="rounded-lg border border-border bg-surface-primary p-6">
             <div className="mb-6">
               <h1 className="text-xl text-text-primary">Welcome back</h1>
               <p className="mt-1 text-base text-text-secondary">
-                Sign in to your Cloudruid workspace
+                Sign in to your {APP_BRAND} workspace
               </p>
             </div>
 
@@ -135,7 +136,7 @@ export function LoginPage() {
                     onChange={(e) => setEmail(e.target.value)}
                     required
                     autoFocus
-                    placeholder="you@cloudruid.com"
+                    placeholder={emailPlaceholder()}
                     className="min-h-input w-full rounded border border-border bg-surface-primary pl-10 pr-3 text-base text-text-primary placeholder:text-text-tertiary"
                   />
                 </div>

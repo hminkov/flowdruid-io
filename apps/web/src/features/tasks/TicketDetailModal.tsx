@@ -31,8 +31,7 @@ const PRIORITY_TONES: Record<string, string> = {
   LOW: 'bg-success-bg text-success-text',
 };
 
-// Fallback Jira base URL for the UI phase (backend will expose the real one later)
-const JIRA_BASE_URL = 'https://cloudruid.atlassian.net';
+import { JIRA_BASE_URL } from '../../config/brand';
 
 export function TicketDetailModal({
   ticket,

@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { trpc } from '../lib/trpc';
 import { useAuth } from '../hooks/useAuth';
 import { useUserDetail } from '../hooks/useUserDetail';
+import { APP_BRAND } from '../config/brand';
 import {
   CheckIcon,
   MegaphoneIcon,
@@ -95,7 +96,7 @@ export function AllTeamsPage() {
         <div>
           <h1>All teams</h1>
           <p className="mt-1 text-base text-text-secondary">
-            Team composition and live availability across Cloudruid.
+            Team composition and live availability across {APP_BRAND}.
           </p>
         </div>
         {user?.role === 'ADMIN' && (

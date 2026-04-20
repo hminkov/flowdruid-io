@@ -10,6 +10,7 @@ import {
 } from '../components/icons';
 import { useConfirm, useToast } from '../components/ui';
 import { useUserDetail } from '../hooks/useUserDetail';
+import { emailPlaceholder } from '../config/brand';
 
 const roleTones: Record<string, string> = {
   ADMIN: 'bg-accent-bg text-accent-text',
@@ -290,7 +291,7 @@ export function UsersRolesPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   type="email"
-                  placeholder="you@cloudruid.com"
+                  placeholder={emailPlaceholder()}
                   required
                   className="min-h-input w-full rounded border border-border bg-surface-primary px-3 text-base text-text-primary placeholder:text-text-tertiary"
                 />
