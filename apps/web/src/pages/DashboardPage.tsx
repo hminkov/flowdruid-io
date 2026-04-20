@@ -101,7 +101,7 @@ type StatCardProps = {
   hint?: string;
   accent: 'brand' | 'success' | 'warning' | 'info' | 'accent';
   Icon: (p: React.SVGProps<SVGSVGElement>) => JSX.Element;
-  onClick?: () => void;
+  onClick?: (e: React.MouseEvent<HTMLElement>) => void;
   active?: boolean;
 };
 
@@ -188,6 +188,27 @@ export function DashboardPage() {
   const [teamFilter, setTeamFilter] = useState<string>(user?.teamId ? 'my' : 'all');
   const [focus, setFocus] = useState<FocusFilter>(null);
   const [teamsModalOpen, setTeamsModalOpen] = useState(false);
+  // Rect of the stat card that triggered the popover — drives the popover's
+  // on-screen position so it lands under the card that was clicked.
+  const [popoverAnchor, setPopoverAnchor] = useState<DOMRect | null>(null);
+
+  const openFocusPopover = (
+    next: Exclude<FocusFilter, null>,
+    e: React.MouseEvent<HTMLElement>,
+  ) => {
+    if (focus === next) {
+      setFocus(null);
+      setPopoverAnchor(null);
+      return;
+    }
+    setPopoverAnchor(e.currentTarget.getBoundingClientRect());
+    setFocus(next);
+  };
+
+  const openTeamsPopover = (e: React.MouseEvent<HTMLElement>) => {
+    setPopoverAnchor(e.currentTarget.getBoundingClientRect());
+    setTeamsModalOpen(true);
+  };
 
   // Overview view mode — compact (dense one-liner), grid (cards), or table.
   const [overviewView, setOverviewView] = usePersistedLocalState<OverviewView>(
@@ -382,7 +403,8 @@ export function DashboardPage() {
           hint={`${totalMembers} members total`}
           accent="brand"
           Icon={TeamsIcon}
-          onClick={() => setTeamsModalOpen(true)}
+          onClick={openTeamsPopover}
+          active={teamsModalOpen}
         />
         <StatCard
           label="Available now"
@@ -391,7 +413,7 @@ export function DashboardPage() {
           accent="success"
           Icon={CheckIcon}
           active={focus === 'AVAILABLE'}
-          onClick={() => setFocus(focus === 'AVAILABLE' ? null : 'AVAILABLE')}
+          onClick={(e) => openFocusPopover('AVAILABLE', e)}
         />
         <StatCard
           label="On leave"
@@ -400,7 +422,7 @@ export function DashboardPage() {
           accent="warning"
           Icon={PlaneIcon}
           active={focus === 'ON_LEAVE'}
-          onClick={() => setFocus(focus === 'ON_LEAVE' ? null : 'ON_LEAVE')}
+          onClick={(e) => openFocusPopover('ON_LEAVE', e)}
         />
         <StatCard
           label="In progress"
@@ -409,7 +431,7 @@ export function DashboardPage() {
           accent="info"
           Icon={BriefcaseIcon}
           active={focus === 'IN_PROGRESS'}
-          onClick={() => setFocus(focus === 'IN_PROGRESS' ? null : 'IN_PROGRESS')}
+          onClick={(e) => openFocusPopover('IN_PROGRESS', e)}
         />
       </section>
 
@@ -993,22 +1015,32 @@ export function DashboardPage() {
           focus={focus}
           teamStats={teamStats}
           activeTicketsByUser={activeTicketsByUser}
+          anchor={popoverAnchor}
           onOpenUser={(id) => {
             setFocus(null);
+            setPopoverAnchor(null);
             openUser(id);
           }}
-          onClose={() => setFocus(null)}
+          onClose={() => {
+            setFocus(null);
+            setPopoverAnchor(null);
+          }}
         />
       )}
 
       {teamsModalOpen && (
         <TeamsModal
           teamStats={teamStats}
+          anchor={popoverAnchor}
           onOpenTeam={(id) => {
             setTeamsModalOpen(false);
+            setPopoverAnchor(null);
             openTeam(id);
           }}
-          onClose={() => setTeamsModalOpen(false)}
+          onClose={() => {
+            setTeamsModalOpen(false);
+            setPopoverAnchor(null);
+          }}
         />
       )}
     </div>
@@ -1039,11 +1071,13 @@ function ModalShell({
   title,
   subtitle,
   onClose,
+  anchor,
   children,
 }: {
   title: string;
   subtitle?: string;
   onClose: () => void;
+  anchor?: DOMRect | null;
   children: React.ReactNode;
 }) {
   useEffect(() => {
@@ -1054,29 +1088,76 @@ function ModalShell({
     return () => window.removeEventListener('keydown', handler);
   }, [onClose]);
 
+  // When an anchor rect is passed, render as a popover positioned just
+  // below the clicked element. The card that triggered the popover is
+  // typically ~300px wide; we let the popover grow wider (min 360) but
+  // keep the left edge aligned with the card and clamp to viewport.
+  const popoverStyle: React.CSSProperties | undefined = anchor
+    ? (() => {
+        const width = Math.max(Math.min(anchor.width * 1.6, 440), 320);
+        const left = Math.max(
+          8,
+          Math.min(anchor.left, window.innerWidth - width - 8),
+        );
+        return {
+          position: 'fixed',
+          top: anchor.bottom + 8,
+          left,
+          width,
+          maxHeight: `calc(100vh - ${anchor.bottom + 24}px)`,
+        };
+      })()
+    : undefined;
+
   return (
-    <div
-      className="fixed inset-0 z-modal flex items-start justify-center bg-[var(--overlay-backdrop)] p-4 pt-16"
-      role="dialog"
-      aria-modal="true"
-    >
+    <div className="fixed inset-0 z-modal" role="dialog" aria-modal="true">
+      {/* Transparent capture layer — click outside the popover dismisses
+          without dimming the rest of the page, so it feels like a native
+          dropdown. */}
       <div className="absolute inset-0" onClick={onClose} aria-hidden="true" />
-      <div className="animate-modal-in relative flex w-full max-w-lg flex-col overflow-hidden rounded-lg bg-surface-primary shadow-float">
-        <header className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
-          <div className="min-w-0">
-            <h2 className="truncate text-base font-semibold">{title}</h2>
-            {subtitle && <p className="truncate text-xs text-text-tertiary">{subtitle}</p>}
-          </div>
-          <button
-            onClick={onClose}
-            aria-label="Close"
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded text-text-tertiary hover:bg-surface-secondary hover:text-text-primary"
+      {anchor ? (
+        <div
+          className="animate-fade-in flex flex-col overflow-hidden rounded-lg border border-border bg-surface-primary shadow-float"
+          style={popoverStyle}
+        >
+          <header className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
+            <div className="min-w-0">
+              <h2 className="truncate text-base font-semibold">{title}</h2>
+              {subtitle && <p className="truncate text-xs text-text-tertiary">{subtitle}</p>}
+            </div>
+            <button
+              onClick={onClose}
+              aria-label="Close"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded text-text-tertiary hover:bg-surface-secondary hover:text-text-primary"
+            >
+              <XIcon className="h-4 w-4" />
+            </button>
+          </header>
+          {children}
+        </div>
+      ) : (
+        <div className="absolute inset-0 flex items-start justify-center bg-[var(--overlay-backdrop)] p-4 pt-16">
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="animate-modal-in relative flex w-full max-w-lg flex-col overflow-hidden rounded-lg bg-surface-primary shadow-float"
           >
-            <XIcon className="h-4 w-4" />
-          </button>
-        </header>
-        {children}
-      </div>
+            <header className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
+              <div className="min-w-0">
+                <h2 className="truncate text-base font-semibold">{title}</h2>
+                {subtitle && <p className="truncate text-xs text-text-tertiary">{subtitle}</p>}
+              </div>
+              <button
+                onClick={onClose}
+                aria-label="Close"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded text-text-tertiary hover:bg-surface-secondary hover:text-text-primary"
+              >
+                <XIcon className="h-4 w-4" />
+              </button>
+            </header>
+            {children}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1085,12 +1166,14 @@ function PeopleModal({
   focus,
   teamStats,
   activeTicketsByUser,
+  anchor,
   onOpenUser,
   onClose,
 }: {
   focus: Exclude<FocusFilter, null>;
   teamStats: TeamStats[];
   activeTicketsByUser: Map<string, Array<{ id: string; title: string }>>;
+  anchor?: DOMRect | null;
   onOpenUser: (id: string) => void;
   onClose: () => void;
 }) {
@@ -1136,6 +1219,7 @@ function PeopleModal({
     <ModalShell
       title={titleMap[focus]}
       subtitle={`${rows.length} ${rows.length === 1 ? 'person' : 'people'} across all teams`}
+      anchor={anchor}
       onClose={onClose}
     >
       <div className="border-b border-border p-3">
@@ -1147,7 +1231,7 @@ function PeopleModal({
           className="min-h-input w-full rounded border border-border bg-surface-primary px-3 text-sm text-text-primary placeholder:text-text-tertiary"
         />
       </div>
-      <div className="max-h-[min(60vh,520px)] overflow-y-auto">
+      <div className="min-h-0 flex-1 overflow-y-auto">
         {filtered.length === 0 ? (
           <p className="p-6 text-center text-sm text-text-tertiary">
             {rows.length === 0
@@ -1194,10 +1278,12 @@ function PeopleModal({
 
 function TeamsModal({
   teamStats,
+  anchor,
   onOpenTeam,
   onClose,
 }: {
   teamStats: TeamStats[];
+  anchor?: DOMRect | null;
   onOpenTeam: (id: string) => void;
   onClose: () => void;
 }) {
@@ -1215,6 +1301,7 @@ function TeamsModal({
     <ModalShell
       title="Teams"
       subtitle={`${teamStats.length} team${teamStats.length === 1 ? '' : 's'}`}
+      anchor={anchor}
       onClose={onClose}
     >
       <div className="border-b border-border p-3">
@@ -1226,7 +1313,7 @@ function TeamsModal({
           className="min-h-input w-full rounded border border-border bg-surface-primary px-3 text-sm text-text-primary placeholder:text-text-tertiary"
         />
       </div>
-      <div className="max-h-[min(60vh,520px)] overflow-y-auto">
+      <div className="min-h-0 flex-1 overflow-y-auto">
         {filtered.length === 0 ? (
           <p className="p-6 text-center text-sm text-text-tertiary">
             No team matches "{query}".
