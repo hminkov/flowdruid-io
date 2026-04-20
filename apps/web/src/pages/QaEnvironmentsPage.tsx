@@ -65,6 +65,25 @@ const statusTone: Record<QaBookingStatus, string> = {
   PAUSED: 'bg-danger-bg text-danger-text',
 };
 
+// Lifecycle order for display — active work first, shipped last.
+// New → In development → Test in QA → Paused → Ready for prod → Pushed to prod.
+const statusRank: Record<QaBookingStatus, number> = {
+  NEW: 0,
+  IN_DEVELOPMENT: 1,
+  TEST_IN_QA: 2,
+  PAUSED: 3,
+  READY_FOR_PROD: 4,
+  PUSHED_TO_PROD: 5,
+};
+
+function sortBookings(bookings: Booking[]): Booking[] {
+  return [...bookings].sort((a, b) => {
+    const r = statusRank[a.status] - statusRank[b.status];
+    if (r !== 0) return r;
+    return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+  });
+}
+
 type View = 'grid' | 'compact' | 'table';
 
 const formatRelative = (value: string | Date): string => {
@@ -255,10 +274,11 @@ export function QaEnvironmentsPage() {
           }`}
         >
           {sortedEnvs.map((env) => {
-            const filteredBookings =
+            const filteredBookings = sortBookings(
               !statusFilter || statusFilter === 'all'
                 ? env.bookings
-                : env.bookings.filter((b) => b.status === statusFilter);
+                : env.bookings.filter((b) => b.status === statusFilter)
+            );
 
             return (
               <article
@@ -321,11 +341,11 @@ export function QaEnvironmentsPage() {
                       >
                         <div className="mb-1.5 flex items-center justify-between gap-2">
                           <div className="flex min-w-0 items-center gap-2">
-                            <span className="truncate text-md text-text-primary">{b.service}</span>
+                            <span className="truncate text-base font-semibold text-text-primary">{b.service}</span>
                             {b.clientTag && <ClientTagPill tag={b.clientTag} />}
                           </div>
                           <span
-                            className={`shrink-0 rounded-pill px-2 py-0.5 text-[10px] ${statusTone[b.status]}`}
+                            className={`shrink-0 rounded-pill px-2 py-0.5 text-[11px] font-medium ${statusTone[b.status]}`}
                           >
                             {statusLabel[b.status]}
                           </span>
@@ -506,7 +526,14 @@ function EnvCardHeader({
     <header className="mb-3 flex items-start justify-between gap-3">
       <div className="min-w-0 flex-1">
         {/* Single, prominent env name */}
-        <h3 className="truncate text-xl text-text-primary">{env.name}</h3>
+        <div className="flex items-baseline gap-2">
+          <h3 className="truncate text-xl font-semibold text-text-primary">{env.name}</h3>
+          <span className="shrink-0 text-xs text-text-tertiary tabular-nums">
+            {filteredCount === env.bookings.length
+              ? `${env.bookings.length} booking${env.bookings.length === 1 ? '' : 's'}`
+              : `${filteredCount} / ${env.bookings.length}`}
+          </span>
+        </div>
         {env.branch ? (
           <a
             href="#"
@@ -529,28 +556,25 @@ function EnvCardHeader({
           <span className="mt-0.5 inline-flex text-[11px] text-text-tertiary">No branch set</span>
         )}
       </div>
-      <div className="flex shrink-0 items-center gap-1">
-        <span className="hidden text-xs text-text-tertiary sm:block">
-          {filteredCount} / {env.bookings.length}
-        </span>
+      <div className="flex shrink-0 items-center gap-1.5">
         {canAddBooking && (
           <button
             onClick={onAddBooking}
-            title={`Add booking to ${env.name}`}
-            className="flex h-8 items-center gap-1 rounded-md border border-border bg-surface-primary px-2 text-xs text-text-secondary transition-colors duration-fast hover:border-brand-500 hover:text-text-primary"
+            title={`Add a new service to ${env.name}`}
+            className="flex h-9 items-center gap-1.5 rounded-md bg-brand-600 px-3 text-sm font-medium text-white shadow-sm transition-colors duration-fast hover:bg-brand-800"
           >
-            <PlusIcon className="h-3.5 w-3.5" />
-            <span className="hidden md:inline">Booking</span>
+            <PlusIcon className="h-4 w-4" />
+            <span>Add service</span>
           </button>
         )}
         {canManageEnvs && (
           <button
             onClick={onEditEnv}
-            title={`Set up ${env.name}`}
-            className="flex h-8 items-center gap-1 rounded-md border border-border bg-surface-primary px-2 text-xs text-text-secondary transition-colors duration-fast hover:border-brand-500 hover:text-text-primary"
+            title={`Configure ${env.name}`}
+            aria-label={`Configure ${env.name}`}
+            className="flex h-9 w-9 items-center justify-center rounded-md border border-border bg-surface-primary text-text-secondary transition-colors duration-fast hover:border-brand-500 hover:text-text-primary"
           >
-            <SettingsIcon className="h-3.5 w-3.5" />
-            <span className="hidden md:inline">Set up</span>
+            <SettingsIcon className="h-5 w-5" />
           </button>
         )}
       </div>
@@ -578,11 +602,11 @@ function CompactBookings({
           {/* Row 1 — status + service + client-tag + feature + owners */}
           <div className="flex items-center gap-2">
             <span
-              className={`shrink-0 rounded-pill px-1.5 py-0.5 text-[10px] ${statusTone[b.status]}`}
+              className={`shrink-0 rounded-pill px-2 py-0.5 text-[11px] font-medium ${statusTone[b.status]}`}
             >
               {statusLabel[b.status]}
             </span>
-            <span className="truncate text-sm text-text-primary">{b.service}</span>
+            <span className="truncate text-sm font-semibold text-text-primary">{b.service}</span>
             {b.clientTag && <ClientTagPill tag={b.clientTag} />}
             {b.feature && (
               <span className="truncate text-xs text-text-tertiary">— {b.feature}</span>
@@ -696,10 +720,11 @@ function TableView({
         </thead>
         <tbody>
           {envs.map((env) => {
-            const filtered =
+            const filtered = sortBookings(
               statusFilter === 'all'
                 ? env.bookings
-                : env.bookings.filter((b) => b.status === statusFilter);
+                : env.bookings.filter((b) => b.status === statusFilter)
+            );
             if (filtered.length === 0) {
               return (
                 <tr key={env.id} className="border-b border-border last:border-b-0">
@@ -750,7 +775,7 @@ function TableView({
                 </td>
                 <td className="p-3 align-top text-text-secondary">{b.feature ?? '—'}</td>
                 <td className="p-3 align-top">
-                  <span className={`rounded-pill px-2 py-0.5 text-[10px] ${statusTone[b.status]}`}>
+                  <span className={`rounded-pill px-2 py-0.5 text-[11px] font-medium ${statusTone[b.status]}`}>
                     {statusLabel[b.status]}
                   </span>
                 </td>
