@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { trpc } from '../lib/trpc';
 import { useAuth } from '../hooks/useAuth';
+import { useUserDetail } from '../hooks/useUserDetail';
 import {
   CheckIcon,
   MegaphoneIcon,
@@ -36,6 +37,7 @@ const paletteFor = (id: string) => {
 
 export function AllTeamsPage() {
   const { user } = useAuth();
+  const { openUser } = useUserDetail();
   const [broadcastMsg, setBroadcastMsg] = useState('');
   const [showCreateTeam, setShowCreateTeam] = useState(false);
   const [newTeamName, setNewTeamName] = useState('');
@@ -181,7 +183,11 @@ export function AllTeamsPage() {
                 const [bg, text] = paletteFor(member.id);
                 return (
                   <div key={member.id} className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => openUser(member.id)}
+                      className="-m-1 flex items-center gap-2 rounded p-1 text-left transition-colors duration-fast hover:bg-surface-secondary"
+                    >
                       <span
                         className="flex h-6 w-6 items-center justify-center rounded-full text-xs"
                         style={{ background: bg, color: text }}
@@ -189,7 +195,7 @@ export function AllTeamsPage() {
                         {member.initials}
                       </span>
                       <span className="text-base text-text-primary">{member.name}</span>
-                    </div>
+                    </button>
                     <span className={`rounded-pill px-2 py-0.5 text-[10px] ${availabilityTones[member.availability]}`}>
                       {member.availability.replace('_', ' ').toLowerCase()}
                     </span>

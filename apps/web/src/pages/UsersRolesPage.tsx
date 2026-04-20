@@ -9,6 +9,7 @@ import {
   UserIcon,
 } from '../components/icons';
 import { useConfirm, useToast } from '../components/ui';
+import { useUserDetail } from '../hooks/useUserDetail';
 
 const roleTones: Record<string, string> = {
   ADMIN: 'bg-accent-bg text-accent-text',
@@ -30,6 +31,7 @@ export function UsersRolesPage() {
   const utils = trpc.useUtils();
   const toast = useToast();
   const confirm = useConfirm();
+  const { openUser } = useUserDetail();
   const usersQuery = trpc.users.list.useQuery();
   const teamsQuery = trpc.teams.list.useQuery();
   const inviteMutation = trpc.users.invite.useMutation({
@@ -113,12 +115,16 @@ export function UsersRolesPage() {
               return (
                 <tr key={u.id} className="border-b border-border last:border-b-0">
                   <td className="p-3">
-                    <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => openUser(u.id)}
+                      className="-m-1 flex items-center gap-2 rounded p-1 text-left transition-colors duration-fast hover:bg-surface-secondary"
+                    >
                       <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--avatar-1-bg)] text-xs text-[var(--avatar-1-text)]">
                         {u.initials}
                       </span>
                       <span className="text-text-primary">{u.name}</span>
-                    </div>
+                    </button>
                   </td>
                   <td className="p-3 text-text-secondary">{u.email}</td>
                   <td className="p-3">

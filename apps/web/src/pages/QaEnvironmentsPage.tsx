@@ -794,12 +794,32 @@ function CompactBookings({
             <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 pl-[52px] text-[11px] text-text-tertiary">
               {b.devOwner && (
                 <span>
-                  dev · <span className="text-text-primary">{b.devOwner.name.split(' ')[0]}</span>
+                  dev ·{' '}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onOpenUser(b.devOwner!.id);
+                    }}
+                    className="text-text-primary hover:underline"
+                  >
+                    {b.devOwner.name.split(' ')[0]}
+                  </button>
                 </span>
               )}
               {b.qaOwner && (
                 <span>
-                  QA · <span className="text-text-primary">{b.qaOwner.name.split(' ')[0]}</span>
+                  QA ·{' '}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onOpenUser(b.qaOwner!.id);
+                    }}
+                    className="text-text-primary hover:underline"
+                  >
+                    {b.qaOwner.name.split(' ')[0]}
+                  </button>
                 </span>
               )}
             </div>

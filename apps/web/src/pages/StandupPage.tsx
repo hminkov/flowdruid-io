@@ -1,11 +1,13 @@
 import { useState, type FormEvent } from 'react';
 import { trpc } from '../lib/trpc';
 import { useAuth } from '../hooks/useAuth';
+import { useUserDetail } from '../hooks/useUserDetail';
 import { useToast } from '../components/ui';
 import { AlertIcon, MegaphoneIcon, SendIcon, SpinnerIcon, ZapIcon } from '../components/icons';
 
 export function StandupPage() {
   const { user } = useAuth();
+  const { openUser } = useUserDetail();
   const [yesterday, setYesterday] = useState('');
   const [today, setToday] = useState('');
   const [blockers, setBlockers] = useState('');
@@ -126,12 +128,16 @@ export function StandupPage() {
         {standupsQuery.data?.map((s) => (
           <div key={s.id} className="rounded-lg border border-border bg-surface-primary p-4">
             <div className="mb-3 flex items-center justify-between">
-              <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => openUser(s.user.id)}
+                className="-m-1 flex items-center gap-2 rounded p-1 text-left transition-colors duration-fast hover:bg-surface-secondary"
+              >
                 <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--avatar-1-bg)] text-xs text-[var(--avatar-1-text)]">
                   {s.user.initials}
                 </span>
                 <span className="text-md text-text-primary">{s.user.name}</span>
-              </div>
+              </button>
               <div className="flex items-center gap-2">
                 <div className="h-2 w-24 overflow-hidden rounded-full bg-surface-secondary">
                   <div className={`h-full ${capacityTone(s.capacityPct)}`} style={{ width: `${s.capacityPct}%` }} />

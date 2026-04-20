@@ -1,5 +1,6 @@
 import { trpc } from '../lib/trpc';
 import { useConfirm, useToast } from '../components/ui';
+import { useUserDetail } from '../hooks/useUserDetail';
 import { CalendarIcon, CheckIcon, InfoIcon, XIcon } from '../components/icons';
 
 const statusTones: Record<string, string> = {
@@ -20,6 +21,7 @@ export function ApproveLeavesPage() {
   const utils = trpc.useUtils();
   const toast = useToast();
   const confirm = useConfirm();
+  const { openUser } = useUserDetail();
   const pendingQuery = trpc.leaves.pending.useQuery();
   const approveMutation = trpc.leaves.approve.useMutation({
     onSuccess: () => {
@@ -68,7 +70,11 @@ export function ApproveLeavesPage() {
         {items.map((leave) => (
           <div key={leave.id} className="rounded-lg border border-border bg-surface-primary p-4">
             <div className="mb-3 flex items-center justify-between">
-              <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => openUser(leave.user.id)}
+                className="-m-1 flex items-center gap-3 rounded p-1 text-left transition-colors duration-fast hover:bg-surface-secondary"
+              >
                 <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--avatar-1-bg)] text-sm text-[var(--avatar-1-text)]">
                   {leave.user.initials}
                 </span>
@@ -76,7 +82,7 @@ export function ApproveLeavesPage() {
                   <div className="text-md text-text-primary">{leave.user.name}</div>
                   <div className="text-xs text-text-tertiary">{leave.user.team?.name ?? 'No team'}</div>
                 </div>
-              </div>
+              </button>
               <span className={`rounded-pill px-2 py-0.5 text-xs ${statusTones[leave.status]}`}>
                 {leave.status.toLowerCase()}
               </span>

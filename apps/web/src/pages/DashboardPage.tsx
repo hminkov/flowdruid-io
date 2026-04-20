@@ -731,7 +731,16 @@ export function DashboardPage() {
                 </div>
                 <div className="w-[88px] shrink-0 truncate text-xs text-text-tertiary">
                   {t.lead ? (
-                    <span className="truncate">{t.lead.name.split(' ')[0]}</span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openUser(t.lead!.id);
+                      }}
+                      className="truncate text-text-secondary hover:text-text-primary hover:underline"
+                    >
+                      {t.lead.name.split(' ')[0]}
+                    </button>
                   ) : (
                     '—'
                   )}
