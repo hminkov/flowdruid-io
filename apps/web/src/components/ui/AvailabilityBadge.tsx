@@ -59,10 +59,21 @@ export function AvailabilityGlyph({
       </span>
     );
   }
+  // Slightly larger than before — enough to read clearly at a glance
+  // without dominating the container it sits in.
   const wrapSize =
-    size === 'xs' ? 'h-2 w-2' : size === 'sm' ? 'h-2.5 w-2.5' : 'h-3.5 w-3.5';
+    size === 'xs' ? 'h-3 w-3' : size === 'sm' ? 'h-4 w-4' : 'h-5 w-5';
   const dotSize =
-    size === 'xs' ? 'h-1 w-1' : size === 'sm' ? 'h-1.5 w-1.5' : 'h-2 w-2';
+    size === 'xs' ? 'h-1.5 w-1.5' : size === 'sm' ? 'h-2 w-2' : 'h-2.5 w-2.5';
+  // Use vivid fixed greens/reds for AVAILABLE/BUSY so the signal reads
+  // the same in both light and dark modes. Semantic text tokens would
+  // otherwise wash out (dark-on-light for success, light-on-dark).
+  const vivid =
+    status === 'AVAILABLE'
+      ? 'bg-[#22C55E]'
+      : status === 'BUSY'
+        ? 'bg-[#EF4444]'
+        : AVAILABILITY_DOT[status];
   return (
     <span
       className={`relative inline-flex ${wrapSize} items-center justify-center ${className}`}
@@ -70,10 +81,12 @@ export function AvailabilityGlyph({
       title={LABEL[status]}
     >
       <span
-        className={`absolute inline-flex h-full w-full animate-ping rounded-full opacity-60 ${AVAILABILITY_DOT[status]}`}
+        className={`absolute inline-flex h-full w-full animate-ping rounded-full opacity-70 ${vivid}`}
         aria-hidden="true"
       />
-      <span className={`relative inline-block rounded-full ${dotSize} ${AVAILABILITY_DOT[status]}`} />
+      <span
+        className={`relative inline-block rounded-full ring-2 ring-surface-primary ${dotSize} ${vivid}`}
+      />
     </span>
   );
 }
