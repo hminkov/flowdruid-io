@@ -25,6 +25,7 @@ import { ParkingPage } from './pages/ParkingPage';
 import { ProdSupportPage } from './pages/ProdSupportPage';
 import { TicketShortlinkPage } from './pages/TicketShortlinkPage';
 import { ProfilePage } from './pages/ProfilePage';
+import { InboxPage } from './pages/InboxPage';
 
 export function App() {
   const [trpcClient] = useState(createTrpcClient);
@@ -55,6 +56,14 @@ export function App() {
                 element={
                   <ProtectedRoute>
                     <Layout><ProfilePage /></Layout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/inbox"
+                element={
+                  <ProtectedRoute>
+                    <Layout><InboxPage /></Layout>
                   </ProtectedRoute>
                 }
               />

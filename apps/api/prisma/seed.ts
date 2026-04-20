@@ -34,6 +34,7 @@ const initialsOf = (name: string): string => {
 async function main() {
   console.log('Seeding Cloudruid workspace...');
 
+  await prisma.notification.deleteMany();
   await prisma.assignmentSuggestion.deleteMany();
   await prisma.ticketAssignment.deleteMany();
   await prisma.ticket.deleteMany();
@@ -1184,6 +1185,164 @@ async function main() {
       ],
     },
   ];
+
+  // ─── NOTIFICATIONS (demo feed) ──────────────────────────────────────────
+  // A mixed bag so the inbox has mentions, actions, and passive reads.
+  const notify = async (data: {
+    userId: string;
+    type: string;
+    title: string;
+    body?: string;
+    linkPath?: string;
+    actorId?: string;
+    entityId?: string;
+    hoursAgo?: number;
+    read?: boolean;
+  }) => {
+    const createdAt = data.hoursAgo != null ? hoursAgo(data.hoursAgo) : new Date();
+    await prisma.notification.create({
+      data: {
+        userId: data.userId,
+        type: data.type as
+          | 'LEAVE_APPROVED'
+          | 'LEAVE_DENIED'
+          | 'LEAVE_PENDING'
+          | 'BLOCKER_ON_TEAM'
+          | 'TICKET_SUGGESTED'
+          | 'TICKET_ASSIGNED'
+          | 'TICKET_STATUS'
+          | 'STANDUP_MENTION'
+          | 'PROD_SUPPORT_ON_CALL'
+          | 'GENERIC',
+        title: data.title,
+        body: data.body,
+        linkPath: data.linkPath,
+        actorId: data.actorId,
+        entityId: data.entityId,
+        read: data.read ?? false,
+        createdAt,
+      },
+    });
+  };
+
+  // Hristo (admin)
+  await notify({
+    userId: hristo,
+    type: 'LEAVE_PENDING',
+    title: 'Pending leave requests',
+    body: 'Krasimir has 3 leave requests waiting for approval.',
+    linkPath: '/admin/leaves',
+    actorId: krasimir,
+    hoursAgo: 2,
+  });
+  await notify({
+    userId: hristo,
+    type: 'BLOCKER_ON_TEAM',
+    title: 'Blocker flagged by Borislav',
+    body: 'Need staging DB dump refreshed — tagged @Krasimir',
+    linkPath: '/standup',
+    actorId: borislav,
+    hoursAgo: 5,
+  });
+  await notify({
+    userId: hristo,
+    type: 'GENERIC',
+    title: 'Welcome to Flowdruid!',
+    body: 'Explore the dashboard, task board, and leave calendar.',
+    hoursAgo: 48,
+    read: true,
+  });
+
+  // Krasimir (lead)
+  await notify({
+    userId: krasimir,
+    type: 'LEAVE_PENDING',
+    title: '3 leave requests to review',
+    body: 'Elitsa, Dimitar, and Todor are waiting.',
+    linkPath: '/admin/leaves',
+    hoursAgo: 3,
+  });
+  await notify({
+    userId: krasimir,
+    type: 'TICKET_SUGGESTED',
+    title: 'Borislav suggested you for a ticket',
+    body: 'CR-042 — Client publish — repo update',
+    linkPath: '/t/placeholder',
+    actorId: borislav,
+    hoursAgo: 1,
+  });
+  await notify({
+    userId: krasimir,
+    type: 'PROD_SUPPORT_ON_CALL',
+    title: "You're on call this week",
+    body: 'Deposit / Withdrawal team — primary this week.',
+    linkPath: '/prod-support',
+    hoursAgo: 24,
+  });
+
+  // Borislav
+  await notify({
+    userId: borislav,
+    type: 'TICKET_ASSIGNED',
+    title: 'Dimitar assigned you to DW-045',
+    body: 'Webhook signature verification',
+    linkPath: '/tasks',
+    actorId: dimitar,
+    hoursAgo: 6,
+  });
+  await notify({
+    userId: borislav,
+    type: 'STANDUP_MENTION',
+    title: 'Krasimir mentioned you in standup',
+    body: 'Pairing on fiat deposit processing today.',
+    linkPath: '/standup',
+    actorId: krasimir,
+    hoursAgo: 7,
+  });
+
+  // Elitsa
+  await notify({
+    userId: elitsa,
+    type: 'LEAVE_APPROVED',
+    title: 'Your leave request was approved',
+    body: 'Partial AM on Wednesday — enjoy the dentist visit.',
+    linkPath: '/leave/request',
+    actorId: krasimir,
+    hoursAgo: 4,
+  });
+
+  // Dimitar
+  await notify({
+    userId: dimitar,
+    type: 'TICKET_STATUS',
+    title: 'CR-033 moved to Done',
+    body: 'Auth token refresh edge case closed.',
+    linkPath: '/tasks',
+    hoursAgo: 26,
+    read: true,
+  });
+
+  // Ivelina (QA lead)
+  await notify({
+    userId: ivelina,
+    type: 'LEAVE_PENDING',
+    title: 'Yuliia requested annual leave',
+    body: 'Review on /admin/leaves',
+    linkPath: '/admin/leaves',
+    actorId: yuliia,
+    hoursAgo: 3,
+  });
+
+  // Svetli (Account lead)
+  await notify({
+    userId: svetli,
+    type: 'TICKET_SUGGESTED',
+    title: 'Hristo suggested you for AC-024',
+    body: 'Email verification — link expiry tuning',
+    linkPath: '/t/placeholder',
+    actorId: hristo,
+    hoursAgo: 8,
+  });
 
   const baseMonday = mondayUtc(new Date(today));
   // Start 4 weeks back so there is history + future

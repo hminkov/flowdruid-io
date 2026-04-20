@@ -61,6 +61,19 @@ enum QaBookingStatus {
   PAUSED
 }
 
+enum NotificationType {
+  LEAVE_APPROVED
+  LEAVE_DENIED
+  LEAVE_PENDING
+  BLOCKER_ON_TEAM
+  TICKET_SUGGESTED
+  TICKET_ASSIGNED
+  TICKET_STATUS
+  STANDUP_MENTION
+  PROD_SUPPORT_ON_CALL
+  GENERIC
+}
+
 model Organisation {
   id        String   @id @default(cuid())
   name      String
@@ -117,6 +130,8 @@ model User {
   parkingAssignments      ParkingAssignment[]
   prodSupportPrimary      ProdSupportAssignment[] @relation("ProdSupportPrimary")
   prodSupportSecondary    ProdSupportAssignment[] @relation("ProdSupportSecondary")
+  notifications           Notification[]          @relation("NotificationReceiver")
+  notificationsActed      Notification[]          @relation("NotificationActor")
 }
 
 model RefreshToken {
@@ -291,6 +306,25 @@ model ParkingAssignment {
 
   @@unique([spotId, date])
   @@index([date])
+}
+
+// ─── Notifications (inbox feed) ───────────────────────────────────────────
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType
+  title     String
+  body      String?
+  linkPath  String?
+  actorId   String?
+  entityId  String?
+  read      Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  user  User  @relation("NotificationReceiver", fields: [userId], references: [id], onDelete: Cascade)
+  actor User? @relation("NotificationActor", fields: [actorId], references: [id])
+
+  @@index([userId, read, createdAt])
 }
 
 // ─── Prod Support rota (per team) ─────────────────────────────────────────

@@ -73,6 +73,12 @@ const Icon = {
       <path d="M11 6.5h4a2 2 0 0 1 2 2V13M6.5 13v-1.5" />
     </svg>
   ),
+  Inbox: (p: IconProps) => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <path d="M22 12h-6l-2 3h-4l-2-3H2" />
+      <path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11Z" />
+    </svg>
+  ),
   QaEnv: (p: IconProps) => (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" {...p}>
       <rect x="3" y="4" width="18" height="12" rx="2" />
@@ -105,6 +111,7 @@ const navSections: { label: string; items: NavItem[] }[] = [
     label: 'Workspace',
     items: [
       { path: '/dashboard', label: 'Dashboard', minRole: 'DEVELOPER', icon: Icon.Dashboard },
+      { path: '/inbox', label: 'Inbox', minRole: 'DEVELOPER', icon: Icon.Inbox },
       { path: '/tasks', label: 'Tasks & tickets', minRole: 'DEVELOPER', icon: Icon.Tasks },
       { path: '/standup', label: 'Standup feed', minRole: 'DEVELOPER', icon: Icon.Standup },
       { path: '/calendar', label: 'Leave calendar', minRole: 'DEVELOPER', icon: Icon.Calendar },
@@ -142,9 +149,11 @@ export function Layout({ children }: { children: ReactNode }) {
     setMobileOpen(false);
   }, [location.pathname]);
 
-  const isLeadOrAdmin = user?.role === 'ADMIN' || user?.role === 'TEAM_LEAD';
-  const pendingLeavesQuery = trpc.leaves.pending.useQuery(undefined, { enabled: !!isLeadOrAdmin });
-  const pendingCount = pendingLeavesQuery.data?.length ?? 0;
+  const unreadQuery = trpc.notifications.unreadCount.useQuery(undefined, {
+    enabled: !!user,
+    refetchInterval: 30_000, // lightweight polling — real-time wiring lands alongside WebSocket push
+  });
+  const unreadCount = unreadQuery.data ?? 0;
 
   const visibleSections = user
     ? navSections
@@ -301,19 +310,27 @@ export function Layout({ children }: { children: ReactNode }) {
 
           {/* Right — actions */}
           <div className="ml-auto flex shrink-0 items-center gap-2 sm:ml-0">
-            {isLeadOrAdmin && pendingCount > 0 && (
-              <Link
-                to="/admin/leaves"
-                className="relative flex h-8 w-8 items-center justify-center rounded-full border border-border bg-surface-primary text-text-secondary transition-colors duration-fast hover:border-border-strong hover:text-text-primary"
-                title={`${pendingCount} pending leave ${pendingCount === 1 ? 'request' : 'requests'}`}
-                aria-label={`${pendingCount} pending leave requests`}
-              >
-                <BellIcon className="h-3.5 w-3.5" />
+            <Link
+              to="/inbox"
+              className="relative flex h-8 w-8 items-center justify-center rounded-full border border-border bg-surface-primary text-text-secondary transition-colors duration-fast hover:border-border-strong hover:text-text-primary"
+              title={
+                unreadCount > 0
+                  ? `${unreadCount} unread notification${unreadCount === 1 ? '' : 's'}`
+                  : 'Inbox'
+              }
+              aria-label={
+                unreadCount > 0
+                  ? `${unreadCount} unread notifications`
+                  : 'Inbox'
+              }
+            >
+              <BellIcon className="h-3.5 w-3.5" />
+              {unreadCount > 0 && (
                 <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-danger-bg px-1 text-[10px] text-danger-text ring-2 ring-surface-primary">
-                  {pendingCount}
+                  {unreadCount > 99 ? '99+' : unreadCount}
                 </span>
-              </Link>
-            )}
+              )}
+            </Link>
             <ThemeToggle />
             <UserMenu />
           </div>

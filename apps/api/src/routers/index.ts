@@ -8,6 +8,7 @@ import { leavesRouter } from './leaves.router';
 import { integrationsRouter } from './integrations.router';
 import { suggestionsRouter } from './suggestions.router';
 import { resourcesRouter } from './resources.router';
+import { notificationsRouter } from './notifications.router';
 
 export const appRouter = router({
   auth: authRouter,
@@ -19,6 +20,7 @@ export const appRouter = router({
   integrations: integrationsRouter,
   suggestions: suggestionsRouter,
   resources: resourcesRouter,
+  notifications: notificationsRouter,
 });
 
 export type AppRouter = typeof appRouter;

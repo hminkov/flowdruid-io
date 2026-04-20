@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useUserDetail } from '../hooks/useUserDetail';
 import { useTeamDetail } from '../hooks/useTeamDetail';
 import { trpc } from '../lib/trpc';
 import {
   AlertIcon,
+  ArrowRightIcon,
+  BellIcon,
   BriefcaseIcon,
   CalendarIcon,
   CheckIcon,
@@ -103,6 +106,7 @@ export function DashboardPage() {
   const ticketsQuery = trpc.tickets.list.useQuery({
     teamId: user?.teamId ?? undefined,
   });
+  const inboxPreviewQuery = trpc.notifications.list.useQuery({ filter: 'unread', limit: 3 });
   const standupsTodayQuery = trpc.standups.list.useQuery({
     teamId: user?.teamId ?? undefined,
     date: todayIso,
@@ -208,6 +212,52 @@ export function DashboardPage() {
           </span>
         </div>
       </header>
+
+      {/* Inbox preview */}
+      {(inboxPreviewQuery.data?.length ?? 0) > 0 && (
+        <section className="mb-6 rounded-lg border border-brand-500/30 bg-brand-50/40 p-4">
+          <div className="mb-2 flex items-center justify-between">
+            <h2 className="flex items-center gap-2 text-md">
+              <BellIcon className="h-4 w-4 text-brand-600" />
+              Inbox
+              <span className="rounded-pill bg-brand-600 px-2 py-0.5 text-[10px] text-white">
+                {inboxPreviewQuery.data?.length ?? 0} unread
+              </span>
+            </h2>
+            <Link
+              to="/inbox"
+              className="flex items-center gap-1 text-xs text-brand-600 hover:underline"
+            >
+              Open inbox
+              <ArrowRightIcon className="h-3 w-3" />
+            </Link>
+          </div>
+          <ul className="space-y-1.5">
+            {inboxPreviewQuery.data?.map((n) => (
+              <li
+                key={n.id}
+                className="flex items-start gap-2 rounded border border-border bg-surface-primary p-2"
+              >
+                <span className="mt-1 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-brand-600" />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm text-text-primary">{n.title}</p>
+                  {n.body && (
+                    <p className="truncate text-xs text-text-secondary">{n.body}</p>
+                  )}
+                </div>
+                {n.linkPath && (
+                  <Link
+                    to={n.linkPath}
+                    className="shrink-0 text-xs text-text-tertiary hover:text-text-primary"
+                  >
+                    Open →
+                  </Link>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {/* Stats */}
       <section className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
