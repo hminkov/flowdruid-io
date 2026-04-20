@@ -52,6 +52,16 @@ const paletteFor = (id: string) => {
 const capacityTone = (pct: number) =>
   pct >= 90 ? 'bg-capacity-full' : pct >= 70 ? 'bg-capacity-high' : 'bg-capacity-normal';
 
+// Deterministic mock capacity per user — used when a standup hasn't been posted
+// today. Gives every member a plausible-looking load % in the 45–95% range,
+// stable across reloads so the UI never flickers between numbers.
+const mockCapacity = (userId: string, availability: string): number => {
+  if (availability === 'ON_LEAVE') return 0;
+  let hash = 0;
+  for (let i = 0; i < userId.length; i++) hash = (hash * 31 + userId.charCodeAt(i)) | 0;
+  return 45 + (Math.abs(hash) % 50);
+};
+
 function CapacityBar({ pct, thin = false }: { pct: number; thin?: boolean }) {
   return (
     <div className="flex items-center gap-2">
@@ -112,6 +122,16 @@ type FocusFilter = 'AVAILABLE' | 'ON_LEAVE' | 'IN_PROGRESS' | null;
 
 type OverviewView = 'compact' | 'grid' | 'table';
 
+type MemberWithCapacity = {
+  id: string;
+  name: string;
+  initials: string;
+  availability: string;
+  role?: string;
+  capacity: number;
+  capacityFromStandup: boolean;
+};
+
 type TeamStats = {
   id: string;
   name: string;
@@ -120,9 +140,10 @@ type TeamStats = {
   busy: number;
   remote: number;
   leave: number;
-  avgCapacity: number | null;
+  avgCapacity: number;
   standupsPosted: number;
-  members: Array<{ id: string; name: string; initials: string; availability: string }>;
+  members: MemberWithCapacity[];
+  lead?: MemberWithCapacity;
   isMyTeam: boolean;
 };
 
@@ -146,6 +167,7 @@ export function DashboardPage() {
   // Filter: 'my' (user's team), 'all', or a specific team id
   const [teamFilter, setTeamFilter] = useState<string>(user?.teamId ? 'my' : 'all');
   const [focus, setFocus] = useState<FocusFilter>(null);
+  const [teamsModalOpen, setTeamsModalOpen] = useState(false);
 
   // Overview view mode — compact (dense one-liner), grid (cards), or table.
   const [overviewView, setOverviewView] = usePersistedLocalState<OverviewView>(
@@ -223,24 +245,40 @@ export function DashboardPage() {
 
   const myTeamName = teamsQuery.data?.find((t) => t.id === user?.teamId)?.name;
 
+  // Look up each member's capacity %: use today's standup if posted, otherwise
+  // fall back to a deterministic mock. Drives both per-dev and per-team numbers.
+  const memberCapacity = (
+    m: { id: string; availability: string },
+  ): { capacity: number; capacityFromStandup: boolean } => {
+    const standup = standupByUser.get(m.id);
+    if (standup) return { capacity: standup.capacityPct, capacityFromStandup: true };
+    return { capacity: mockCapacity(m.id, m.availability), capacityFromStandup: false };
+  };
+
   // Pre-computed team stats used by the overview section.
   const teamStats: TeamStats[] = (teamsQuery.data ?? []).map((team) => {
     const standups = (standupsTodayQuery.data ?? []).filter((s) => s.teamId === team.id);
+    const members: MemberWithCapacity[] = team.members.map((m) => ({
+      ...m,
+      ...memberCapacity(m),
+    }));
     const avgCap =
-      standups.length > 0
-        ? Math.round(standups.reduce((sum, s) => sum + s.capacityPct, 0) / standups.length)
-        : null;
+      members.length > 0
+        ? Math.round(members.reduce((sum, m) => sum + m.capacity, 0) / members.length)
+        : 0;
+    const lead = members.find((m) => m.role === 'TEAM_LEAD');
     return {
       id: team.id,
       name: team.name,
-      memberCount: team.members.length,
-      avail: team.members.filter((m) => m.availability === 'AVAILABLE').length,
-      busy: team.members.filter((m) => m.availability === 'BUSY').length,
-      remote: team.members.filter((m) => m.availability === 'REMOTE').length,
-      leave: team.members.filter((m) => m.availability === 'ON_LEAVE').length,
+      memberCount: members.length,
+      avail: members.filter((m) => m.availability === 'AVAILABLE').length,
+      busy: members.filter((m) => m.availability === 'BUSY').length,
+      remote: members.filter((m) => m.availability === 'REMOTE').length,
+      leave: members.filter((m) => m.availability === 'ON_LEAVE').length,
       avgCapacity: avgCap,
       standupsPosted: standups.length,
-      members: team.members,
+      members,
+      lead,
       isMyTeam: team.id === user?.teamId,
     };
   });
@@ -324,6 +362,7 @@ export function DashboardPage() {
           hint={`${totalMembers} members total`}
           accent="brand"
           Icon={TeamsIcon}
+          onClick={() => setTeamsModalOpen(true)}
         />
         <StatCard
           label="Available now"
@@ -354,17 +393,6 @@ export function DashboardPage() {
         />
       </section>
 
-      {/* Focus summary — opens when a stat card is clicked, flat list of matching people */}
-      {focus && (
-        <FocusSummary
-          focus={focus}
-          teams={teamsQuery.data ?? []}
-          activeTicketsByUser={activeTicketsByUser}
-          onOpenUser={openUser}
-          onClose={() => setFocus(null)}
-        />
-      )}
-
       {/* Teams overview — compact / grid / table view of every team at a glance */}
       <section className="mb-6">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
@@ -391,7 +419,8 @@ export function DashboardPage() {
           </div>
         </div>
 
-        {overviewView === 'grid' && (
+        {/* Compact = concise 4-col cards */}
+        {overviewView === 'compact' && (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {teamStats.map((t) => (
               <button
@@ -400,8 +429,8 @@ export function DashboardPage() {
                 className="rounded-lg border border-border bg-surface-primary p-4 text-left transition-colors duration-fast hover:border-brand-500"
               >
                 <div className="mb-3 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="flex h-7 w-7 items-center justify-center rounded-md bg-brand-50 text-brand-600">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-brand-50 text-brand-600">
                       <TeamsIcon className="h-3.5 w-3.5" />
                     </span>
                     <h3 className="truncate">{t.name}</h3>
@@ -467,45 +496,215 @@ export function DashboardPage() {
                     <ZapIcon className="h-3 w-3" />
                     <span>Capacity</span>
                   </div>
-                  {t.avgCapacity !== null ? (
-                    <div className="flex flex-1 items-center gap-2">
-                      <div className="h-1 flex-1 overflow-hidden rounded-full bg-surface-secondary">
-                        <div
-                          className={`h-full ${capacityTone(t.avgCapacity)}`}
-                          style={{ width: `${t.avgCapacity}%` }}
-                        />
-                      </div>
-                      <span>{t.avgCapacity}%</span>
+                  <div className="flex flex-1 items-center gap-2">
+                    <div className="h-1 flex-1 overflow-hidden rounded-full bg-surface-secondary">
+                      <div
+                        className={`h-full ${capacityTone(t.avgCapacity)}`}
+                        style={{ width: `${t.avgCapacity}%` }}
+                      />
                     </div>
-                  ) : (
-                    <span>No standups yet</span>
-                  )}
+                    <span className="tabular-nums">{t.avgCapacity}%</span>
+                  </div>
                 </div>
               </button>
             ))}
           </div>
         )}
 
-        {overviewView === 'compact' && (
+        {/* Grid = larger 2-col cards with per-member capacity and team lead */}
+        {overviewView === 'grid' && (
+          <div className="grid gap-4 lg:grid-cols-2">
+            {teamStats.map((t) => (
+              <article
+                key={t.id}
+                className="rounded-lg border border-border bg-surface-primary p-5 transition-colors duration-fast hover:border-border-strong"
+              >
+                <header className="mb-4 flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-brand-50 text-brand-600">
+                        <TeamsIcon className="h-4 w-4" />
+                      </span>
+                      <h3 className="truncate text-lg font-semibold">{t.name}</h3>
+                      {t.isMyTeam && (
+                        <span className="rounded-pill bg-brand-50 px-2 py-0.5 text-[10px] text-brand-600">
+                          mine
+                        </span>
+                      )}
+                    </div>
+                    {t.lead && (
+                      <button
+                        onClick={() => openUser(t.lead!.id)}
+                        className="mt-2 flex items-center gap-1.5 text-xs text-text-tertiary hover:text-text-primary"
+                      >
+                        <span className="uppercase text-[10px] tracking-wider">Lead</span>
+                        <span className="text-text-secondary">·</span>
+                        <span className="text-text-primary">{t.lead.name}</span>
+                      </button>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => openTeam(t.id)}
+                    className="flex h-8 shrink-0 items-center gap-1 rounded-md border border-border bg-surface-primary px-2.5 text-xs text-text-secondary hover:border-brand-500 hover:text-text-primary"
+                  >
+                    Open team
+                    <ArrowRightIcon className="h-3 w-3" />
+                  </button>
+                </header>
+
+                {/* Headline: avg capacity big + standups / member count */}
+                <div className="mb-4 flex items-end gap-4 rounded-md bg-surface-secondary p-3">
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider text-text-tertiary">
+                      Team capacity
+                    </p>
+                    <p className="text-2xl font-semibold tabular-nums text-text-primary">
+                      {t.avgCapacity}%
+                    </p>
+                  </div>
+                  <div className="flex flex-1 flex-col gap-1">
+                    <div className="h-1.5 overflow-hidden rounded-full bg-surface-primary">
+                      <div
+                        className={`h-full ${capacityTone(t.avgCapacity)}`}
+                        style={{ width: `${t.avgCapacity}%` }}
+                      />
+                    </div>
+                    <p className="text-[11px] text-text-tertiary">
+                      {t.standupsPosted}/{t.memberCount} posted standups today ·{' '}
+                      {t.memberCount} member{t.memberCount === 1 ? '' : 's'}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Availability breakdown */}
+                <div className="mb-4 flex flex-wrap gap-1.5">
+                  {t.avail > 0 && (
+                    <span className="inline-flex items-center gap-1 rounded-pill bg-success-bg px-2 py-0.5 text-[10px] text-success-text">
+                      <span className={`h-1.5 w-1.5 rounded-full ${availabilityDotMap.AVAILABLE}`} />
+                      {t.avail} available
+                    </span>
+                  )}
+                  {t.busy > 0 && (
+                    <span className="inline-flex items-center gap-1 rounded-pill bg-warning-bg px-2 py-0.5 text-[10px] text-warning-text">
+                      <span className={`h-1.5 w-1.5 rounded-full ${availabilityDotMap.BUSY}`} />
+                      {t.busy} busy
+                    </span>
+                  )}
+                  {t.remote > 0 && (
+                    <span className="inline-flex items-center gap-1 rounded-pill bg-info-bg px-2 py-0.5 text-[10px] text-info-text">
+                      <span className={`h-1.5 w-1.5 rounded-full ${availabilityDotMap.REMOTE}`} />
+                      {t.remote} remote
+                    </span>
+                  )}
+                  {t.leave > 0 && (
+                    <span className="inline-flex items-center gap-1 rounded-pill bg-danger-bg px-2 py-0.5 text-[10px] text-danger-text">
+                      <span className={`h-1.5 w-1.5 rounded-full ${availabilityDotMap.ON_LEAVE}`} />
+                      {t.leave} on leave
+                    </span>
+                  )}
+                </div>
+
+                {/* Per-member capacity list */}
+                <ul className="space-y-1.5">
+                  {t.members.map((m) => {
+                    const p = paletteFor(m.id);
+                    return (
+                      <li key={m.id}>
+                        <button
+                          onClick={() => openUser(m.id)}
+                          className="flex w-full items-center gap-2 rounded px-1.5 py-1 text-left hover:bg-surface-secondary"
+                        >
+                          <span
+                            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px]"
+                            style={{ background: p.bg, color: p.text }}
+                          >
+                            {m.initials}
+                          </span>
+                          <span className="min-w-0 flex-1 truncate text-sm text-text-primary">
+                            {m.name}
+                          </span>
+                          <span
+                            className={`h-1.5 w-1.5 shrink-0 rounded-full ${availabilityDotMap[m.availability]}`}
+                            title={m.availability.toLowerCase().replace('_', ' ')}
+                          />
+                          <div className="flex w-28 shrink-0 items-center gap-2">
+                            <div className="h-1 flex-1 overflow-hidden rounded-full bg-surface-secondary">
+                              <div
+                                className={`h-full ${capacityTone(m.capacity)}`}
+                                style={{ width: `${m.capacity}%` }}
+                              />
+                            </div>
+                            <span className="w-9 text-right text-[11px] tabular-nums text-text-tertiary">
+                              {m.capacity}%
+                            </span>
+                          </div>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </article>
+            ))}
+          </div>
+        )}
+
+        {/* Table = dense row-style list with more info */}
+        {overviewView === 'table' && (
           <ul className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-surface-primary">
+            <li className="hidden sm:flex items-center gap-3 bg-surface-secondary px-3 py-1.5 text-[10px] uppercase tracking-wider text-text-tertiary">
+              <span className="w-7" />
+              <span className="flex-1">Team</span>
+              <span className="w-[88px]">Lead</span>
+              <span className="w-[140px]">Availability</span>
+              <span className="w-[70px] text-right">Standups</span>
+              <span className="w-[140px]">Capacity</span>
+              <span className="w-3" />
+            </li>
             {teamStats.map((t) => (
               <li
                 key={t.id}
                 onClick={() => openTeam(t.id)}
-                className="flex cursor-pointer flex-wrap items-center gap-3 px-3 py-2 transition-colors duration-fast hover:bg-surface-secondary"
+                className="flex cursor-pointer flex-wrap items-center gap-3 px-3 py-2.5 transition-colors duration-fast hover:bg-surface-secondary sm:flex-nowrap"
               >
                 <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-brand-50 text-brand-600">
                   <TeamsIcon className="h-3.5 w-3.5" />
                 </span>
-                <div className="flex min-w-0 items-center gap-2">
+                <div className="flex min-w-0 flex-1 items-center gap-2">
                   <span className="truncate text-sm font-semibold text-text-primary">{t.name}</span>
                   {t.isMyTeam && (
                     <span className="rounded-pill bg-brand-50 px-1.5 py-0.5 text-[10px] text-brand-600">
                       mine
                     </span>
                   )}
+                  <div className="hidden items-center -space-x-1 lg:flex">
+                    {t.members.slice(0, 4).map((m) => {
+                      const p = paletteFor(m.id);
+                      return (
+                        <span
+                          key={m.id}
+                          title={m.name}
+                          className="flex h-5 w-5 items-center justify-center rounded-full text-[9px] ring-2 ring-surface-primary"
+                          style={{ background: p.bg, color: p.text }}
+                        >
+                          {m.initials}
+                        </span>
+                      );
+                    })}
+                    {t.memberCount > 4 && (
+                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-surface-secondary text-[9px] text-text-tertiary ring-2 ring-surface-primary">
+                        +{t.memberCount - 4}
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <div className="flex flex-wrap gap-1">
+                <div className="w-[88px] shrink-0 truncate text-xs text-text-tertiary">
+                  {t.lead ? (
+                    <span className="truncate">{t.lead.name.split(' ')[0]}</span>
+                  ) : (
+                    '—'
+                  )}
+                </div>
+                <div className="flex w-[140px] shrink-0 flex-wrap gap-1">
                   {t.avail > 0 && (
                     <span className="inline-flex items-center gap-1 rounded-pill bg-success-bg px-1.5 py-0.5 text-[10px] text-success-text">
                       <span className={`h-1 w-1 rounded-full ${availabilityDotMap.AVAILABLE}`} />
@@ -531,115 +730,24 @@ export function DashboardPage() {
                     </span>
                   )}
                 </div>
-                <div className="flex -space-x-1">
-                  {t.members.slice(0, 5).map((m) => {
-                    const p = paletteFor(m.id);
-                    return (
-                      <span
-                        key={m.id}
-                        title={m.name}
-                        className="flex h-5 w-5 items-center justify-center rounded-full text-[9px] ring-2 ring-surface-primary"
-                        style={{ background: p.bg, color: p.text }}
-                      >
-                        {m.initials}
-                      </span>
-                    );
-                  })}
+                <div className="w-[70px] shrink-0 text-right text-xs tabular-nums text-text-tertiary">
+                  {t.standupsPosted}/{t.memberCount}
                 </div>
-                <div className="ml-auto flex items-center gap-3 text-xs text-text-tertiary">
-                  <span className="tabular-nums">
-                    {t.memberCount} member{t.memberCount === 1 ? '' : 's'}
+                <div className="flex w-[140px] shrink-0 items-center gap-2">
+                  <div className="h-1 flex-1 overflow-hidden rounded-full bg-surface-secondary">
+                    <div
+                      className={`h-full ${capacityTone(t.avgCapacity)}`}
+                      style={{ width: `${t.avgCapacity}%` }}
+                    />
+                  </div>
+                  <span className="w-9 text-right text-xs tabular-nums text-text-tertiary">
+                    {t.avgCapacity}%
                   </span>
-                  {t.avgCapacity !== null ? (
-                    <span className="flex items-center gap-1">
-                      <ZapIcon className="h-3 w-3" />
-                      <span className="tabular-nums">{t.avgCapacity}%</span>
-                    </span>
-                  ) : (
-                    <span>—</span>
-                  )}
-                  <ArrowRightIcon className="h-3 w-3" />
                 </div>
+                <ArrowRightIcon className="h-3 w-3 shrink-0 text-text-tertiary" />
               </li>
             ))}
           </ul>
-        )}
-
-        {overviewView === 'table' && (
-          <div className="overflow-x-auto rounded-lg border border-border bg-surface-primary">
-            <table className="w-full min-w-[720px] text-sm">
-              <thead className="border-b border-border bg-surface-secondary">
-                <tr className="text-left text-xs text-text-tertiary">
-                  <th className="p-3">Team</th>
-                  <th className="p-3 text-right tabular-nums">Members</th>
-                  <th className="p-3 text-right tabular-nums">Available</th>
-                  <th className="p-3 text-right tabular-nums">Busy</th>
-                  <th className="p-3 text-right tabular-nums">Remote</th>
-                  <th className="p-3 text-right tabular-nums">On leave</th>
-                  <th className="p-3 text-right tabular-nums">Standups</th>
-                  <th className="p-3">Capacity</th>
-                </tr>
-              </thead>
-              <tbody>
-                {teamStats.map((t) => (
-                  <tr
-                    key={t.id}
-                    onClick={() => openTeam(t.id)}
-                    className="cursor-pointer border-b border-border last:border-b-0 hover:bg-surface-secondary"
-                  >
-                    <td className="p-3">
-                      <div className="flex items-center gap-2">
-                        <span className="flex h-6 w-6 items-center justify-center rounded-md bg-brand-50 text-brand-600">
-                          <TeamsIcon className="h-3 w-3" />
-                        </span>
-                        <span className="font-medium text-text-primary">{t.name}</span>
-                        {t.isMyTeam && (
-                          <span className="rounded-pill bg-brand-50 px-1.5 py-0.5 text-[10px] text-brand-600">
-                            mine
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="p-3 text-right tabular-nums text-text-secondary">
-                      {t.memberCount}
-                    </td>
-                    <td className="p-3 text-right tabular-nums text-success-text">
-                      {t.avail || <span className="text-text-tertiary">—</span>}
-                    </td>
-                    <td className="p-3 text-right tabular-nums text-warning-text">
-                      {t.busy || <span className="text-text-tertiary">—</span>}
-                    </td>
-                    <td className="p-3 text-right tabular-nums text-info-text">
-                      {t.remote || <span className="text-text-tertiary">—</span>}
-                    </td>
-                    <td className="p-3 text-right tabular-nums text-danger-text">
-                      {t.leave || <span className="text-text-tertiary">—</span>}
-                    </td>
-                    <td className="p-3 text-right tabular-nums text-text-secondary">
-                      {t.standupsPosted}/{t.memberCount}
-                    </td>
-                    <td className="p-3">
-                      {t.avgCapacity !== null ? (
-                        <div className="flex items-center gap-2">
-                          <div className="h-1 w-24 overflow-hidden rounded-full bg-surface-secondary">
-                            <div
-                              className={`h-full ${capacityTone(t.avgCapacity)}`}
-                              style={{ width: `${t.avgCapacity}%` }}
-                            />
-                          </div>
-                          <span className="tabular-nums text-xs text-text-tertiary">
-                            {t.avgCapacity}%
-                          </span>
-                        </div>
-                      ) : (
-                        <span className="text-xs text-text-tertiary">No standups yet</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
         )}
       </section>
 
@@ -854,6 +962,30 @@ export function DashboardPage() {
           )}
         </div>
       </section>
+
+      {focus && (
+        <PeopleModal
+          focus={focus}
+          teamStats={teamStats}
+          activeTicketsByUser={activeTicketsByUser}
+          onOpenUser={(id) => {
+            setFocus(null);
+            openUser(id);
+          }}
+          onClose={() => setFocus(null)}
+        />
+      )}
+
+      {teamsModalOpen && (
+        <TeamsModal
+          teamStats={teamStats}
+          onOpenTeam={(id) => {
+            setTeamsModalOpen(false);
+            openTeam(id);
+          }}
+          onClose={() => setTeamsModalOpen(false)}
+        />
+      )}
     </div>
   );
 }
@@ -878,41 +1010,74 @@ type TicketLite = {
   jiraKey?: string | null;
 };
 
-function FocusSummary({
+function ModalShell({
+  title,
+  subtitle,
+  onClose,
+  children,
+}: {
+  title: string;
+  subtitle?: string;
+  onClose: () => void;
+  children: React.ReactNode;
+}) {
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [onClose]);
+
+  return (
+    <div
+      className="fixed inset-0 z-modal flex items-start justify-center bg-[var(--overlay-backdrop)] p-4 pt-16"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div className="absolute inset-0" onClick={onClose} aria-hidden="true" />
+      <div className="animate-modal-in relative flex w-full max-w-lg flex-col overflow-hidden rounded-lg bg-surface-primary shadow-float">
+        <header className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
+          <div className="min-w-0">
+            <h2 className="truncate text-base font-semibold">{title}</h2>
+            {subtitle && <p className="truncate text-xs text-text-tertiary">{subtitle}</p>}
+          </div>
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded text-text-tertiary hover:bg-surface-secondary hover:text-text-primary"
+          >
+            <XIcon className="h-4 w-4" />
+          </button>
+        </header>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function PeopleModal({
   focus,
-  teams,
+  teamStats,
   activeTicketsByUser,
   onOpenUser,
   onClose,
 }: {
   focus: Exclude<FocusFilter, null>;
-  teams: Array<{
-    id: string;
-    name: string;
-    members: Array<{ id: string; name: string; initials: string; availability: string }>;
-  }>;
+  teamStats: TeamStats[];
   activeTicketsByUser: Map<string, Array<{ id: string; title: string }>>;
   onOpenUser: (id: string) => void;
   onClose: () => void;
 }) {
+  const [query, setQuery] = useState('');
+
   const titleMap: Record<typeof focus, string> = {
     AVAILABLE: 'Available now',
     ON_LEAVE: 'On leave today',
     IN_PROGRESS: 'Working on tickets in progress',
   };
-  const accentMap: Record<typeof focus, string> = {
-    AVAILABLE: 'border-success-text/30 bg-success-bg/40',
-    ON_LEAVE: 'border-danger-text/30 bg-danger-bg/40',
-    IN_PROGRESS: 'border-info-text/30 bg-info-bg/40',
-  };
-  const pillMap: Record<typeof focus, string> = {
-    AVAILABLE: 'bg-success-text text-white',
-    ON_LEAVE: 'bg-danger-text text-white',
-    IN_PROGRESS: 'bg-info-text text-white',
-  };
 
-  // Collect matching members across all teams, sorted by team name then member name.
-  const rows = teams
+  const rows = teamStats
     .flatMap((team) =>
       team.members
         .filter((m) => {
@@ -925,73 +1090,163 @@ function FocusSummary({
           teamId: team.id,
           teamName: team.name,
           ticketCount: activeTicketsByUser.get(m.id)?.length ?? 0,
-        }))
+        })),
     )
     .sort((a, b) => {
       if (a.teamName !== b.teamName) return a.teamName.localeCompare(b.teamName);
       return a.name.localeCompare(b.name);
     });
 
-  return (
-    <section
-      className={`mb-6 overflow-hidden rounded-lg border ${accentMap[focus]} animate-modal-in`}
-    >
-      <header className="flex items-center justify-between gap-3 border-b border-border/40 px-4 py-2.5">
-        <div className="flex items-center gap-2">
-          <span className={`rounded-pill px-2 py-0.5 text-xs font-medium ${pillMap[focus]}`}>
-            {titleMap[focus]}
-          </span>
-          <span className="text-sm text-text-secondary">
-            {rows.length} {rows.length === 1 ? 'person' : 'people'}
-          </span>
-        </div>
-        <button
-          onClick={onClose}
-          aria-label="Close summary"
-          className="flex h-7 w-7 items-center justify-center rounded text-text-tertiary hover:bg-surface-secondary hover:text-text-primary"
-        >
-          <XIcon className="h-3.5 w-3.5" />
-        </button>
-      </header>
+  const q = query.trim().toLowerCase();
+  const filtered = q
+    ? rows.filter(
+        (r) =>
+          r.name.toLowerCase().includes(q) ||
+          r.teamName.toLowerCase().includes(q) ||
+          r.initials.toLowerCase().includes(q),
+      )
+    : rows;
 
-      {rows.length === 0 ? (
-        <p className="p-6 text-center text-sm text-text-tertiary">
-          Nobody matches this filter right now.
-        </p>
-      ) : (
-        <ul className="divide-y divide-border/40">
-          {rows.map((m) => {
-            const p = paletteFor(m.id);
-            return (
-              <li key={m.id}>
-                <button
-                  onClick={() => onOpenUser(m.id)}
-                  className="flex w-full items-center gap-3 px-4 py-2 text-left transition-colors duration-fast hover:bg-surface-primary/60"
-                >
-                  <span
-                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px]"
-                    style={{ background: p.bg, color: p.text }}
+  return (
+    <ModalShell
+      title={titleMap[focus]}
+      subtitle={`${rows.length} ${rows.length === 1 ? 'person' : 'people'} across all teams`}
+      onClose={onClose}
+    >
+      <div className="border-b border-border p-3">
+        <input
+          autoFocus
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search by name or team…"
+          className="min-h-input w-full rounded border border-border bg-surface-primary px-3 text-sm text-text-primary placeholder:text-text-tertiary"
+        />
+      </div>
+      <div className="max-h-[min(60vh,520px)] overflow-y-auto">
+        {filtered.length === 0 ? (
+          <p className="p-6 text-center text-sm text-text-tertiary">
+            {rows.length === 0
+              ? 'Nobody matches this filter right now.'
+              : `No one matches "${query}".`}
+          </p>
+        ) : (
+          <ul className="divide-y divide-border">
+            {filtered.map((m) => {
+              const p = paletteFor(m.id);
+              return (
+                <li key={m.id}>
+                  <button
+                    onClick={() => onOpenUser(m.id)}
+                    className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors duration-fast hover:bg-surface-secondary"
                   >
-                    {m.initials}
+                    <span
+                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[11px]"
+                      style={{ background: p.bg, color: p.text }}
+                    >
+                      {m.initials}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-sm font-medium text-text-primary">{m.name}</div>
+                      <div className="truncate text-xs text-text-tertiary">{m.teamName}</div>
+                    </div>
+                    {focus === 'IN_PROGRESS' && (
+                      <span className="flex items-center gap-1 rounded-pill bg-info-bg px-2 py-0.5 text-[11px] text-info-text">
+                        <BriefcaseIcon className="h-3 w-3" />
+                        {m.ticketCount}
+                      </span>
+                    )}
+                    <ArrowRightIcon className="h-3 w-3 shrink-0 text-text-tertiary" />
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+    </ModalShell>
+  );
+}
+
+function TeamsModal({
+  teamStats,
+  onOpenTeam,
+  onClose,
+}: {
+  teamStats: TeamStats[];
+  onOpenTeam: (id: string) => void;
+  onClose: () => void;
+}) {
+  const [query, setQuery] = useState('');
+  const q = query.trim().toLowerCase();
+  const filtered = q
+    ? teamStats.filter(
+        (t) =>
+          t.name.toLowerCase().includes(q) ||
+          t.members.some((m) => m.name.toLowerCase().includes(q)),
+      )
+    : teamStats;
+
+  return (
+    <ModalShell
+      title="Teams"
+      subtitle={`${teamStats.length} team${teamStats.length === 1 ? '' : 's'}`}
+      onClose={onClose}
+    >
+      <div className="border-b border-border p-3">
+        <input
+          autoFocus
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search teams or members…"
+          className="min-h-input w-full rounded border border-border bg-surface-primary px-3 text-sm text-text-primary placeholder:text-text-tertiary"
+        />
+      </div>
+      <div className="max-h-[min(60vh,520px)] overflow-y-auto">
+        {filtered.length === 0 ? (
+          <p className="p-6 text-center text-sm text-text-tertiary">
+            No team matches "{query}".
+          </p>
+        ) : (
+          <ul className="divide-y divide-border">
+            {filtered.map((t) => (
+              <li key={t.id}>
+                <button
+                  onClick={() => onOpenTeam(t.id)}
+                  className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors duration-fast hover:bg-surface-secondary"
+                >
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-brand-50 text-brand-600">
+                    <TeamsIcon className="h-4 w-4" />
                   </span>
                   <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-medium text-text-primary">{m.name}</div>
-                    <div className="truncate text-xs text-text-tertiary">{m.teamName}</div>
+                    <div className="flex items-center gap-2">
+                      <span className="truncate text-sm font-medium text-text-primary">
+                        {t.name}
+                      </span>
+                      {t.isMyTeam && (
+                        <span className="rounded-pill bg-brand-50 px-1.5 py-0.5 text-[10px] text-brand-600">
+                          mine
+                        </span>
+                      )}
+                    </div>
+                    <div className="truncate text-xs text-text-tertiary">
+                      {t.memberCount} member{t.memberCount === 1 ? '' : 's'}
+                      {t.lead ? ` · Lead ${t.lead.name.split(' ')[0]}` : ''}
+                    </div>
                   </div>
-                  {focus === 'IN_PROGRESS' && (
-                    <span className="flex items-center gap-1 rounded-pill bg-info-bg px-2 py-0.5 text-[11px] text-info-text">
-                      <BriefcaseIcon className="h-3 w-3" />
-                      {m.ticketCount}
+                  <div className="flex items-center gap-1.5">
+                    <span className="flex items-center gap-1 rounded-pill bg-surface-secondary px-2 py-0.5 text-[11px] text-text-tertiary">
+                      <ZapIcon className="h-3 w-3" />
+                      <span className="tabular-nums">{t.avgCapacity}%</span>
                     </span>
-                  )}
+                  </div>
                   <ArrowRightIcon className="h-3 w-3 shrink-0 text-text-tertiary" />
                 </button>
               </li>
-            );
-          })}
-        </ul>
-      )}
-    </section>
+            ))}
+          </ul>
+        )}
+      </div>
+    </ModalShell>
   );
 }
 

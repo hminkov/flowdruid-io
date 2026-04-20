@@ -9,7 +9,7 @@ export const teamsRouter = router({
       include: {
         members: {
           where: { active: true },
-          select: { id: true, name: true, initials: true, availability: true },
+          select: { id: true, name: true, initials: true, availability: true, role: true },
         },
         _count: { select: { tickets: true } },
       },
