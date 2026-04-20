@@ -11,6 +11,9 @@ import { startLeaveWorker } from './workers/leave.worker';
 
 const app = express();
 const port = Number(process.env.PORT) || 3000;
+// Pulled from the package.json at start-up by the npm/pnpm runner.
+// Falls back for the rare case we're run outside a script context.
+const VERSION = process.env.npm_package_version ?? '0.0.1';
 
 app.use(cors({
   origin: process.env.NODE_ENV === 'production'
@@ -21,9 +24,10 @@ app.use(cors({
 app.use(express.json());
 app.use(cookieParser());
 
-// Health check
+// Health check — also surfaces the running API version so the frontend
+// can show it in the sidebar footer without needing a dedicated route.
 app.get('/health', (_req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.json({ status: 'ok', version: VERSION, timestamp: new Date().toISOString() });
 });
 
 // Slack events webhook

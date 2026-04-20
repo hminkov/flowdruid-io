@@ -150,6 +150,28 @@ export function Layout({ children }: { children: ReactNode }) {
     setMobileOpen(false);
   }, [location.pathname]);
 
+  // Pull the running API version from the /health endpoint so the
+  // sidebar footer always shows what's actually deployed (not a build
+  // constant that can drift). Cached in module-scope so we don't refetch
+  // per navigation; still lightweight if it does.
+  const [apiVersion, setApiVersion] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    const base = import.meta.env.VITE_API_URL || '';
+    fetch(`${base}/health`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!cancelled && data?.version) setApiVersion(data.version as string);
+      })
+      .catch(() => {
+        // Silent — we just won't show the badge if the health check
+        // can't be reached, which is still a reasonable state.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const unreadQuery = trpc.notifications.unreadCount.useQuery(undefined, {
     enabled: !!user,
     refetchInterval: 30_000, // lightweight polling — real-time wiring lands alongside WebSocket push
@@ -271,6 +293,23 @@ export function Layout({ children }: { children: ReactNode }) {
             </button>
           </div>
         )}
+
+        {/* Version + credit footer — rendered on every route, always pinned
+            to the bottom of the left nav. */}
+        <div
+          className={`border-t border-border px-3 py-2 text-[10px] leading-tight text-text-tertiary ${
+            mobileOpen ? 'block' : 'hidden'
+          } lg:block`}
+        >
+          <div className="flex items-center justify-between gap-2">
+            <span className="font-mono tabular-nums">
+              {apiVersion ? `v${apiVersion}` : '…'}
+            </span>
+            <span className="truncate">
+              Built by <span className="text-text-secondary">Hristo Minkov</span> :)
+            </span>
+          </div>
+        </div>
       </aside>
 
       {/* Main content */}
