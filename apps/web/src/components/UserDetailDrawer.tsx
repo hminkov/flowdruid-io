@@ -128,24 +128,23 @@ export function UserDetailDrawer({
         <header className="flex items-start justify-between gap-3 border-b border-border p-5">
           <div className="flex min-w-0 items-center gap-3">
             {user ? (
-              <Avatar userId={user.id} initials={user.initials} name={user.name} size={44} />
+              <span className="relative shrink-0">
+                <Avatar userId={user.id} initials={user.initials} name={user.name} size={44} />
+                <span
+                  title={user.availability.toLowerCase().replace('_', ' ')}
+                  aria-label={user.availability.toLowerCase().replace('_', ' ')}
+                  className="absolute -right-1 -bottom-1 flex h-5 w-5 items-center justify-center rounded-full bg-surface-primary ring-2 ring-surface-primary"
+                >
+                  <AvailabilityGlyph status={user.availability} size="sm" />
+                </span>
+              </span>
             ) : (
               <span className="flex h-11 w-11 items-center justify-center rounded-full bg-surface-secondary text-text-tertiary">
                 …
               </span>
             )}
             <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="truncate text-lg text-text-primary">{user?.name ?? 'Loading…'}</span>
-                {user && (
-                  <span
-                    title={user.availability.toLowerCase().replace('_', ' ')}
-                    className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-surface-secondary ring-1 ring-border"
-                  >
-                    <AvailabilityGlyph status={user.availability} size="sm" />
-                  </span>
-                )}
-              </div>
+              <div className="truncate text-lg text-text-primary">{user?.name ?? 'Loading…'}</div>
               <div className="mt-1 text-xs text-text-tertiary">{user?.team.name ?? ''}</div>
             </div>
           </div>

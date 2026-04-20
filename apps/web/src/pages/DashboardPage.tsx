@@ -634,35 +634,14 @@ export function DashboardPage() {
                           onClick={() => openUser(m.id)}
                           className="flex w-full items-center gap-2 rounded px-1.5 py-1 text-left hover:bg-surface-secondary"
                         >
-                          <span className="relative shrink-0">
-                            <span
-                              className="flex h-6 w-6 items-center justify-center rounded-full text-[10px]"
-                              style={{ background: p.bg, color: p.text }}
-                            >
-                              {m.initials}
-                            </span>
-                            {availabilityEmojiMap[m.availability] && (
-                              <span
-                                title={m.availability.toLowerCase().replace('_', ' ')}
-                                aria-label={m.availability.toLowerCase().replace('_', ' ')}
-                                className="absolute -right-0.5 -bottom-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-surface-primary text-[9px] leading-none ring-1 ring-surface-primary"
-                              >
-                                {availabilityEmojiMap[m.availability]}
-                              </span>
-                            )}
+                          <span
+                            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px]"
+                            style={{ background: p.bg, color: p.text }}
+                          >
+                            {m.initials}
                           </span>
-                          <span className="flex min-w-0 flex-1 items-center gap-1.5 truncate text-sm text-text-primary">
+                          <span className="min-w-0 flex-1 truncate text-sm text-text-primary">
                             {m.name}
-                            {m.availability === 'ON_LEAVE' && (
-                              <span className="rounded-pill bg-warning-bg px-1.5 py-0.5 text-[9px] text-warning-text">
-                                on leave
-                              </span>
-                            )}
-                            {m.availability === 'REMOTE' && (
-                              <span className="rounded-pill bg-info-bg px-1.5 py-0.5 text-[9px] text-info-text">
-                                remote
-                              </span>
-                            )}
                           </span>
                           <div className="flex w-28 shrink-0 items-center gap-2">
                             <div className="h-1 flex-1 overflow-hidden rounded-full bg-surface-secondary">
@@ -1316,31 +1295,14 @@ function MemberCard({
           onClick={onOpen}
           className="-m-1 flex min-w-0 items-center gap-2 rounded p-1 text-left hover:bg-surface-secondary"
         >
-          <span className="relative shrink-0">
-            <span
-              className="flex h-9 w-9 items-center justify-center rounded-full text-sm"
-              style={{ background: palette.bg, color: palette.text }}
-            >
-              {member.initials}
-            </span>
-            {availabilityEmojiMap[member.availability] && (
-              <span
-                title={member.availability.toLowerCase().replace('_', ' ')}
-                aria-label={member.availability.toLowerCase().replace('_', ' ')}
-                className="absolute -right-1 -bottom-1 flex h-4 w-4 items-center justify-center rounded-full bg-surface-primary text-[11px] leading-none ring-2 ring-surface-primary"
-              >
-                {availabilityEmojiMap[member.availability]}
-              </span>
-            )}
+          <span
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm"
+            style={{ background: palette.bg, color: palette.text }}
+          >
+            {member.initials}
           </span>
           <div className="min-w-0">
             <div className="truncate text-md font-medium text-text-primary">{member.name}</div>
-            {member.availability === 'ON_LEAVE' && (
-              <div className="truncate text-[11px] text-warning-text">On leave today</div>
-            )}
-            {member.availability === 'REMOTE' && (
-              <div className="truncate text-[11px] text-info-text">Working remote today</div>
-            )}
           </div>
         </button>
       </header>
