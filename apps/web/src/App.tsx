@@ -28,6 +28,7 @@ import { ProdSupportPage } from './pages/ProdSupportPage';
 import { TicketShortlinkPage } from './pages/TicketShortlinkPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { InboxPage } from './pages/InboxPage';
+import { AuditLogPage } from './pages/AuditLogPage';
 
 export function App() {
   const [trpcClient] = useState(createTrpcClient);
@@ -164,6 +165,14 @@ export function App() {
                 element={
                   <ProtectedRoute requiredRole="ADMIN">
                     <Layout><IntegrationsPage /></Layout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/audit"
+                element={
+                  <ProtectedRoute requiredRole="ADMIN">
+                    <Layout><AuditLogPage /></Layout>
                   </ProtectedRoute>
                 }
               />

@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { requestLeaveSchema, listLeavesSchema, leaveCalendarSchema } from '@flowdruid/shared';
 import { router, protectedProcedure, leadProcedure } from '../trpc';
 import { slackQueue } from '../lib/queue';
+import { audit } from '../lib/audit';
 
 export const leavesRouter = router({
   request: protectedProcedure.input(requestLeaveSchema).mutation(async ({ ctx, input }) => {
@@ -111,9 +112,16 @@ export const leavesRouter = router({
         throw new TRPCError({ code: 'BAD_REQUEST', message: 'Leave request is not pending' });
       }
 
-      const updated = await ctx.prisma.leaveRequest.update({
-        where: { id: input.leaveId },
-        data: { status: 'APPROVED', reviewedBy: ctx.user.id, reviewedAt: new Date() },
+      const updated = await ctx.prisma.$transaction(async (tx) => {
+        const u = await tx.leaveRequest.update({
+          where: { id: input.leaveId },
+          data: { status: 'APPROVED', reviewedBy: ctx.user.id, reviewedAt: new Date() },
+        });
+        await audit({ prisma: tx, user: ctx.user }, 'LEAVE_APPROVED', 'LeaveRequest', u.id, {
+          before: { status: 'PENDING' },
+          after: { status: 'APPROVED', requesterId: leave.userId, type: leave.type },
+        });
+        return u;
       });
 
       // Update availability if leave starts today
@@ -154,9 +162,16 @@ export const leavesRouter = router({
         throw new TRPCError({ code: 'BAD_REQUEST', message: 'Leave request is not pending' });
       }
 
-      const updated = await ctx.prisma.leaveRequest.update({
-        where: { id: input.leaveId },
-        data: { status: 'DENIED', reviewedBy: ctx.user.id, reviewedAt: new Date() },
+      const updated = await ctx.prisma.$transaction(async (tx) => {
+        const u = await tx.leaveRequest.update({
+          where: { id: input.leaveId },
+          data: { status: 'DENIED', reviewedBy: ctx.user.id, reviewedAt: new Date() },
+        });
+        await audit({ prisma: tx, user: ctx.user }, 'LEAVE_DENIED', 'LeaveRequest', u.id, {
+          before: { status: 'PENDING' },
+          after: { status: 'DENIED', requesterId: leave.userId, type: leave.type },
+        });
+        return u;
       });
 
       if (leave.notifySlack) {

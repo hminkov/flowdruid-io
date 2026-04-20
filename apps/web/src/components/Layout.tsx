@@ -74,6 +74,12 @@ const Icon = {
       <path d="M11 6.5h4a2 2 0 0 1 2 2V13M6.5 13v-1.5" />
     </svg>
   ),
+  Audit: (p: IconProps) => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <path d="M14 2v6h6M8 13h8M8 17h5" />
+    </svg>
+  ),
   Inbox: (p: IconProps) => (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" {...p}>
       <path d="M22 12h-6l-2 3h-4l-2-3H2" />
@@ -134,6 +140,7 @@ const navSections: { label: string; items: NavItem[] }[] = [
       { path: '/all-teams', label: 'All teams', minRole: 'TEAM_LEAD', icon: Icon.Teams },
       { path: '/admin/users', label: 'Users & roles', minRole: 'ADMIN', icon: Icon.Users },
       { path: '/admin/integrations', label: 'Integrations', minRole: 'ADMIN', icon: Icon.Integrations },
+      { path: '/admin/audit', label: 'Audit log', minRole: 'ADMIN', icon: Icon.Audit },
     ],
   },
 ];

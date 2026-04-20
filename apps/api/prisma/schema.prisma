@@ -99,6 +99,7 @@ model Organisation {
   qaEnvironments  QaEnvironment[]
   parkingSpots    ParkingSpot[]
   conversations   Conversation[]
+  auditLogs       AuditLog[]
 }
 
 model Team {
@@ -149,6 +150,7 @@ model User {
   messages                Message[]
   coverRequestsMade       CoverRequest[]          @relation("CoverRequester")
   coverRequestsTaken      CoverRequest[]          @relation("CoverAccepter")
+  auditLogsAuthored       AuditLog[]              @relation("AuditActor")
 }
 
 model RefreshToken {
@@ -429,4 +431,50 @@ model CoverRequest {
 
   @@index([assignmentId])
   @@index([status])
+}
+
+// ─── Audit log ────────────────────────────────────────────────────────────
+// Trace of "who changed what" for high-impact mutations. Not a generic
+// activity feed — writes live alongside the mutation in the same transaction
+// so the log and the change commit or roll back together.
+enum AuditAction {
+  USER_ROLE_CHANGED
+  USER_DEACTIVATED
+  USER_CREATED
+  LEAVE_APPROVED
+  LEAVE_DENIED
+  LEAVE_DELETED
+  TICKET_DELETED
+  TICKET_REASSIGNED
+  QA_ENV_CREATED
+  QA_ENV_DELETED
+  QA_BOOKING_DELETED
+  TEAM_CREATED
+  TEAM_DELETED
+  PARKING_SPOT_CREATED
+  PARKING_SPOT_DELETED
+  PROD_SUPPORT_DELETED
+  SLACK_CONFIG_UPDATED
+  JIRA_CONFIG_UPDATED
+  BROADCAST_SENT
+}
+
+model AuditLog {
+  id         String      @id @default(cuid())
+  orgId      String
+  actorId    String
+  action     AuditAction
+  entityType String
+  entityId   String
+  before     Json?
+  after      Json?
+  reason     String?
+  createdAt  DateTime    @default(now())
+
+  org   Organisation @relation(fields: [orgId], references: [id])
+  actor User         @relation("AuditActor", fields: [actorId], references: [id])
+
+  @@index([orgId, createdAt])
+  @@index([entityType, entityId])
+  @@index([actorId, createdAt])
 }
