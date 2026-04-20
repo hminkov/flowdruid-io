@@ -1,4 +1,4 @@
-import { Fragment, Suspense, lazy, useMemo, useState } from 'react';
+import { Fragment, Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { trpc } from '../lib/trpc';
 import { useAuth } from '../hooks/useAuth';
 import { useUserDetail } from '../hooks/useUserDetail';
@@ -205,37 +205,37 @@ export function QaEnvironmentsPage() {
         </div>
 
         {/* Env picker */}
-        <div className="flex items-center gap-1.5 text-xs text-text-tertiary">
-          Env
-          <select
-            value={envFilter || 'all'}
-            onChange={(e) => setEnvFilter(e.target.value)}
-            className="min-h-8 rounded border border-border bg-surface-primary px-2 font-mono text-sm text-text-primary"
-          >
-            <option value="all">All ({environments.length})</option>
-            {environments.map((e) => (
-              <option key={e.id} value={e.id}>
-                {e.name}
-                {e.branch ? ` · ${e.branch}` : ''}
-              </option>
-            ))}
-          </select>
-        </div>
+        <DropdownMenu
+          label="Env"
+          value={envFilter || 'all'}
+          onChange={setEnvFilter}
+          options={[
+            {
+              value: 'all',
+              label: 'All environments',
+              meta: `${environments.length}`,
+            },
+            ...environments.map((e) => ({
+              value: e.id,
+              label: e.name,
+              meta: e.branch ?? undefined,
+              mono: true,
+            })),
+          ]}
+        />
 
         {/* Sort */}
-        <div className="flex items-center gap-1.5 text-xs text-text-tertiary">
-          Sort
-          <select
-            value={sort || 'order'}
-            onChange={(e) => setSort(e.target.value)}
-            disabled={envFilter !== 'all' && !!envFilter}
-            className="min-h-8 rounded border border-border bg-surface-primary px-2 text-sm text-text-primary disabled:opacity-50"
-          >
-            <option value="order">Default</option>
-            <option value="name">By name</option>
-            <option value="activity">Most active</option>
-          </select>
-        </div>
+        <DropdownMenu
+          label="Sort"
+          value={sort || 'order'}
+          onChange={setSort}
+          disabled={envFilter !== 'all' && !!envFilter}
+          options={[
+            { value: 'order', label: 'Default' },
+            { value: 'name', label: 'By name' },
+            { value: 'activity', label: 'Most active' },
+          ]}
+        />
 
         {/* View toggle */}
         <div className="ml-auto flex gap-1 rounded-pill border border-border bg-surface-primary p-0.5">
@@ -465,6 +465,124 @@ export function QaEnvironmentsPage() {
             }}
           />
         </Suspense>
+      )}
+    </div>
+  );
+}
+
+type DropdownOption = {
+  value: string;
+  label: string;
+  meta?: string;
+  mono?: boolean;
+};
+
+function DropdownMenu({
+  label,
+  value,
+  onChange,
+  options,
+  disabled,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: DropdownOption[];
+  disabled?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const current = options.find((o) => o.value === value) ?? options[0];
+
+  useEffect(() => {
+    if (!open) return;
+    const onClick = (e: MouseEvent) => {
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    window.addEventListener('mousedown', onClick);
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('mousedown', onClick);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+
+  return (
+    <div ref={rootRef} className="relative">
+      <button
+        type="button"
+        onClick={() => !disabled && setOpen((v) => !v)}
+        disabled={disabled}
+        className={`flex min-h-8 items-center gap-2 rounded-md border border-border bg-surface-primary px-2.5 text-sm transition-all duration-fast ${
+          disabled
+            ? 'cursor-not-allowed opacity-50'
+            : open
+              ? 'border-brand-500 text-text-primary shadow-float'
+              : 'text-text-primary hover:border-border-strong'
+        }`}
+      >
+        <span className="text-xs text-text-tertiary">{label}</span>
+        <span
+          className={`min-w-0 truncate ${current?.mono ? 'font-mono text-[13px]' : ''}`}
+        >
+          {current?.label ?? '—'}
+        </span>
+        {current?.meta && !current.mono && (
+          <span className="rounded-pill bg-surface-secondary px-1.5 py-0.5 text-[10px] tabular-nums text-text-tertiary">
+            {current.meta}
+          </span>
+        )}
+        <ChevronDownIcon
+          className={`h-3.5 w-3.5 shrink-0 text-text-tertiary transition-transform duration-fast ${open ? 'rotate-180' : ''}`}
+        />
+      </button>
+
+      {open && !disabled && (
+        <div
+          className="animate-fade-in absolute left-0 top-full z-dropdown mt-1.5 min-w-[220px] overflow-hidden rounded-md border border-border bg-surface-primary shadow-float"
+          role="listbox"
+        >
+          <ul className="max-h-[280px] overflow-y-auto py-1">
+            {options.map((o) => {
+              const selected = o.value === value;
+              return (
+                <li key={o.value}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onChange(o.value);
+                      setOpen(false);
+                    }}
+                    className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm transition-colors duration-fast ${
+                      selected
+                        ? 'bg-brand-50 text-brand-600'
+                        : 'text-text-primary hover:bg-surface-secondary'
+                    }`}
+                    role="option"
+                    aria-selected={selected}
+                  >
+                    <span className={`min-w-0 flex-1 truncate ${o.mono ? 'font-mono text-[13px]' : ''}`}>
+                      {o.label}
+                    </span>
+                    {o.meta && (
+                      <span
+                        className={`truncate font-mono text-[11px] ${
+                          selected ? 'text-brand-600/80' : 'text-text-tertiary'
+                        }`}
+                      >
+                        {o.meta}
+                      </span>
+                    )}
+                    {selected && <CheckIcon className="h-3.5 w-3.5 shrink-0 text-brand-600" />}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
       )}
     </div>
   );
