@@ -22,6 +22,7 @@ import {
   deleteParkingSpotSchema,
 } from '@flowdruid/shared';
 import { router, protectedProcedure, leadProcedure, adminProcedure } from '../trpc';
+import { audit } from '../lib/audit';
 
 const toUtcDate = (iso: string): Date => {
   // Accepts YYYY-MM-DD or full ISO; returns midnight UTC for the date portion.
@@ -84,11 +85,16 @@ export const resourcesRouter = router({
   deleteQaBooking: leadProcedure.input(deleteQaBookingSchema).mutation(async ({ ctx, input }) => {
     const booking = await ctx.prisma.qaBooking.findFirst({
       where: { id: input.bookingId, environment: { orgId: ctx.user.orgId } },
-      select: { id: true },
+      select: { id: true, service: true, feature: true, status: true, environmentId: true },
     });
     if (!booking) throw new TRPCError({ code: 'NOT_FOUND' });
 
-    await ctx.prisma.qaBooking.delete({ where: { id: input.bookingId } });
+    await ctx.prisma.$transaction(async (tx) => {
+      await tx.qaBooking.delete({ where: { id: input.bookingId } });
+      await audit({ prisma: tx, user: ctx.user }, 'QA_BOOKING_DELETED', 'QaBooking', input.bookingId, {
+        before: { service: booking.service, feature: booking.feature, status: booking.status, environmentId: booking.environmentId },
+      });
+    });
     return { ok: true };
   }),
 
@@ -164,8 +170,14 @@ export const resourcesRouter = router({
       });
       const order = input.order ?? (maxOrder._max.order ?? 0) + 1;
 
-      return ctx.prisma.parkingSpot.create({
-        data: { orgId: ctx.user.orgId, name: input.name, order },
+      return ctx.prisma.$transaction(async (tx) => {
+        const spot = await tx.parkingSpot.create({
+          data: { orgId: ctx.user.orgId, name: input.name, order },
+        });
+        await audit({ prisma: tx, user: ctx.user }, 'PARKING_SPOT_CREATED', 'ParkingSpot', spot.id, {
+          after: { name: spot.name, order: spot.order },
+        });
+        return spot;
       });
     }),
 
@@ -187,7 +199,7 @@ export const resourcesRouter = router({
     .mutation(async ({ ctx, input }) => {
       const spot = await ctx.prisma.parkingSpot.findFirst({
         where: { id: input.spotId, orgId: ctx.user.orgId },
-        select: { id: true },
+        select: { id: true, name: true, order: true },
       });
       if (!spot) throw new TRPCError({ code: 'NOT_FOUND' });
 
@@ -205,7 +217,12 @@ export const resourcesRouter = router({
         });
       }
 
-      await ctx.prisma.parkingSpot.delete({ where: { id: spot.id } });
+      await ctx.prisma.$transaction(async (tx) => {
+        await tx.parkingSpot.delete({ where: { id: spot.id } });
+        await audit({ prisma: tx, user: ctx.user }, 'PARKING_SPOT_DELETED', 'ParkingSpot', spot.id, {
+          before: { name: spot.name, order: spot.order },
+        });
+      });
       return { ok: true };
     }),
 
@@ -220,14 +237,20 @@ export const resourcesRouter = router({
       const order = input.order ?? (maxOrder._max.order ?? 0) + 1;
 
       try {
-        return await ctx.prisma.qaEnvironment.create({
-          data: {
-            orgId: ctx.user.orgId,
-            name: input.name,
-            branch: input.branch,
-            description: input.description,
-            order,
-          },
+        return await ctx.prisma.$transaction(async (tx) => {
+          const env = await tx.qaEnvironment.create({
+            data: {
+              orgId: ctx.user.orgId,
+              name: input.name,
+              branch: input.branch,
+              description: input.description,
+              order,
+            },
+          });
+          await audit({ prisma: tx, user: ctx.user }, 'QA_ENV_CREATED', 'QaEnvironment', env.id, {
+            after: { name: env.name, branch: env.branch, description: env.description, order: env.order },
+          });
+          return env;
         });
       } catch (err: unknown) {
         if (isUniqueViolation(err)) {
@@ -258,7 +281,7 @@ export const resourcesRouter = router({
     .mutation(async ({ ctx, input }) => {
       const env = await ctx.prisma.qaEnvironment.findFirst({
         where: { id: input.environmentId, orgId: ctx.user.orgId },
-        select: { id: true, bookings: { select: { id: true } } },
+        select: { id: true, name: true, branch: true, bookings: { select: { id: true } } },
       });
       if (!env) throw new TRPCError({ code: 'NOT_FOUND' });
 
@@ -270,7 +293,12 @@ export const resourcesRouter = router({
         });
       }
 
-      await ctx.prisma.qaEnvironment.delete({ where: { id: env.id } });
+      await ctx.prisma.$transaction(async (tx) => {
+        await tx.qaEnvironment.delete({ where: { id: env.id } });
+        await audit({ prisma: tx, user: ctx.user }, 'QA_ENV_DELETED', 'QaEnvironment', env.id, {
+          before: { name: env.name, branch: env.branch },
+        });
+      });
       return { ok: true };
     }),
 
@@ -348,11 +376,22 @@ export const resourcesRouter = router({
     .mutation(async ({ ctx, input }) => {
       const a = await ctx.prisma.prodSupportAssignment.findFirst({
         where: { id: input.assignmentId, team: { orgId: ctx.user.orgId } },
-        select: { id: true },
+        select: { id: true, teamId: true, weekNumber: true, startDate: true, primaryId: true, secondaryId: true },
       });
       if (!a) throw new TRPCError({ code: 'NOT_FOUND' });
 
-      await ctx.prisma.prodSupportAssignment.delete({ where: { id: input.assignmentId } });
+      await ctx.prisma.$transaction(async (tx) => {
+        await tx.prodSupportAssignment.delete({ where: { id: input.assignmentId } });
+        await audit({ prisma: tx, user: ctx.user }, 'PROD_SUPPORT_DELETED', 'ProdSupportAssignment', a.id, {
+          before: {
+            teamId: a.teamId,
+            weekNumber: a.weekNumber,
+            startDate: a.startDate,
+            primaryId: a.primaryId,
+            secondaryId: a.secondaryId,
+          },
+        });
+      });
       return { ok: true };
     }),
 

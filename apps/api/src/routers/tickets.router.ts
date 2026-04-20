@@ -2,6 +2,7 @@ import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 import { createTicketSchema, updateTicketSchema, listTicketsSchema, assignTicketSchema } from '@flowdruid/shared';
 import { router, protectedProcedure, leadProcedure } from '../trpc';
+import { audit } from '../lib/audit';
 
 export const ticketsRouter = router({
   list: protectedProcedure.input(listTicketsSchema).query(async ({ ctx, input }) => {
@@ -81,20 +82,33 @@ export const ticketsRouter = router({
         });
       }
 
-      await ctx.prisma.ticketAssignment.deleteMany({ where: { ticketId: input.ticketId } });
-      return ctx.prisma.ticket.delete({ where: { id: input.ticketId } });
+      return ctx.prisma.$transaction(async (tx) => {
+        await tx.ticketAssignment.deleteMany({ where: { ticketId: input.ticketId } });
+        const deleted = await tx.ticket.delete({ where: { id: input.ticketId } });
+        await audit({ prisma: tx, user: ctx.user }, 'TICKET_DELETED', 'Ticket', input.ticketId, {
+          before: { title: ticket.title, status: ticket.status, priority: ticket.priority, teamId: ticket.teamId, source: ticket.source, jiraKey: ticket.jiraKey },
+        });
+        return deleted;
+      });
     }),
 
   assign: protectedProcedure.input(assignTicketSchema).mutation(async ({ ctx, input }) => {
-    if (input.action === 'assign') {
-      return ctx.prisma.ticketAssignment.create({
-        data: { ticketId: input.ticketId, userId: input.userId },
+    return ctx.prisma.$transaction(async (tx) => {
+      let result;
+      if (input.action === 'assign') {
+        result = await tx.ticketAssignment.create({
+          data: { ticketId: input.ticketId, userId: input.userId },
+        });
+      } else {
+        result = await tx.ticketAssignment.delete({
+          where: { ticketId_userId: { ticketId: input.ticketId, userId: input.userId } },
+        });
+      }
+      await audit({ prisma: tx, user: ctx.user }, 'TICKET_REASSIGNED', 'Ticket', input.ticketId, {
+        after: { action: input.action, userId: input.userId },
       });
-    } else {
-      return ctx.prisma.ticketAssignment.delete({
-        where: { ticketId_userId: { ticketId: input.ticketId, userId: input.userId } },
-      });
-    }
+      return result;
+    });
   }),
 
   syncJira: leadProcedure
