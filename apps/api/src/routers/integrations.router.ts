@@ -3,6 +3,7 @@ import { saveSlackConfigSchema, saveJiraConfigSchema, broadcastSlackSchema } fro
 import { router, adminProcedure } from '../trpc';
 import { encrypt, decrypt } from '../lib/encrypt';
 import { slackQueue } from '../lib/queue';
+import { audit } from '../lib/audit';
 
 export const integrationsRouter = router({
   getSlackConfig: adminProcedure.query(async ({ ctx }) => {
@@ -29,10 +30,33 @@ export const integrationsRouter = router({
       notifyBroadcast: input.notifyBroadcast,
     };
 
-    return ctx.prisma.slackConfig.upsert({
-      where: { orgId: ctx.user.orgId },
-      create: { orgId: ctx.user.orgId, ...data },
-      update: data,
+    return ctx.prisma.$transaction(async (tx) => {
+      const before = await tx.slackConfig.findUnique({ where: { orgId: ctx.user.orgId } });
+      const saved = await tx.slackConfig.upsert({
+        where: { orgId: ctx.user.orgId },
+        create: { orgId: ctx.user.orgId, ...data },
+        update: data,
+      });
+      // audit() auto-redacts botToken / signingSecret by key-name match.
+      await audit({ prisma: tx, user: ctx.user }, 'SLACK_CONFIG_UPDATED', 'SlackConfig', saved.id, {
+        before: before
+          ? {
+              notifyStandup: before.notifyStandup,
+              notifyLeave: before.notifyLeave,
+              notifyBlocker: before.notifyBlocker,
+              notifyDone: before.notifyDone,
+              notifyBroadcast: before.notifyBroadcast,
+            }
+          : undefined,
+        after: {
+          notifyStandup: saved.notifyStandup,
+          notifyLeave: saved.notifyLeave,
+          notifyBlocker: saved.notifyBlocker,
+          notifyDone: saved.notifyDone,
+          notifyBroadcast: saved.notifyBroadcast,
+        },
+      });
+      return saved;
     });
   }),
 
@@ -76,10 +100,30 @@ export const integrationsRouter = router({
       syncInterval: input.syncInterval,
     };
 
-    return ctx.prisma.jiraConfig.upsert({
-      where: { orgId: ctx.user.orgId },
-      create: { orgId: ctx.user.orgId, ...data },
-      update: data,
+    return ctx.prisma.$transaction(async (tx) => {
+      const before = await tx.jiraConfig.findUnique({ where: { orgId: ctx.user.orgId } });
+      const saved = await tx.jiraConfig.upsert({
+        where: { orgId: ctx.user.orgId },
+        create: { orgId: ctx.user.orgId, ...data },
+        update: data,
+      });
+      await audit({ prisma: tx, user: ctx.user }, 'JIRA_CONFIG_UPDATED', 'JiraConfig', saved.id, {
+        before: before
+          ? {
+              baseUrl: before.baseUrl,
+              email: before.email,
+              projectKeys: before.projectKeys,
+              syncInterval: before.syncInterval,
+            }
+          : undefined,
+        after: {
+          baseUrl: saved.baseUrl,
+          email: saved.email,
+          projectKeys: saved.projectKeys,
+          syncInterval: saved.syncInterval,
+        },
+      });
+      return saved;
     });
   }),
 
@@ -129,6 +173,19 @@ export const integrationsRouter = router({
         message: input.message,
       });
     }
+
+    await audit(
+      { prisma: ctx.prisma, user: ctx.user },
+      'BROADCAST_SENT',
+      'Organisation',
+      ctx.user.orgId,
+      {
+        after: {
+          message: input.message,
+          channelCount: teams.length,
+        },
+      },
+    );
 
     return { success: true, channelCount: teams.length };
   }),

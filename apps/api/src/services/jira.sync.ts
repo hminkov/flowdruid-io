@@ -41,6 +41,11 @@ interface JiraIssue {
     description: unknown;
     status: { name: string };
     priority: { name: string };
+    assignee?: {
+      accountId: string;
+      displayName: string;
+      emailAddress?: string;
+    } | null;
   };
 }
 
@@ -74,7 +79,7 @@ export async function syncJiraTickets(orgId: string): Promise<void> {
     const data = (await res.json()) as { issues: JiraIssue[] };
 
     for (const issue of data.issues) {
-      await prisma.ticket.upsert({
+      const ticket = await prisma.ticket.upsert({
         where: { jiraKey: issue.key },
         create: {
           source: 'JIRA',
@@ -95,6 +100,39 @@ export async function syncJiraTickets(orgId: string): Promise<void> {
           syncedAt: new Date(),
         },
       });
+
+      // Assignee mapping — if Jira's assignee email matches a User in
+      // this org, mirror the assignment into TicketAssignment. The
+      // table uses a composite PK on (ticketId, userId), so the upsert
+      // is idempotent (no duplicate rows on repeat syncs).
+      //
+      // Unassigned in Jira → clear local assignments for that ticket so
+      // the two sides stay consistent. If the Jira email doesn't match
+      // anyone locally, skip silently — visible as a gap in the UI until
+      // an admin adds the user.
+      const email = issue.fields.assignee?.emailAddress;
+      if (email) {
+        const user = await prisma.user.findFirst({
+          where: { email, orgId, active: true },
+          select: { id: true },
+        });
+        if (user) {
+          await prisma.ticketAssignment.upsert({
+            where: { ticketId_userId: { ticketId: ticket.id, userId: user.id } },
+            create: { ticketId: ticket.id, userId: user.id },
+            update: {},
+          });
+          // Remove any stale assignments on this ticket that don't match
+          // the current Jira assignee — single-assignee semantics match
+          // how Jira models it.
+          await prisma.ticketAssignment.deleteMany({
+            where: { ticketId: ticket.id, userId: { not: user.id } },
+          });
+        }
+      } else {
+        // Explicitly unassigned in Jira — clear any local assignments.
+        await prisma.ticketAssignment.deleteMany({ where: { ticketId: ticket.id } });
+      }
     }
   }
 
