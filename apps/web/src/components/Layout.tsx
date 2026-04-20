@@ -6,6 +6,7 @@ import { trpc } from '../lib/trpc';
 import { ThemeToggle } from './ThemeToggle';
 import { HeaderSearch } from './HeaderSearch';
 import { UserMenu } from './UserMenu';
+import { OnCallBanner } from './OnCallBanner';
 import { BellIcon, XIcon } from './icons';
 import { Logo } from './ui/Logo';
 import { RouteErrorBoundary } from './ui';
@@ -335,6 +336,7 @@ export function Layout({ children }: { children: ReactNode }) {
             <UserMenu />
           </div>
         </header>
+        <OnCallBanner />
         <main className="flex-1 overflow-y-auto p-6">
           <RouteErrorBoundary>{children}</RouteErrorBoundary>
         </main>

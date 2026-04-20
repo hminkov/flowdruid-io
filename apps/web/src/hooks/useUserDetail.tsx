@@ -1,5 +1,8 @@
-import { createContext, useCallback, useContext, useState, type ReactNode } from 'react';
-import { UserDetailDrawer } from '../components/UserDetailDrawer';
+import { Suspense, createContext, lazy, useCallback, useContext, useState, type ReactNode } from 'react';
+
+const UserDetailDrawer = lazy(() =>
+  import('../components/UserDetailDrawer').then((m) => ({ default: m.UserDetailDrawer }))
+);
 
 type Ctx = {
   openUser: (userId: string) => void;
@@ -17,7 +20,11 @@ export function UserDetailProvider({ children }: { children: ReactNode }) {
   return (
     <UserDetailContext.Provider value={{ openUser, closeUser }}>
       {children}
-      <UserDetailDrawer userId={userId} onClose={closeUser} />
+      {userId && (
+        <Suspense fallback={null}>
+          <UserDetailDrawer userId={userId} onClose={closeUser} />
+        </Suspense>
+      )}
     </UserDetailContext.Provider>
   );
 }

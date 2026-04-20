@@ -95,7 +95,8 @@ export function UsersRolesPage() {
         </button>
       </header>
 
-      <div className="overflow-hidden rounded-lg border border-border bg-surface-primary">
+      {/* Desktop table ≥ md — same layout as before */}
+      <div className="hidden overflow-hidden rounded-lg border border-border bg-surface-primary md:block">
         <table className="w-full text-base">
           <thead className="border-b border-border bg-surface-secondary">
             <tr>
@@ -172,6 +173,75 @@ export function UsersRolesPage() {
             })}
           </tbody>
         </table>
+      </div>
+
+      {/* Mobile stacked cards < md */}
+      <div className="space-y-2 md:hidden">
+        {usersQuery.data?.map((u) => {
+          const RoleIcon = roleIcon(u.role);
+          return (
+            <div key={u.id} className="rounded-lg border border-border bg-surface-primary p-3">
+              <div className="mb-3 flex items-start justify-between gap-2">
+                <div className="flex min-w-0 items-center gap-2">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--avatar-1-bg)] text-xs text-[var(--avatar-1-text)]">
+                    {u.initials}
+                  </span>
+                  <div className="min-w-0">
+                    <div className="truncate text-sm text-text-primary">{u.name}</div>
+                    <div className="truncate text-xs text-text-tertiary">{u.email}</div>
+                  </div>
+                </div>
+                <button
+                  onClick={() => handleDeactivate(u.id, u.name)}
+                  title="Deactivate"
+                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded text-text-tertiary transition-colors duration-fast hover:bg-danger-bg hover:text-danger-text"
+                >
+                  <TrashIcon className="h-4 w-4" />
+                </button>
+              </div>
+              <div className="grid grid-cols-1 gap-2">
+                <label className="flex items-center gap-2 text-xs text-text-tertiary">
+                  <span className="w-12 shrink-0">Role</span>
+                  <span className={`inline-flex h-5 w-5 items-center justify-center rounded ${roleTones[u.role]}`}>
+                    <RoleIcon className="h-3 w-3" />
+                  </span>
+                  <select
+                    value={u.role}
+                    onChange={(e) =>
+                      updateMutation.mutate({
+                        userId: u.id,
+                        role: e.target.value as 'ADMIN' | 'TEAM_LEAD' | 'DEVELOPER',
+                      })
+                    }
+                    className="min-h-input flex-1 rounded border border-border bg-surface-primary px-2 text-sm text-text-primary"
+                  >
+                    <option value="DEVELOPER">Developer</option>
+                    <option value="TEAM_LEAD">Team lead</option>
+                    <option value="ADMIN">Admin</option>
+                  </select>
+                </label>
+                <label className="flex items-center gap-2 text-xs text-text-tertiary">
+                  <span className="w-12 shrink-0">Team</span>
+                  <select
+                    value={u.teamId ?? ''}
+                    onChange={(e) =>
+                      updateMutation.mutate({
+                        userId: u.id,
+                        teamId: e.target.value || null,
+                      })
+                    }
+                    className="min-h-input flex-1 rounded border border-border bg-surface-primary px-2 text-sm text-text-primary"
+                  >
+                    <option value="">No team</option>
+                    {teamsQuery.data?.map((t) => (
+                      <option key={t.id} value={t.id}>{t.name}</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       {showInvite && (

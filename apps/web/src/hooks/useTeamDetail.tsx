@@ -1,5 +1,8 @@
-import { createContext, useCallback, useContext, useState, type ReactNode } from 'react';
-import { TeamDetailDrawer } from '../components/TeamDetailDrawer';
+import { Suspense, createContext, lazy, useCallback, useContext, useState, type ReactNode } from 'react';
+
+const TeamDetailDrawer = lazy(() =>
+  import('../components/TeamDetailDrawer').then((m) => ({ default: m.TeamDetailDrawer }))
+);
 
 type Ctx = {
   openTeam: (teamId: string) => void;
@@ -17,7 +20,11 @@ export function TeamDetailProvider({ children }: { children: ReactNode }) {
   return (
     <TeamDetailContext.Provider value={{ openTeam, closeTeam }}>
       {children}
-      <TeamDetailDrawer teamId={teamId} onClose={closeTeam} />
+      {teamId && (
+        <Suspense fallback={null}>
+          <TeamDetailDrawer teamId={teamId} onClose={closeTeam} />
+        </Suspense>
+      )}
     </TeamDetailContext.Provider>
   );
 }

@@ -1,4 +1,4 @@
-import { forwardRef, type HTMLAttributes } from 'react';
+import { forwardRef, memo, type HTMLAttributes } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { useUserDetail } from '../../hooks/useUserDetail';
@@ -60,7 +60,7 @@ function AvatarStackForCard({
   return <AvatarStack users={users} size={28} onClickUser={interactive ? openUser : undefined} />;
 }
 
-export function TicketCard({
+function TicketCardInner({
   ticket,
   onOpen,
 }: {
@@ -92,3 +92,26 @@ export function TicketCard({
     />
   );
 }
+
+/**
+ * Memoised so card re-renders only when the ticket shape actually changes.
+ * Dragging/pointer events in dnd-kit would otherwise force a re-render of
+ * every card in the same column on every mousemove.
+ */
+export const TicketCard = memo(TicketCardInner, (prev, next) => {
+  if (prev.onOpen !== next.onOpen) return false;
+  const a = prev.ticket;
+  const b = next.ticket;
+  if (a === b) return true;
+  if (a.id !== b.id) return false;
+  if (a.status !== b.status) return false;
+  if (a.priority !== b.priority) return false;
+  if (a.title !== b.title) return false;
+  if (a.source !== b.source) return false;
+  if ((a.jiraKey ?? null) !== (b.jiraKey ?? null)) return false;
+  if (a.assignees.length !== b.assignees.length) return false;
+  for (let i = 0; i < a.assignees.length; i++) {
+    if (a.assignees[i]!.user.id !== b.assignees[i]!.user.id) return false;
+  }
+  return true;
+});

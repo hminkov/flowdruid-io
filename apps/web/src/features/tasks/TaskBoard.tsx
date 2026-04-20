@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { Suspense, lazy, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
   DndContext,
@@ -15,9 +15,13 @@ import {
 import { sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import { StatusColumn } from './StatusColumn';
 import { TicketCardDisplay } from './TicketCard';
-import { TicketDetailModal } from './TicketDetailModal';
 import { STATUS_COLUMNS, STATUS_LABELS, type Ticket, type TicketStatus } from './types';
 import { useUpdateTicketStatus } from './useUpdateTicketStatus';
+
+// Lazy-load the detail modal — not needed until the user clicks a card.
+const TicketDetailModal = lazy(() =>
+  import('./TicketDetailModal').then((m) => ({ default: m.TicketDetailModal }))
+);
 
 type Props = {
   tickets: Ticket[];
@@ -141,18 +145,21 @@ export function TaskBoard({ tickets, listArgs, initialOpenId }: Props) {
         {activeTicket ? <TicketCardDisplay ticket={activeTicket} dragging /> : null}
       </DragOverlay>
 
-      <TicketDetailModal
-        ticket={currentOpen}
-        onClose={() => {
-          setOpenTicket(null);
-          // Also strip ?open= from the URL so a reload doesn't re-open it
-          setSearchParams((prev) => {
-            const next = new URLSearchParams(prev);
-            next.delete('open');
-            return next;
-          }, { replace: true });
-        }}
-      />
+      {currentOpen && (
+        <Suspense fallback={null}>
+          <TicketDetailModal
+            ticket={currentOpen}
+            onClose={() => {
+              setOpenTicket(null);
+              setSearchParams((prev) => {
+                const next = new URLSearchParams(prev);
+                next.delete('open');
+                return next;
+              }, { replace: true });
+            }}
+          />
+        </Suspense>
+      )}
     </DndContext>
   );
 }

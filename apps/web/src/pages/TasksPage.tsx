@@ -32,12 +32,15 @@ export function TasksPage() {
   const [mineOnly, setMineOnly] = usePersistedState('mine', '');
   const [unassignedOnly, setUnassignedOnly] = usePersistedState('unassigned', '');
   const [search, setSearch] = usePersistedState('q', '');
+  // Admin-only: narrow the cross-org board to a single team
+  const [adminTeam, setAdminTeam] = usePersistedState('team', '');
+  const isAdminWithoutTeam = user?.role === 'ADMIN' && !user.teamId;
 
   const utils = trpc.useUtils();
 
   // List arg only sends server-side filters; everything else is client-side
   const listArgs = {
-    teamId: user?.teamId ?? undefined,
+    teamId: user?.teamId ?? (isAdminWithoutTeam && adminTeam ? adminTeam : undefined),
     source: (sourceFilter || undefined) as Source | undefined,
   };
   const ticketsQuery = trpc.tickets.list.useQuery(listArgs);
@@ -97,7 +100,8 @@ export function TasksPage() {
     !!assigneeFilter ||
     mineOnly === '1' ||
     unassignedOnly === '1' ||
-    !!search;
+    !!search ||
+    (isAdminWithoutTeam && !!adminTeam);
 
   const clearAll = () => {
     setSourceFilter('');
@@ -106,6 +110,7 @@ export function TasksPage() {
     setMineOnly('');
     setUnassignedOnly('');
     setSearch('');
+    if (isAdminWithoutTeam) setAdminTeam('');
   };
 
   // Deep-link: ?open=<ticketId> auto-opens the modal on mount
@@ -232,6 +237,23 @@ export function TasksPage() {
               </option>
             ))}
           </select>
+
+          {/* Admin-only team scope */}
+          {isAdminWithoutTeam && (
+            <select
+              value={adminTeam}
+              onChange={(e) => setAdminTeam(e.target.value)}
+              title="Narrow the board to one team"
+              className="min-h-8 rounded border border-border bg-surface-primary px-3 text-sm text-text-primary"
+            >
+              <option value="">All teams</option>
+              {teamsQuery.data?.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name}
+                </option>
+              ))}
+            </select>
+          )}
 
           {hasActiveFilters && (
             <button

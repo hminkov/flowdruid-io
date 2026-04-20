@@ -1,8 +1,12 @@
-import { useState } from 'react';
+import { Suspense, lazy, useState } from 'react';
 import { trpc } from '../lib/trpc';
 import { useAuth } from '../hooks/useAuth';
 import { useUserDetail } from '../hooks/useUserDetail';
-import { QaBookingModal } from '../features/resources/QaBookingModal';
+import { BookingSparkline } from '../features/resources/BookingSparkline';
+
+const QaBookingModal = lazy(() =>
+  import('../features/resources/QaBookingModal').then((m) => ({ default: m.QaBookingModal }))
+);
 import { BriefcaseIcon, CheckIcon, InfoIcon, LinkIcon, PlusIcon, RefreshIcon } from '../components/icons';
 import type { QaBookingStatus } from '@flowdruid/shared';
 
@@ -226,6 +230,8 @@ export function QaEnvironmentsPage() {
                   ))}
                 </div>
               )}
+
+              <BookingSparkline refs={env.bookings} />
             </article>
           );
         })}
@@ -245,15 +251,19 @@ export function QaEnvironmentsPage() {
       </div>
 
       {(editing || creatingIn) && (
-        <QaBookingModal
-          booking={editing}
-          environmentId={creatingIn?.id}
-          environmentName={creatingIn?.name ?? environments.find((e) => e.id === editing?.environmentId)?.name}
-          onClose={() => {
-            setEditing(null);
-            setCreatingIn(null);
-          }}
-        />
+        <Suspense fallback={null}>
+          <QaBookingModal
+            booking={editing}
+            environmentId={creatingIn?.id}
+            environmentName={
+              creatingIn?.name ?? environments.find((e) => e.id === editing?.environmentId)?.name
+            }
+            onClose={() => {
+              setEditing(null);
+              setCreatingIn(null);
+            }}
+          />
+        </Suspense>
       )}
     </div>
   );

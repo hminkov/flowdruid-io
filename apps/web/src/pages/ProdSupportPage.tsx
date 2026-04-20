@@ -1,9 +1,12 @@
-import { useMemo, useState } from 'react';
+import { Suspense, lazy, useMemo, useState } from 'react';
 import { trpc } from '../lib/trpc';
 import { useAuth } from '../hooks/useAuth';
 import { useUserDetail } from '../hooks/useUserDetail';
-import { ProdSupportModal } from '../features/resources/ProdSupportModal';
 import { AlertIcon, CalendarIcon, CheckIcon, PlusIcon } from '../components/icons';
+
+const ProdSupportModal = lazy(() =>
+  import('../features/resources/ProdSupportModal').then((m) => ({ default: m.ProdSupportModal }))
+);
 
 type RotaEntry = {
   id: string;
@@ -274,15 +277,17 @@ export function ProdSupportPage() {
       </div>
 
       {(editing || creating) && (
-        <ProdSupportModal
-          existing={editing}
-          teamId={creating?.teamId}
-          teamName={creating?.teamName}
-          onClose={() => {
-            setEditing(null);
-            setCreating(null);
-          }}
-        />
+        <Suspense fallback={null}>
+          <ProdSupportModal
+            existing={editing}
+            teamId={creating?.teamId}
+            teamName={creating?.teamName}
+            onClose={() => {
+              setEditing(null);
+              setCreating(null);
+            }}
+          />
+        </Suspense>
       )}
     </div>
   );
