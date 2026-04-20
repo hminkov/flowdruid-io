@@ -65,7 +65,34 @@ const statusTone: Record<QaBookingStatus, string> = {
 };
 
 type View = 'grid' | 'compact' | 'table';
-type Sort = 'order' | 'name' | 'activity';
+
+const formatRelative = (value: string | Date): string => {
+  const d = typeof value === 'string' ? new Date(value) : value;
+  const diffMs = Date.now() - d.getTime();
+  const mins = Math.round(diffMs / 60_000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.round(hours / 24);
+  if (days < 14) return `${days}d ago`;
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+};
+
+function statusBreakdown(bookings: Booking[]): { status: QaBookingStatus; count: number }[] {
+  const counts: Record<QaBookingStatus, number> = {
+    NEW: 0,
+    IN_DEVELOPMENT: 0,
+    TEST_IN_QA: 0,
+    READY_FOR_PROD: 0,
+    PUSHED_TO_PROD: 0,
+    PAUSED: 0,
+  };
+  for (const b of bookings) counts[b.status] += 1;
+  return (Object.keys(counts) as QaBookingStatus[])
+    .filter((s) => counts[s] > 0)
+    .map((s) => ({ status: s, count: counts[s] }));
+}
 
 export function QaEnvironmentsPage() {
   const [statusFilter, setStatusFilter] = usePersistedState('status', 'all');
@@ -78,6 +105,7 @@ export function QaEnvironmentsPage() {
 
   const [view, setView] = usePersistedLocalState<View>('flowdruid-qa-view', 'grid');
   const [sort, setSort] = usePersistedState('sort', 'order');
+  const [envFilter, setEnvFilter] = usePersistedState('env', 'all');
 
   // Booking editor state
   const [editing, setEditing] = useState<Booking | null>(null);
@@ -95,8 +123,11 @@ export function QaEnvironmentsPage() {
     else if (sort === 'activity')
       list.sort((a, b) => b.bookings.length - a.bookings.length);
     else list.sort((a, b) => a.order - b.order);
+    if (envFilter && envFilter !== 'all') {
+      return list.filter((e) => e.id === envFilter);
+    }
     return list;
-  }, [environments, sort]);
+  }, [environments, sort, envFilter]);
 
   const totalBookings = environments.reduce((a, e) => a + e.bookings.length, 0);
   const busyEnvs = environments.filter((e) =>
@@ -152,13 +183,32 @@ export function QaEnvironmentsPage() {
           ))}
         </div>
 
+        {/* Env picker */}
+        <div className="flex items-center gap-1.5 text-xs text-text-tertiary">
+          Env
+          <select
+            value={envFilter || 'all'}
+            onChange={(e) => setEnvFilter(e.target.value)}
+            className="min-h-8 rounded border border-border bg-surface-primary px-2 font-mono text-sm text-text-primary"
+          >
+            <option value="all">All ({environments.length})</option>
+            {environments.map((e) => (
+              <option key={e.id} value={e.id}>
+                {e.name}
+                {e.branch ? ` · ${e.branch}` : ''}
+              </option>
+            ))}
+          </select>
+        </div>
+
         {/* Sort */}
         <div className="flex items-center gap-1.5 text-xs text-text-tertiary">
           Sort
           <select
             value={sort || 'order'}
             onChange={(e) => setSort(e.target.value)}
-            className="min-h-8 rounded border border-border bg-surface-primary px-2 text-sm text-text-primary"
+            disabled={envFilter !== 'all' && !!envFilter}
+            className="min-h-8 rounded border border-border bg-surface-primary px-2 text-sm text-text-primary disabled:opacity-50"
           >
             <option value="order">Default</option>
             <option value="name">By name</option>
@@ -266,7 +316,32 @@ export function QaEnvironmentsPage() {
                 </div>
 
                 {env.description && (
-                  <p className="mb-3 text-xs text-text-tertiary">{env.description}</p>
+                  <p className="mb-2 text-xs text-text-tertiary">{env.description}</p>
+                )}
+
+                {/* Status breakdown + last activity */}
+                {env.bookings.length > 0 && (
+                  <div className="mb-3 flex flex-wrap items-center gap-1.5 text-[10px]">
+                    {statusBreakdown(env.bookings).map(({ status, count }) => (
+                      <span
+                        key={status}
+                        className={`inline-flex items-center gap-1 rounded-pill px-1.5 py-0.5 ${statusTone[status]}`}
+                      >
+                        <span className="tabular-nums">{count}</span>
+                        {statusLabel[status].toLowerCase()}
+                      </span>
+                    ))}
+                    <span className="ml-auto text-text-tertiary">
+                      last edit{' '}
+                      {formatRelative(
+                        env.bookings.reduce(
+                          (acc, b) =>
+                            new Date(b.updatedAt) > acc ? new Date(b.updatedAt) : acc,
+                          new Date(0)
+                        )
+                      )}
+                    </span>
+                  </div>
                 )}
 
                 {filteredBookings.length === 0 ? (
@@ -425,53 +500,85 @@ function CompactBookings({
         <li
           key={b.id}
           onClick={() => onOpen?.(b)}
-          className={`flex items-center gap-2 px-2 py-1.5 ${
-            onOpen ? 'cursor-pointer hover:bg-surface-primary' : ''
-          }`}
+          className={`px-3 py-2 ${onOpen ? 'cursor-pointer hover:bg-surface-primary' : ''}`}
         >
-          <span
-            className={`shrink-0 rounded-pill px-1.5 py-0.5 text-[10px] ${statusTone[b.status]}`}
-          >
-            {statusLabel[b.status]}
-          </span>
-          <span className="truncate text-sm text-text-primary">{b.service}</span>
-          {b.feature && (
-            <span className="truncate text-xs text-text-tertiary">— {b.feature}</span>
-          )}
-          <div className="ml-auto flex shrink-0 gap-1">
-            {b.devOwner && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onOpenUser(b.devOwner!.id);
-                }}
-                title={`dev: ${b.devOwner.name}`}
-                className="flex h-5 w-5 items-center justify-center rounded-full text-[9px] ring-1 ring-border"
-                style={{
-                  background: paletteFor(b.devOwner.id).bg,
-                  color: paletteFor(b.devOwner.id).text,
-                }}
-              >
-                {b.devOwner.initials}
-              </button>
+          {/* Row 1 — status + service + feature + owners */}
+          <div className="flex items-center gap-2">
+            <span
+              className={`shrink-0 rounded-pill px-1.5 py-0.5 text-[10px] ${statusTone[b.status]}`}
+            >
+              {statusLabel[b.status]}
+            </span>
+            <span className="truncate text-sm text-text-primary">{b.service}</span>
+            {b.feature && (
+              <span className="truncate text-xs text-text-tertiary">— {b.feature}</span>
             )}
-            {b.qaOwner && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onOpenUser(b.qaOwner!.id);
-                }}
-                title={`QA: ${b.qaOwner.name}`}
-                className="flex h-5 w-5 items-center justify-center rounded-full text-[9px] ring-1 ring-border"
-                style={{
-                  background: paletteFor(b.qaOwner.id).bg,
-                  color: paletteFor(b.qaOwner.id).text,
-                }}
-              >
-                {b.qaOwner.initials}
-              </button>
-            )}
+            <div className="ml-auto flex shrink-0 gap-1">
+              {b.devOwner && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onOpenUser(b.devOwner!.id);
+                  }}
+                  title={`dev: ${b.devOwner.name}`}
+                  className="flex h-5 w-5 items-center justify-center rounded-full text-[9px] ring-1 ring-border"
+                  style={{
+                    background: paletteFor(b.devOwner.id).bg,
+                    color: paletteFor(b.devOwner.id).text,
+                  }}
+                >
+                  {b.devOwner.initials}
+                </button>
+              )}
+              {b.qaOwner && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onOpenUser(b.qaOwner!.id);
+                  }}
+                  title={`QA: ${b.qaOwner.name}`}
+                  className="flex h-5 w-5 items-center justify-center rounded-full text-[9px] ring-1 ring-border"
+                  style={{
+                    background: paletteFor(b.qaOwner.id).bg,
+                    color: paletteFor(b.qaOwner.id).text,
+                  }}
+                >
+                  {b.qaOwner.initials}
+                </button>
+              )}
+            </div>
           </div>
+
+          {/* Row 2 — notes + updated */}
+          {(b.notes || b.updatedAt) && (
+            <div className="mt-1 flex items-start justify-between gap-3 pl-[52px] text-[11px] text-text-tertiary">
+              {b.notes ? (
+                <span className="flex min-w-0 items-start gap-1">
+                  <InfoIcon className="mt-0.5 h-3 w-3 shrink-0" />
+                  <span className="line-clamp-1">{b.notes}</span>
+                </span>
+              ) : (
+                <span className="opacity-0">·</span>
+              )}
+              <span className="shrink-0 font-mono">{formatRelative(b.updatedAt)}</span>
+            </div>
+          )}
+
+          {/* Owners text row — shows names under the avatars */}
+          {(b.devOwner || b.qaOwner) && (
+            <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 pl-[52px] text-[11px] text-text-tertiary">
+              {b.devOwner && (
+                <span>
+                  dev · <span className="text-text-primary">{b.devOwner.name.split(' ')[0]}</span>
+                </span>
+              )}
+              {b.qaOwner && (
+                <span>
+                  QA · <span className="text-text-primary">{b.qaOwner.name.split(' ')[0]}</span>
+                </span>
+              )}
+            </div>
+          )}
         </li>
       ))}
     </ul>
@@ -499,7 +606,7 @@ function TableView({
 }) {
   return (
     <div className="overflow-x-auto rounded-lg border border-border bg-surface-primary">
-      <table className="w-full min-w-[720px] text-sm">
+      <table className="w-full min-w-[960px] text-sm">
         <thead className="border-b border-border bg-surface-secondary">
           <tr className="text-left text-xs text-text-tertiary">
             <th className="p-3">Env</th>
@@ -508,6 +615,8 @@ function TableView({
             <th className="p-3">Feature</th>
             <th className="p-3">Status</th>
             <th className="p-3">Owners</th>
+            <th className="p-3">Notes</th>
+            <th className="p-3">Updated</th>
           </tr>
         </thead>
         <tbody>
@@ -525,8 +634,11 @@ function TableView({
                   <td className="p-3 font-mono text-xs text-text-tertiary">
                     {env.branch ?? '—'}
                   </td>
-                  <td className="p-3 text-text-tertiary" colSpan={4}>
+                  <td className="p-3 text-text-tertiary" colSpan={6}>
                     No matching bookings
+                    {env.description && (
+                      <span className="ml-2 text-text-tertiary">· {env.description}</span>
+                    )}
                   </td>
                 </tr>
               );
@@ -541,7 +653,15 @@ function TableView({
               >
                 <td className="p-3 align-top">
                   {idx === 0 ? (
-                    <EnvCell env={env} canEditEnv={canManageEnvs} onEditEnv={onEditEnv} canAdd={canEditBookings} onAdd={onAddBooking} />
+                    <div>
+                      <EnvCell env={env} canEditEnv={canManageEnvs} onEditEnv={onEditEnv} canAdd={canEditBookings} onAdd={onAddBooking} />
+                      {env.description && (
+                        <p className="mt-1 text-[10px] text-text-tertiary">{env.description}</p>
+                      )}
+                      <p className="mt-0.5 text-[10px] text-text-tertiary">
+                        {filtered.length} booking{filtered.length === 1 ? '' : 's'}
+                      </p>
+                    </div>
                   ) : (
                     <span className="text-text-tertiary">↳</span>
                   )}
@@ -596,6 +716,16 @@ function TableView({
                       </button>
                     )}
                   </div>
+                </td>
+                <td className="p-3 align-top text-xs text-text-tertiary">
+                  {b.notes ? (
+                    <span className="line-clamp-2">{b.notes}</span>
+                  ) : (
+                    <span className="opacity-50">—</span>
+                  )}
+                </td>
+                <td className="p-3 align-top text-xs text-text-tertiary tabular-nums">
+                  {formatRelative(b.updatedAt)}
                 </td>
               </tr>
             ));
