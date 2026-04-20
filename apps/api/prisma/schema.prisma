@@ -285,6 +285,7 @@ model QaBooking {
   environmentId String
   service       String
   feature       String?
+  clientTag     String?
   devOwnerId    String?
   qaOwnerId     String?
   status        QaBookingStatus @default(IN_DEVELOPMENT)

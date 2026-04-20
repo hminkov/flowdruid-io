@@ -9,6 +9,7 @@ type Booking = {
   environmentId: string;
   service: string;
   feature: string | null;
+  clientTag: string | null;
   devOwnerId: string | null;
   qaOwnerId: string | null;
   status: QaBookingStatus;
@@ -42,6 +43,7 @@ export function QaBookingModal({ booking, environmentId, environmentName, onClos
 
   const [service, setService] = useState(booking?.service ?? '');
   const [feature, setFeature] = useState(booking?.feature ?? '');
+  const [clientTag, setClientTag] = useState(booking?.clientTag ?? '');
   const [status, setStatus] = useState<QaBookingStatus>(booking?.status ?? 'IN_DEVELOPMENT');
   const [devOwnerId, setDevOwnerId] = useState(booking?.devOwnerId ?? '');
   const [qaOwnerId, setQaOwnerId] = useState(booking?.qaOwnerId ?? '');
@@ -105,6 +107,7 @@ export function QaBookingModal({ booking, environmentId, environmentName, onClos
         bookingId: booking!.id,
         service: service.trim(),
         feature: feature.trim() || null,
+        clientTag: clientTag.trim() || null,
         status,
         devOwnerId: devOwnerId || null,
         qaOwnerId: qaOwnerId || null,
@@ -119,6 +122,7 @@ export function QaBookingModal({ booking, environmentId, environmentName, onClos
         environmentId,
         service: service.trim(),
         feature: feature.trim() || undefined,
+        clientTag: clientTag.trim() || undefined,
         status,
         devOwnerId: devOwnerId || undefined,
         qaOwnerId: qaOwnerId || undefined,
@@ -186,6 +190,21 @@ export function QaBookingModal({ booking, environmentId, environmentName, onClos
               placeholder="e.g. Fraud Questionnaire (DW-044)"
               className="min-h-input w-full rounded border border-border bg-surface-primary px-3 text-base text-text-primary placeholder:text-text-tertiary"
             />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs text-text-tertiary">
+              Client / service tag
+            </label>
+            <input
+              value={clientTag}
+              onChange={(e) => setClientTag(e.target.value)}
+              placeholder="e.g. v1.23.4 or 2026.04.17-rc2"
+              className="min-h-input w-full rounded border border-border bg-surface-primary px-3 font-mono text-sm text-text-primary placeholder:text-text-tertiary"
+            />
+            <p className="mt-1 text-[10px] text-text-tertiary">
+              Version running on this env — shown on the card so QA knows what they're testing.
+            </p>
           </div>
 
           <div>

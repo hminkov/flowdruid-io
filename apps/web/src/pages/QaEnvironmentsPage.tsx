@@ -27,6 +27,7 @@ type Booking = {
   environmentId: string;
   service: string;
   feature: string | null;
+  clientTag: string | null;
   devOwnerId: string | null;
   qaOwnerId: string | null;
   status: QaBookingStatus;
@@ -262,58 +263,16 @@ export function QaEnvironmentsPage() {
             return (
               <article
                 key={env.id}
-                className="rounded-lg border border-border bg-surface-primary p-4"
+                className="rounded-lg border border-border bg-surface-primary p-4 transition-colors duration-fast hover:border-border-strong"
               >
-                <div className="mb-3 flex items-center justify-between gap-2">
-                  <div className="flex min-w-0 items-center gap-2">
-                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-brand-50 font-mono text-xs text-brand-600">
-                      {env.name}
-                    </span>
-                    <div className="min-w-0">
-                      <h3 className="truncate">{env.name}</h3>
-                      {env.branch && (
-                        <span className="inline-flex items-center gap-1 font-mono text-[10px] text-text-tertiary">
-                          <LinkIcon className="h-2.5 w-2.5" />
-                          <span className="truncate">{env.branch}</span>
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-2">
-                    <span className="text-xs text-text-tertiary">
-                      {filteredBookings.length} / {env.bookings.length}
-                    </span>
-                    {canEditBookings && (
-                      <button
-                        onClick={() => setCreatingIn({ id: env.id, name: env.name })}
-                        title={`Add booking to ${env.name}`}
-                        className="flex h-6 w-6 items-center justify-center rounded text-text-tertiary hover:bg-surface-secondary hover:text-text-primary"
-                      >
-                        <PlusIcon className="h-3.5 w-3.5" />
-                      </button>
-                    )}
-                    {canManageEnvs && (
-                      <button
-                        onClick={() => setEnvEditing(env)}
-                        title={`Set up ${env.name}`}
-                        className="flex h-6 w-6 items-center justify-center rounded text-text-tertiary hover:bg-surface-secondary hover:text-text-primary"
-                      >
-                        <svg
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="1.75"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          className="h-3.5 w-3.5"
-                        >
-                          <circle cx="12" cy="12" r="3" />
-                          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
-                        </svg>
-                      </button>
-                    )}
-                  </div>
-                </div>
+                <EnvCardHeader
+                  env={env}
+                  filteredCount={filteredBookings.length}
+                  canManageEnvs={canManageEnvs}
+                  canAddBooking={canEditBookings}
+                  onAddBooking={() => setCreatingIn({ id: env.id, name: env.name })}
+                  onEditEnv={() => setEnvEditing(env)}
+                />
 
                 {env.description && (
                   <p className="mb-2 text-xs text-text-tertiary">{env.description}</p>
@@ -361,7 +320,10 @@ export function QaEnvironmentsPage() {
                         }`}
                       >
                         <div className="mb-1.5 flex items-center justify-between gap-2">
-                          <span className="truncate text-md text-text-primary">{b.service}</span>
+                          <div className="flex min-w-0 items-center gap-2">
+                            <span className="truncate text-md text-text-primary">{b.service}</span>
+                            {b.clientTag && <ClientTagPill tag={b.clientTag} />}
+                          </div>
                           <span
                             className={`shrink-0 rounded-pill px-2 py-0.5 text-[10px] ${statusTone[b.status]}`}
                           >
@@ -485,6 +447,117 @@ export function QaEnvironmentsPage() {
   );
 }
 
+function ClientTagPill({ tag }: { tag: string }) {
+  return (
+    <span
+      title={`Client tag · ${tag}`}
+      className="inline-flex items-center gap-1 rounded-pill border border-border bg-surface-primary px-1.5 py-0.5 font-mono text-[10px] text-text-secondary"
+    >
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className="h-2.5 w-2.5"
+      >
+        <path d="M20.59 13.41 13.42 20.58a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
+        <line x1="7" y1="7" x2="7.01" y2="7" />
+      </svg>
+      {tag}
+    </span>
+  );
+}
+
+function SettingsIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      {...props}
+    >
+      <circle cx="12" cy="12" r="3" />
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+    </svg>
+  );
+}
+
+function EnvCardHeader({
+  env,
+  filteredCount,
+  canManageEnvs,
+  canAddBooking,
+  onAddBooking,
+  onEditEnv,
+}: {
+  env: Env;
+  filteredCount: number;
+  canManageEnvs: boolean;
+  canAddBooking: boolean;
+  onAddBooking: () => void;
+  onEditEnv: () => void;
+}) {
+  return (
+    <header className="mb-3 flex items-start justify-between gap-3">
+      <div className="min-w-0 flex-1">
+        {/* Single, prominent env name */}
+        <h3 className="truncate text-xl text-text-primary">{env.name}</h3>
+        {env.branch ? (
+          <a
+            href="#"
+            onClick={(e) => e.preventDefault()}
+            title={env.branch}
+            className="mt-0.5 inline-flex items-center gap-1 rounded-pill bg-surface-secondary px-2 py-0.5 font-mono text-[11px] text-text-secondary"
+          >
+            <LinkIcon className="h-3 w-3" />
+            <span className="truncate">{env.branch}</span>
+          </a>
+        ) : canManageEnvs ? (
+          <button
+            onClick={onEditEnv}
+            className="mt-0.5 inline-flex items-center gap-1 rounded-pill border border-dashed border-border px-2 py-0.5 text-[11px] text-text-tertiary hover:border-border-strong hover:text-text-primary"
+          >
+            <LinkIcon className="h-3 w-3" />
+            Set branch
+          </button>
+        ) : (
+          <span className="mt-0.5 inline-flex text-[11px] text-text-tertiary">No branch set</span>
+        )}
+      </div>
+      <div className="flex shrink-0 items-center gap-1">
+        <span className="hidden text-xs text-text-tertiary sm:block">
+          {filteredCount} / {env.bookings.length}
+        </span>
+        {canAddBooking && (
+          <button
+            onClick={onAddBooking}
+            title={`Add booking to ${env.name}`}
+            className="flex h-8 items-center gap-1 rounded-md border border-border bg-surface-primary px-2 text-xs text-text-secondary transition-colors duration-fast hover:border-brand-500 hover:text-text-primary"
+          >
+            <PlusIcon className="h-3.5 w-3.5" />
+            <span className="hidden md:inline">Booking</span>
+          </button>
+        )}
+        {canManageEnvs && (
+          <button
+            onClick={onEditEnv}
+            title={`Set up ${env.name}`}
+            className="flex h-8 items-center gap-1 rounded-md border border-border bg-surface-primary px-2 text-xs text-text-secondary transition-colors duration-fast hover:border-brand-500 hover:text-text-primary"
+          >
+            <SettingsIcon className="h-3.5 w-3.5" />
+            <span className="hidden md:inline">Set up</span>
+          </button>
+        )}
+      </div>
+    </header>
+  );
+}
+
 function CompactBookings({
   bookings,
   onOpen,
@@ -502,7 +575,7 @@ function CompactBookings({
           onClick={() => onOpen?.(b)}
           className={`px-3 py-2 ${onOpen ? 'cursor-pointer hover:bg-surface-primary' : ''}`}
         >
-          {/* Row 1 — status + service + feature + owners */}
+          {/* Row 1 — status + service + client-tag + feature + owners */}
           <div className="flex items-center gap-2">
             <span
               className={`shrink-0 rounded-pill px-1.5 py-0.5 text-[10px] ${statusTone[b.status]}`}
@@ -510,6 +583,7 @@ function CompactBookings({
               {statusLabel[b.status]}
             </span>
             <span className="truncate text-sm text-text-primary">{b.service}</span>
+            {b.clientTag && <ClientTagPill tag={b.clientTag} />}
             {b.feature && (
               <span className="truncate text-xs text-text-tertiary">— {b.feature}</span>
             )}
@@ -612,6 +686,7 @@ function TableView({
             <th className="p-3">Env</th>
             <th className="p-3">Branch</th>
             <th className="p-3">Service</th>
+            <th className="p-3">Client</th>
             <th className="p-3">Feature</th>
             <th className="p-3">Status</th>
             <th className="p-3">Owners</th>
@@ -634,7 +709,7 @@ function TableView({
                   <td className="p-3 font-mono text-xs text-text-tertiary">
                     {env.branch ?? '—'}
                   </td>
-                  <td className="p-3 text-text-tertiary" colSpan={6}>
+                  <td className="p-3 text-text-tertiary" colSpan={7}>
                     No matching bookings
                     {env.description && (
                       <span className="ml-2 text-text-tertiary">· {env.description}</span>
@@ -670,6 +745,9 @@ function TableView({
                   {idx === 0 ? env.branch ?? '—' : ''}
                 </td>
                 <td className="p-3 align-top text-text-primary">{b.service}</td>
+                <td className="p-3 align-top">
+                  {b.clientTag ? <ClientTagPill tag={b.clientTag} /> : <span className="text-text-tertiary">—</span>}
+                </td>
                 <td className="p-3 align-top text-text-secondary">{b.feature ?? '—'}</td>
                 <td className="p-3 align-top">
                   <span className={`rounded-pill px-2 py-0.5 text-[10px] ${statusTone[b.status]}`}>
