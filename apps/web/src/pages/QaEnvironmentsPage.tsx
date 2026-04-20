@@ -1,4 +1,4 @@
-import { Suspense, lazy, useMemo, useState } from 'react';
+import { Fragment, Suspense, lazy, useMemo, useState } from 'react';
 import { trpc } from '../lib/trpc';
 import { useAuth } from '../hooks/useAuth';
 import { useUserDetail } from '../hooks/useUserDetail';
@@ -8,6 +8,7 @@ import { paletteFor } from '../components/ui';
 import {
   BriefcaseIcon,
   CheckIcon,
+  ChevronDownIcon,
   InfoIcon,
   LinkIcon,
   PlusIcon,
@@ -702,198 +703,265 @@ function TableView({
   onEditEnv: (env: Env) => void;
   onOpenUser: (id: string) => void;
 }) {
-  return (
-    <div className="overflow-x-auto rounded-lg border border-border bg-surface-primary">
-      <table className="w-full min-w-[960px] text-sm">
-        <thead className="border-b border-border bg-surface-secondary">
-          <tr className="text-left text-xs text-text-tertiary">
-            <th className="p-3">Env</th>
-            <th className="p-3">Branch</th>
-            <th className="p-3">Service</th>
-            <th className="p-3">Client</th>
-            <th className="p-3">Feature</th>
-            <th className="p-3">Status</th>
-            <th className="p-3">Owners</th>
-            <th className="p-3">Notes</th>
-            <th className="p-3">Updated</th>
-          </tr>
-        </thead>
-        <tbody>
-          {envs.map((env) => {
-            const filtered = sortBookings(
-              statusFilter === 'all'
-                ? env.bookings
-                : env.bookings.filter((b) => b.status === statusFilter)
-            );
-            if (filtered.length === 0) {
-              return (
-                <tr key={env.id} className="border-b border-border last:border-b-0">
-                  <td className="p-3">
-                    <EnvCell env={env} canEditEnv={canManageEnvs} onEditEnv={onEditEnv} canAdd={canEditBookings} onAdd={onAddBooking} />
-                  </td>
-                  <td className="p-3 font-mono text-xs text-text-tertiary">
-                    {env.branch ?? '—'}
-                  </td>
-                  <td className="p-3 text-text-tertiary" colSpan={7}>
-                    No matching bookings
-                    {env.description && (
-                      <span className="ml-2 text-text-tertiary">· {env.description}</span>
-                    )}
-                  </td>
-                </tr>
-              );
-            }
-            return filtered.map((b, idx) => (
-              <tr
-                key={b.id}
-                onClick={() => canEditBookings && onBookingClick(b)}
-                className={`border-b border-border last:border-b-0 ${
-                  canEditBookings ? 'cursor-pointer hover:bg-surface-secondary' : ''
-                }`}
-              >
-                <td className="p-3 align-top">
-                  {idx === 0 ? (
-                    <div>
-                      <EnvCell env={env} canEditEnv={canManageEnvs} onEditEnv={onEditEnv} canAdd={canEditBookings} onAdd={onAddBooking} />
-                      {env.description && (
-                        <p className="mt-1 text-[10px] text-text-tertiary">{env.description}</p>
-                      )}
-                      <p className="mt-0.5 text-[10px] text-text-tertiary">
-                        {filtered.length} booking{filtered.length === 1 ? '' : 's'}
-                      </p>
-                    </div>
-                  ) : (
-                    <span className="text-text-tertiary">↳</span>
-                  )}
-                </td>
-                <td className="p-3 align-top font-mono text-xs text-text-tertiary">
-                  {idx === 0 ? env.branch ?? '—' : ''}
-                </td>
-                <td className="p-3 align-top text-text-primary">{b.service}</td>
-                <td className="p-3 align-top">
-                  {b.clientTag ? <ClientTagPill tag={b.clientTag} /> : <span className="text-text-tertiary">—</span>}
-                </td>
-                <td className="p-3 align-top text-text-secondary">{b.feature ?? '—'}</td>
-                <td className="p-3 align-top">
-                  <span className={`rounded-pill px-2 py-0.5 text-[11px] font-medium ${statusTone[b.status]}`}>
-                    {statusLabel[b.status]}
-                  </span>
-                </td>
-                <td
-                  className="p-3 align-top"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <div className="flex flex-wrap gap-2 text-xs text-text-tertiary">
-                    {b.devOwner && (
-                      <button
-                        onClick={() => onOpenUser(b.devOwner!.id)}
-                        className="flex items-center gap-1 hover:text-text-primary"
-                      >
-                        <span
-                          className="flex h-4 w-4 items-center justify-center rounded-full text-[9px]"
-                          style={{
-                            background: paletteFor(b.devOwner.id).bg,
-                            color: paletteFor(b.devOwner.id).text,
-                          }}
-                        >
-                          {b.devOwner.initials}
-                        </span>
-                        dev · {b.devOwner.name.split(' ')[0]}
-                      </button>
-                    )}
-                    {b.qaOwner && (
-                      <button
-                        onClick={() => onOpenUser(b.qaOwner!.id)}
-                        className="flex items-center gap-1 hover:text-text-primary"
-                      >
-                        <span
-                          className="flex h-4 w-4 items-center justify-center rounded-full text-[9px]"
-                          style={{
-                            background: paletteFor(b.qaOwner.id).bg,
-                            color: paletteFor(b.qaOwner.id).text,
-                          }}
-                        >
-                          {b.qaOwner.initials}
-                        </span>
-                        QA · {b.qaOwner.name.split(' ')[0]}
-                      </button>
-                    )}
-                  </div>
-                </td>
-                <td className="p-3 align-top text-xs text-text-tertiary">
-                  {b.notes ? (
-                    <span className="line-clamp-2">{b.notes}</span>
-                  ) : (
-                    <span className="opacity-50">—</span>
-                  )}
-                </td>
-                <td className="p-3 align-top text-xs text-text-tertiary tabular-nums">
-                  {formatRelative(b.updatedAt)}
-                </td>
-              </tr>
-            ));
-          })}
-        </tbody>
-      </table>
-    </div>
+  // Per-env collapse state; defaults to expanded.
+  const [collapsed, setCollapsed] = usePersistedLocalState<Record<string, boolean>>(
+    'flowdruid-qa-table-collapsed',
+    {}
   );
-}
+  const isOpen = (id: string) => !collapsed[id];
+  const toggle = (id: string) => setCollapsed({ ...collapsed, [id]: !collapsed[id] });
+  const allCollapsed = envs.length > 0 && envs.every((e) => collapsed[e.id]);
+  const setAll = (open: boolean) =>
+    setCollapsed(
+      envs.reduce<Record<string, boolean>>((acc, e) => {
+        acc[e.id] = !open;
+        return acc;
+      }, {})
+    );
 
-function EnvCell({
-  env,
-  canEditEnv,
-  onEditEnv,
-  canAdd,
-  onAdd,
-}: {
-  env: Env;
-  canEditEnv: boolean;
-  onEditEnv: (env: Env) => void;
-  canAdd: boolean;
-  onAdd: (env: { id: string; name: string }) => void;
-}) {
   return (
-    <div className="flex items-center gap-2">
-      <span className="rounded-md bg-brand-50 px-2 py-0.5 font-mono text-xs text-brand-600">
-        {env.name}
-      </span>
-      <div className="flex items-center gap-1 opacity-0 transition-opacity duration-fast group-hover:opacity-100 sm:opacity-100">
-        {canAdd && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onAdd({ id: env.id, name: env.name });
-            }}
-            title="Add booking"
-            className="flex h-5 w-5 items-center justify-center rounded text-text-tertiary hover:bg-surface-primary hover:text-text-primary"
-          >
-            <PlusIcon className="h-3 w-3" />
-          </button>
-        )}
-        {canEditEnv && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onEditEnv(env);
-            }}
-            title="Set up env"
-            className="flex h-5 w-5 items-center justify-center rounded text-text-tertiary hover:bg-surface-primary hover:text-text-primary"
-          >
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.75"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="h-3 w-3"
-            >
-              <circle cx="12" cy="12" r="3" />
-              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
-            </svg>
-          </button>
-        )}
+    <div className="overflow-hidden rounded-lg border border-border bg-surface-primary">
+      <div className="flex items-center justify-between border-b border-border bg-surface-secondary px-3 py-2 text-xs text-text-tertiary">
+        <span>
+          {envs.length} environment{envs.length === 1 ? '' : 's'}
+        </span>
+        <button
+          onClick={() => setAll(allCollapsed)}
+          className="rounded px-2 py-0.5 text-text-secondary hover:bg-surface-primary hover:text-text-primary"
+        >
+          {allCollapsed ? 'Expand all' : 'Collapse all'}
+        </button>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[960px] text-sm">
+          <thead className="border-b border-border bg-surface-secondary">
+            <tr className="text-left text-xs text-text-tertiary">
+              <th className="w-10 p-3"></th>
+              <th className="p-3">Service</th>
+              <th className="p-3">Client</th>
+              <th className="p-3">Feature</th>
+              <th className="p-3">Status</th>
+              <th className="p-3">Owners</th>
+              <th className="p-3">Notes</th>
+              <th className="p-3">Updated</th>
+            </tr>
+          </thead>
+          <tbody>
+            {envs.map((env, envIdx) => {
+              const filtered = sortBookings(
+                statusFilter === 'all'
+                  ? env.bookings
+                  : env.bookings.filter((b) => b.status === statusFilter)
+              );
+              const open = isOpen(env.id);
+              const breakdown = statusBreakdown(env.bookings);
+
+              return (
+                <Fragment key={env.id}>
+                  {/* Env group header row — thicker top border separates envs */}
+                  <tr
+                    onClick={() => toggle(env.id)}
+                    className={`cursor-pointer bg-surface-secondary transition-colors duration-fast hover:bg-surface-tertiary ${
+                      envIdx > 0 ? 'border-t-4 border-border-strong' : ''
+                    }`}
+                  >
+                    <td className="p-3" colSpan={8}>
+                      <div className="flex flex-wrap items-center gap-3">
+                        <ChevronDownIcon
+                          className={`h-4 w-4 shrink-0 text-text-tertiary transition-transform duration-fast ${
+                            open ? '' : '-rotate-90'
+                          }`}
+                        />
+                        <span className="rounded-md bg-brand-50 px-2.5 py-1 text-sm font-semibold text-brand-600">
+                          {env.name}
+                        </span>
+                        {env.branch && (
+                          <span
+                            title={env.branch}
+                            className="inline-flex max-w-[260px] items-center gap-1 rounded-pill bg-surface-primary px-2 py-0.5 font-mono text-[11px] text-text-secondary"
+                          >
+                            <LinkIcon className="h-3 w-3 shrink-0" />
+                            <span className="truncate">{env.branch}</span>
+                          </span>
+                        )}
+                        {env.description && (
+                          <span className="max-w-[280px] truncate text-xs text-text-tertiary">
+                            {env.description}
+                          </span>
+                        )}
+                        {breakdown.length > 0 && (
+                          <span className="flex flex-wrap items-center gap-1">
+                            {breakdown.map(({ status, count }) => (
+                              <span
+                                key={status}
+                                className={`inline-flex items-center gap-1 rounded-pill px-1.5 py-0.5 text-[10px] ${statusTone[status]}`}
+                              >
+                                <span className="tabular-nums">{count}</span>
+                                {statusLabel[status].toLowerCase()}
+                              </span>
+                            ))}
+                          </span>
+                        )}
+                        <span className="ml-auto flex items-center gap-1.5">
+                          <span className="text-xs text-text-tertiary tabular-nums">
+                            {filtered.length === env.bookings.length
+                              ? `${env.bookings.length} booking${env.bookings.length === 1 ? '' : 's'}`
+                              : `${filtered.length} / ${env.bookings.length}`}
+                          </span>
+                          {canEditBookings && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onAddBooking({ id: env.id, name: env.name });
+                              }}
+                              title={`Add a new service to ${env.name}`}
+                              className="flex h-8 items-center gap-1 rounded-md bg-brand-600 px-2.5 text-xs font-medium text-white hover:bg-brand-800"
+                            >
+                              <PlusIcon className="h-3.5 w-3.5" />
+                              Add service
+                            </button>
+                          )}
+                          {canManageEnvs && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onEditEnv(env);
+                              }}
+                              title={`Configure ${env.name}`}
+                              aria-label={`Configure ${env.name}`}
+                              className="flex h-8 w-8 items-center justify-center rounded-md border border-border bg-surface-primary text-text-secondary hover:border-brand-500 hover:text-text-primary"
+                            >
+                              <TableSettingsIcon className="h-4 w-4" />
+                            </button>
+                          )}
+                        </span>
+                      </div>
+                    </td>
+                  </tr>
+
+                  {open && filtered.length === 0 && (
+                    <tr className="border-b border-border last:border-b-0">
+                      <td className="p-3 text-xs text-text-tertiary" colSpan={8}>
+                        <span className="pl-7">No matching bookings on this environment.</span>
+                      </td>
+                    </tr>
+                  )}
+
+                  {open &&
+                    filtered.map((b) => (
+                      <tr
+                        key={b.id}
+                        onClick={() => canEditBookings && onBookingClick(b)}
+                        className={`border-b border-border last:border-b-0 ${
+                          canEditBookings ? 'cursor-pointer hover:bg-surface-secondary' : ''
+                        }`}
+                      >
+                        <td className="p-3 align-top">
+                          <span className="ml-3 block h-4 border-l-2 border-border" />
+                        </td>
+                        <td className="p-3 align-top font-semibold text-text-primary">
+                          {b.service}
+                        </td>
+                        <td className="p-3 align-top">
+                          {b.clientTag ? (
+                            <ClientTagPill tag={b.clientTag} />
+                          ) : (
+                            <span className="text-text-tertiary">—</span>
+                          )}
+                        </td>
+                        <td className="p-3 align-top text-text-secondary">{b.feature ?? '—'}</td>
+                        <td className="p-3 align-top">
+                          <span className={`rounded-pill px-2 py-0.5 text-[11px] font-medium ${statusTone[b.status]}`}>
+                            {statusLabel[b.status]}
+                          </span>
+                        </td>
+                        <td className="p-3 align-top" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex flex-col gap-1.5 text-xs">
+                            {b.devOwner && (
+                              <OwnerRow
+                                role="dev"
+                                owner={b.devOwner}
+                                onOpen={() => onOpenUser(b.devOwner!.id)}
+                              />
+                            )}
+                            {b.qaOwner && (
+                              <OwnerRow
+                                role="QA"
+                                owner={b.qaOwner}
+                                onOpen={() => onOpenUser(b.qaOwner!.id)}
+                              />
+                            )}
+                            {!b.devOwner && !b.qaOwner && (
+                              <span className="text-text-tertiary">—</span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="p-3 align-top text-xs text-text-tertiary">
+                          {b.notes ? (
+                            <span className="line-clamp-2">{b.notes}</span>
+                          ) : (
+                            <span className="opacity-50">—</span>
+                          )}
+                        </td>
+                        <td className="p-3 align-top text-xs text-text-tertiary tabular-nums">
+                          {formatRelative(b.updatedAt)}
+                        </td>
+                      </tr>
+                    ))}
+                </Fragment>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
     </div>
   );
 }
+
+function OwnerRow({
+  role,
+  owner,
+  onOpen,
+}: {
+  role: 'dev' | 'QA';
+  owner: { id: string; name: string; initials: string };
+  onOpen: () => void;
+}) {
+  const palette = paletteFor(owner.id);
+  return (
+    <button
+      onClick={onOpen}
+      title={`${role}: ${owner.name}`}
+      className="group flex items-center gap-1.5 text-left"
+    >
+      <span className="w-5 shrink-0 text-[10px] uppercase text-text-tertiary">{role}</span>
+      <span
+        className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[9px] ring-1 ring-border"
+        style={{ background: palette.bg, color: palette.text }}
+      >
+        {owner.initials}
+      </span>
+      <span className="truncate text-text-secondary group-hover:text-text-primary group-hover:underline">
+        {owner.name}
+      </span>
+    </button>
+  );
+}
+
+function TableSettingsIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      {...props}
+    >
+      <circle cx="12" cy="12" r="3" />
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+    </svg>
+  );
+}
+
