@@ -18,7 +18,6 @@ export const createQaBookingSchema = z.object({
   qaOwnerId: z.string().optional(),
   status: qaBookingStatus.default('IN_DEVELOPMENT'),
   notes: z.string().optional(),
-  branch: z.string().optional(),
 });
 
 export const updateQaBookingSchema = z.object({
@@ -29,11 +28,46 @@ export const updateQaBookingSchema = z.object({
   qaOwnerId: z.string().nullable().optional(),
   status: qaBookingStatus.optional(),
   notes: z.string().nullable().optional(),
-  branch: z.string().nullable().optional(),
 });
 
 export const deleteQaBookingSchema = z.object({
   bookingId: z.string(),
+});
+
+// ─── QA environments (admin/lead manage) ─────────────────────────────────
+export const createQaEnvironmentSchema = z.object({
+  name: z.string().min(1).max(64),
+  branch: z.string().max(200).optional(),
+  description: z.string().max(500).optional(),
+  order: z.number().int().optional(),
+});
+
+export const updateQaEnvironmentSchema = z.object({
+  environmentId: z.string(),
+  name: z.string().min(1).max(64).optional(),
+  branch: z.string().max(200).nullable().optional(),
+  description: z.string().max(500).nullable().optional(),
+  order: z.number().int().optional(),
+});
+
+export const deleteQaEnvironmentSchema = z.object({
+  environmentId: z.string(),
+});
+
+// ─── Parking spots (admin manage) ────────────────────────────────────────
+export const createParkingSpotSchema = z.object({
+  name: z.string().min(1).max(32),
+  order: z.number().int().optional(),
+});
+
+export const updateParkingSpotSchema = z.object({
+  spotId: z.string(),
+  name: z.string().min(1).max(32).optional(),
+  order: z.number().int().optional(),
+});
+
+export const deleteParkingSpotSchema = z.object({
+  spotId: z.string(),
 });
 
 // ─── Parking ─────────────────────────────────────────────────────────────

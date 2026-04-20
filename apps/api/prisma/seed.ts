@@ -1058,37 +1058,59 @@ async function main() {
   }
 
   // ─── QA ENVIRONMENTS + BOOKINGS ──────────────────────────────────────────
-  const envNames = ['QA1', 'QA2', 'QA3', 'QA4', 'QA5', 'QA6', 'QA7', 'QA8', 'QA9', 'QA10', 'QA11', 'STG', 'BETA'];
+  // branch + description live on the env itself now.
+  const envSeed: { name: string; branch?: string; description?: string }[] = [
+    { name: 'QA1', branch: 'temp/qa1-config', description: 'Gateway 21 integration surface' },
+    { name: 'QA2', branch: 'qa2-config-v2', description: 'Withdrawal / Fireblocks migration' },
+    { name: 'QA3', branch: 'feature/fraud-questionnaire' },
+    { name: 'QA4', branch: 'qa4-config' },
+    { name: 'QA5' },
+    { name: 'QA6', branch: 'qa6-config' },
+    { name: 'QA7', branch: 'payments-v2' },
+    { name: 'QA8', branch: 'feature/new-deposit-queues' },
+    { name: 'QA9' },
+    { name: 'QA10' },
+    { name: 'QA11' },
+    { name: 'STG', branch: 'patch/stg-config', description: 'Pre-prod mirror' },
+    { name: 'BETA', description: 'BETA customer preview' },
+  ];
+
   const envIds: Record<string, string> = {};
-  for (let i = 0; i < envNames.length; i++) {
+  for (let i = 0; i < envSeed.length; i++) {
     const e = await prisma.qaEnvironment.create({
-      data: { orgId: org.id, name: envNames[i]!, order: i },
+      data: {
+        orgId: org.id,
+        name: envSeed[i]!.name,
+        branch: envSeed[i]!.branch,
+        description: envSeed[i]!.description,
+        order: i,
+      },
     });
-    envIds[envNames[i]!] = e.id;
+    envIds[envSeed[i]!.name] = e.id;
   }
 
   const qaBookings = [
-    { env: 'QA1', service: 'Account management', feature: 'Gateway 21 project', devOwnerId: renal, qaOwnerId: diana, status: 'IN_DEVELOPMENT', notes: 'Phase 2', branch: 'temp/qa1-config' },
-    { env: 'QA1', service: 'Salesforce integration service', feature: 'Gateway 21 project', devOwnerId: ivanBorisov, qaOwnerId: null, status: 'PAUSED', notes: 'Blocked because of Gateway21', branch: null },
-    { env: 'QA2', service: 'Exchange services', feature: 'Health check endpoint', devOwnerId: panayot, qaOwnerId: null, status: 'IN_DEVELOPMENT', notes: null, branch: 'qa2-config-v2' },
-    { env: 'QA2', service: 'withdrawal services', feature: 'Migrate to new Fireblocks SDK', devOwnerId: borislav, qaOwnerId: null, status: 'PAUSED', notes: null, branch: null },
-    { env: 'QA2', service: 'account services', feature: 'Email MFA', devOwnerId: borislav, qaOwnerId: diana, status: 'IN_DEVELOPMENT', notes: 'Released V1', branch: null },
-    { env: 'QA3', service: 'Fiat deposit processing', feature: 'Fraud Questionnaire', devOwnerId: elitsa, qaOwnerId: null, status: 'IN_DEVELOPMENT', notes: null, branch: 'feature/fraud-questionnaire' },
-    { env: 'QA3', service: 'Exchange', feature: 'Maintenance guard', devOwnerId: panayot, qaOwnerId: panayot, status: 'IN_DEVELOPMENT', notes: null, branch: null },
-    { env: 'QA4', service: 'Merchant services', feature: 'Merchant V2 Dashboard', devOwnerId: radoslav, qaOwnerId: null, status: 'TEST_IN_QA', notes: null, branch: 'qa4-config' },
-    { env: 'QA4', service: 'Account', feature: 'MFA improvements', devOwnerId: ivayloI, qaOwnerId: yuliia, status: 'TEST_IN_QA', notes: null, branch: null },
-    { env: 'QA5', service: 'Account management', feature: 'KYB backfilling + account closure', devOwnerId: radoslav, qaOwnerId: null, status: 'TEST_IN_QA', notes: null, branch: null },
-    { env: 'QA5', service: 'KMS', feature: 'KYB backfilling', devOwnerId: tihomir, qaOwnerId: null, status: 'TEST_IN_QA', notes: null, branch: null },
-    { env: 'QA6', service: 'Yield engine', feature: 'Automate yield payments push', devOwnerId: keti, qaOwnerId: keti, status: 'TEST_IN_QA', notes: null, branch: 'qa6-config' },
-    { env: 'QA6', service: 'Account', feature: 'T&C', devOwnerId: svetli, qaOwnerId: yuliia, status: 'PUSHED_TO_PROD', notes: null, branch: null },
-    { env: 'QA7', service: 'Withdrawal-api', feature: 'Payments v2', devOwnerId: boris, qaOwnerId: boris, status: 'TEST_IN_QA', notes: null, branch: 'payments-v2' },
-    { env: 'QA8', service: 'Fiat deposit services', feature: 'Yellowcard Phase 2.1', devOwnerId: dimitar, qaOwnerId: momchil, status: 'READY_FOR_PROD', notes: null, branch: 'feature/new-deposit-queues' },
-    { env: 'QA9', service: 'Account', feature: 'New IP email', devOwnerId: svetli, qaOwnerId: ivelina, status: 'READY_FOR_PROD', notes: 'Request from Tom', branch: null },
-    { env: 'QA9', service: 'profit-and-loss-processor', feature: 'New service', devOwnerId: todor, qaOwnerId: null, status: 'IN_DEVELOPMENT', notes: null, branch: null },
-    { env: 'QA10', service: 'Debit card payment processing', feature: 'Chargebacks', devOwnerId: teodor, qaOwnerId: yuliia, status: 'IN_DEVELOPMENT', notes: null, branch: null },
-    { env: 'QA10', service: 'Exchange', feature: 'Order amendment fix', devOwnerId: ralitsa, qaOwnerId: diana, status: 'TEST_IN_QA', notes: null, branch: null },
-    { env: 'STG', service: 'Kinesis test automation', feature: 'Crypto deposit/withdrawal email MFA', devOwnerId: momchil, qaOwnerId: null, status: 'IN_DEVELOPMENT', notes: null, branch: 'patch/stg-config' },
-    { env: 'BETA', service: 'KMS - BETA', feature: 'CoinWatch V1 - review', devOwnerId: ivayloH, qaOwnerId: ivelina, status: 'TEST_IN_QA', notes: null, branch: null },
+    { env: 'QA1', service: 'Account management', feature: 'Gateway 21 project', devOwnerId: renal, qaOwnerId: diana, status: 'IN_DEVELOPMENT', notes: 'Phase 2' },
+    { env: 'QA1', service: 'Salesforce integration service', feature: 'Gateway 21 project', devOwnerId: ivanBorisov, qaOwnerId: null, status: 'PAUSED', notes: 'Blocked because of Gateway21' },
+    { env: 'QA2', service: 'Exchange services', feature: 'Health check endpoint', devOwnerId: panayot, qaOwnerId: null, status: 'IN_DEVELOPMENT', notes: null },
+    { env: 'QA2', service: 'withdrawal services', feature: 'Migrate to new Fireblocks SDK', devOwnerId: borislav, qaOwnerId: null, status: 'PAUSED', notes: null },
+    { env: 'QA2', service: 'account services', feature: 'Email MFA', devOwnerId: borislav, qaOwnerId: diana, status: 'IN_DEVELOPMENT', notes: 'Released V1' },
+    { env: 'QA3', service: 'Fiat deposit processing', feature: 'Fraud Questionnaire', devOwnerId: elitsa, qaOwnerId: null, status: 'IN_DEVELOPMENT', notes: null },
+    { env: 'QA3', service: 'Exchange', feature: 'Maintenance guard', devOwnerId: panayot, qaOwnerId: panayot, status: 'IN_DEVELOPMENT', notes: null },
+    { env: 'QA4', service: 'Merchant services', feature: 'Merchant V2 Dashboard', devOwnerId: radoslav, qaOwnerId: null, status: 'TEST_IN_QA', notes: null },
+    { env: 'QA4', service: 'Account', feature: 'MFA improvements', devOwnerId: ivayloI, qaOwnerId: yuliia, status: 'TEST_IN_QA', notes: null },
+    { env: 'QA5', service: 'Account management', feature: 'KYB backfilling + account closure', devOwnerId: radoslav, qaOwnerId: null, status: 'TEST_IN_QA', notes: null },
+    { env: 'QA5', service: 'KMS', feature: 'KYB backfilling', devOwnerId: tihomir, qaOwnerId: null, status: 'TEST_IN_QA', notes: null },
+    { env: 'QA6', service: 'Yield engine', feature: 'Automate yield payments push', devOwnerId: keti, qaOwnerId: keti, status: 'TEST_IN_QA', notes: null },
+    { env: 'QA6', service: 'Account', feature: 'T&C', devOwnerId: svetli, qaOwnerId: yuliia, status: 'PUSHED_TO_PROD', notes: null },
+    { env: 'QA7', service: 'Withdrawal-api', feature: 'Payments v2', devOwnerId: boris, qaOwnerId: boris, status: 'TEST_IN_QA', notes: null },
+    { env: 'QA8', service: 'Fiat deposit services', feature: 'Yellowcard Phase 2.1', devOwnerId: dimitar, qaOwnerId: momchil, status: 'READY_FOR_PROD', notes: null },
+    { env: 'QA9', service: 'Account', feature: 'New IP email', devOwnerId: svetli, qaOwnerId: ivelina, status: 'READY_FOR_PROD', notes: 'Request from Tom' },
+    { env: 'QA9', service: 'profit-and-loss-processor', feature: 'New service', devOwnerId: todor, qaOwnerId: null, status: 'IN_DEVELOPMENT', notes: null },
+    { env: 'QA10', service: 'Debit card payment processing', feature: 'Chargebacks', devOwnerId: teodor, qaOwnerId: yuliia, status: 'IN_DEVELOPMENT', notes: null },
+    { env: 'QA10', service: 'Exchange', feature: 'Order amendment fix', devOwnerId: ralitsa, qaOwnerId: diana, status: 'TEST_IN_QA', notes: null },
+    { env: 'STG', service: 'Kinesis test automation', feature: 'Crypto deposit/withdrawal email MFA', devOwnerId: momchil, qaOwnerId: null, status: 'IN_DEVELOPMENT', notes: null },
+    { env: 'BETA', service: 'KMS - BETA', feature: 'CoinWatch V1 - review', devOwnerId: ivayloH, qaOwnerId: ivelina, status: 'TEST_IN_QA', notes: null },
   ] as const;
 
   for (const b of qaBookings) {
@@ -1101,7 +1123,6 @@ async function main() {
         qaOwnerId: b.qaOwnerId,
         status: b.status,
         notes: b.notes,
-        branch: b.branch,
       },
     });
   }

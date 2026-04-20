@@ -13,7 +13,6 @@ type Booking = {
   qaOwnerId: string | null;
   status: QaBookingStatus;
   notes: string | null;
-  branch: string | null;
 };
 
 type Props = {
@@ -46,7 +45,6 @@ export function QaBookingModal({ booking, environmentId, environmentName, onClos
   const [status, setStatus] = useState<QaBookingStatus>(booking?.status ?? 'IN_DEVELOPMENT');
   const [devOwnerId, setDevOwnerId] = useState(booking?.devOwnerId ?? '');
   const [qaOwnerId, setQaOwnerId] = useState(booking?.qaOwnerId ?? '');
-  const [branch, setBranch] = useState(booking?.branch ?? '');
   const [notes, setNotes] = useState(booking?.notes ?? '');
   const [error, setError] = useState<string | null>(null);
 
@@ -110,7 +108,6 @@ export function QaBookingModal({ booking, environmentId, environmentName, onClos
         status,
         devOwnerId: devOwnerId || null,
         qaOwnerId: qaOwnerId || null,
-        branch: branch.trim() || null,
         notes: notes.trim() || null,
       });
     } else {
@@ -125,7 +122,6 @@ export function QaBookingModal({ booking, environmentId, environmentName, onClos
         status,
         devOwnerId: devOwnerId || undefined,
         qaOwnerId: qaOwnerId || undefined,
-        branch: branch.trim() || undefined,
         notes: notes.trim() || undefined,
       });
     }
@@ -243,16 +239,6 @@ export function QaBookingModal({ booking, environmentId, environmentName, onClos
                 ))}
               </select>
             </div>
-          </div>
-
-          <div>
-            <label className="mb-1 block text-xs text-text-tertiary">KBE branch</label>
-            <input
-              value={branch}
-              onChange={(e) => setBranch(e.target.value)}
-              placeholder="e.g. temp/qa1-config"
-              className="min-h-input w-full rounded border border-border bg-surface-primary px-3 font-mono text-sm text-text-primary placeholder:text-text-tertiary"
-            />
           </div>
 
           <div>

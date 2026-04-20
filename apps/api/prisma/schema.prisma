@@ -265,11 +265,14 @@ model JiraConfig {
 
 // ─── QA Environments ──────────────────────────────────────────────────────
 model QaEnvironment {
-  id        String   @id @default(cuid())
-  orgId     String
-  name      String   // QA1, QA2, …, STG, BETA
-  order     Int      @default(0)
-  createdAt DateTime @default(now())
+  id          String   @id @default(cuid())
+  orgId       String
+  name        String   // QA1, QA2, …, STG, BETA
+  branch      String?  // One KBE branch per env (e.g. temp/qa1-config)
+  description String?
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   org      Organisation @relation(fields: [orgId], references: [id])
   bookings QaBooking[]
@@ -286,7 +289,6 @@ model QaBooking {
   qaOwnerId     String?
   status        QaBookingStatus @default(IN_DEVELOPMENT)
   notes         String?
-  branch        String?
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
 

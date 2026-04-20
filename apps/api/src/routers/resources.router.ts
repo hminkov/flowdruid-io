@@ -14,8 +14,14 @@ import {
   acceptCoverSchema,
   cancelCoverSchema,
   listCoverRequestsSchema,
+  createQaEnvironmentSchema,
+  updateQaEnvironmentSchema,
+  deleteQaEnvironmentSchema,
+  createParkingSpotSchema,
+  updateParkingSpotSchema,
+  deleteParkingSpotSchema,
 } from '@flowdruid/shared';
-import { router, protectedProcedure, leadProcedure } from '../trpc';
+import { router, protectedProcedure, leadProcedure, adminProcedure } from '../trpc';
 
 const toUtcDate = (iso: string): Date => {
   // Accepts YYYY-MM-DD or full ISO; returns midnight UTC for the date portion.
@@ -123,6 +129,23 @@ export const resourcesRouter = router({
     const userId = input.userId ?? ctx.user.id;
     const date = toUtcDate(input.date);
 
+    // One slot per user per day — block if they already hold a different spot that day.
+    const existingForUser = await ctx.prisma.parkingAssignment.findFirst({
+      where: {
+        userId,
+        date,
+        spotId: { not: input.spotId },
+        spot: { orgId: ctx.user.orgId },
+      },
+      include: { spot: { select: { name: true } } },
+    });
+    if (existingForUser) {
+      throw new TRPCError({
+        code: 'CONFLICT',
+        message: `Already booked ${existingForUser.spot.name} for this day — release it first.`,
+      });
+    }
+
     return ctx.prisma.parkingAssignment.upsert({
       where: { spotId_date: { spotId: input.spotId, date } },
       update: { userId },
@@ -130,6 +153,126 @@ export const resourcesRouter = router({
       include: { user: { select: { id: true, name: true, initials: true } } },
     });
   }),
+
+  // ─── Parking spots (admin CRUD) ────────────────────────────────────────
+  createParkingSpot: adminProcedure
+    .input(createParkingSpotSchema)
+    .mutation(async ({ ctx, input }) => {
+      const maxOrder = await ctx.prisma.parkingSpot.aggregate({
+        where: { orgId: ctx.user.orgId },
+        _max: { order: true },
+      });
+      const order = input.order ?? (maxOrder._max.order ?? 0) + 1;
+
+      return ctx.prisma.parkingSpot.create({
+        data: { orgId: ctx.user.orgId, name: input.name, order },
+      });
+    }),
+
+  updateParkingSpot: adminProcedure
+    .input(updateParkingSpotSchema)
+    .mutation(async ({ ctx, input }) => {
+      const spot = await ctx.prisma.parkingSpot.findFirst({
+        where: { id: input.spotId, orgId: ctx.user.orgId },
+        select: { id: true },
+      });
+      if (!spot) throw new TRPCError({ code: 'NOT_FOUND' });
+
+      const { spotId, ...data } = input;
+      return ctx.prisma.parkingSpot.update({ where: { id: spotId }, data });
+    }),
+
+  deleteParkingSpot: adminProcedure
+    .input(deleteParkingSpotSchema)
+    .mutation(async ({ ctx, input }) => {
+      const spot = await ctx.prisma.parkingSpot.findFirst({
+        where: { id: input.spotId, orgId: ctx.user.orgId },
+        select: { id: true },
+      });
+      if (!spot) throw new TRPCError({ code: 'NOT_FOUND' });
+
+      // Safety: refuse if someone still holds a future booking for this spot
+      const today = new Date();
+      today.setUTCHours(0, 0, 0, 0);
+      const futureBooking = await ctx.prisma.parkingAssignment.findFirst({
+        where: { spotId: spot.id, date: { gte: today } },
+        select: { id: true },
+      });
+      if (futureBooking) {
+        throw new TRPCError({
+          code: 'CONFLICT',
+          message: 'Remove future bookings on this spot before deleting it.',
+        });
+      }
+
+      await ctx.prisma.parkingSpot.delete({ where: { id: spot.id } });
+      return { ok: true };
+    }),
+
+  // ─── QA environment management (admin/lead CRUD) ────────────────────────
+  createQaEnvironment: leadProcedure
+    .input(createQaEnvironmentSchema)
+    .mutation(async ({ ctx, input }) => {
+      const maxOrder = await ctx.prisma.qaEnvironment.aggregate({
+        where: { orgId: ctx.user.orgId },
+        _max: { order: true },
+      });
+      const order = input.order ?? (maxOrder._max.order ?? 0) + 1;
+
+      try {
+        return await ctx.prisma.qaEnvironment.create({
+          data: {
+            orgId: ctx.user.orgId,
+            name: input.name,
+            branch: input.branch,
+            description: input.description,
+            order,
+          },
+        });
+      } catch (err: unknown) {
+        if (isUniqueViolation(err)) {
+          throw new TRPCError({
+            code: 'CONFLICT',
+            message: `An environment named "${input.name}" already exists`,
+          });
+        }
+        throw err;
+      }
+    }),
+
+  updateQaEnvironment: leadProcedure
+    .input(updateQaEnvironmentSchema)
+    .mutation(async ({ ctx, input }) => {
+      const env = await ctx.prisma.qaEnvironment.findFirst({
+        where: { id: input.environmentId, orgId: ctx.user.orgId },
+        select: { id: true },
+      });
+      if (!env) throw new TRPCError({ code: 'NOT_FOUND' });
+
+      const { environmentId, ...data } = input;
+      return ctx.prisma.qaEnvironment.update({ where: { id: environmentId }, data });
+    }),
+
+  deleteQaEnvironment: adminProcedure
+    .input(deleteQaEnvironmentSchema)
+    .mutation(async ({ ctx, input }) => {
+      const env = await ctx.prisma.qaEnvironment.findFirst({
+        where: { id: input.environmentId, orgId: ctx.user.orgId },
+        select: { id: true, bookings: { select: { id: true } } },
+      });
+      if (!env) throw new TRPCError({ code: 'NOT_FOUND' });
+
+      if (env.bookings.length > 0) {
+        throw new TRPCError({
+          code: 'CONFLICT',
+          message:
+            'Close or reassign all bookings on this environment before deleting it.',
+        });
+      }
+
+      await ctx.prisma.qaEnvironment.delete({ where: { id: env.id } });
+      return { ok: true };
+    }),
 
   releaseParking: protectedProcedure
     .input(releaseParkingSchema)
@@ -514,6 +657,15 @@ function formatShortRange(start: Date, end: Date) {
   const e = new Date(end);
   const fmt = (d: Date) => `${d.getUTCDate()} ${d.toLocaleString('en', { month: 'short', timeZone: 'UTC' })}`;
   return `${fmt(s)} — ${fmt(e)}`;
+}
+
+function isUniqueViolation(err: unknown): boolean {
+  return (
+    typeof err === 'object' &&
+    err !== null &&
+    'code' in err &&
+    (err as { code?: string }).code === 'P2002'
+  );
 }
 
 function isoWeekNumber(d: Date) {
