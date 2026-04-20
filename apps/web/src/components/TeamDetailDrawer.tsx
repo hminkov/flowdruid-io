@@ -13,16 +13,16 @@ import {
 
 const availabilityToneMap: Record<string, string> = {
   AVAILABLE: 'bg-success-bg text-success-text',
-  BUSY: 'bg-warning-bg text-warning-text',
+  BUSY: 'bg-danger-bg text-danger-text',
   REMOTE: 'bg-info-bg text-info-text',
-  ON_LEAVE: 'bg-danger-bg text-danger-text',
+  ON_LEAVE: 'bg-warning-bg text-warning-text',
 };
 
 const availabilityDotMap: Record<string, string> = {
   AVAILABLE: 'bg-success-text',
-  BUSY: 'bg-warning-text',
+  BUSY: 'bg-danger-text',
   REMOTE: 'bg-info-text',
-  ON_LEAVE: 'bg-danger-text',
+  ON_LEAVE: 'bg-warning-text',
 };
 
 const avatarPalettes = [

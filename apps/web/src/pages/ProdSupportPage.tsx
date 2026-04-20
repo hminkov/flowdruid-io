@@ -289,19 +289,38 @@ export function ProdSupportPage() {
                 className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-warning-text/30 bg-warning-bg/30 p-3"
               >
                 <div className="flex items-start gap-3">
-                  <Avatar
-                    userId={cr.requester.id}
-                    initials={cr.requester.initials}
-                    name={cr.requester.name}
-                    size={36}
-                  />
+                  <button
+                    type="button"
+                    onClick={() => openUser(cr.requester.id)}
+                    title={`Open ${cr.requester.name}'s profile`}
+                    className="rounded-full transition-all duration-fast hover:opacity-80"
+                  >
+                    <Avatar
+                      userId={cr.requester.id}
+                      initials={cr.requester.initials}
+                      name={cr.requester.name}
+                      size={36}
+                    />
+                  </button>
                   <div className="min-w-0">
-                    <p className="text-sm text-text-primary">
-                      <span className="text-warning-text">{cr.requester.name}</span>{' '}
-                      is looking for cover
+                    <p className="flex flex-wrap items-center gap-1.5 text-sm text-text-primary">
+                      <button
+                        type="button"
+                        onClick={() => openUser(cr.requester.id)}
+                        className="text-warning-text hover:underline"
+                      >
+                        {cr.requester.name}
+                      </button>
+                      <span
+                        title={`Belongs to ${cr.assignment.team.name}`}
+                        className="rounded-pill border border-border bg-surface-primary px-2 py-0.5 text-[10px] font-medium text-text-secondary"
+                      >
+                        {cr.assignment.team.name}
+                      </span>
+                      <span className="text-text-secondary">is looking for cover</span>
                     </p>
                     <p className="text-xs text-text-secondary">
-                      {cr.assignment.team.name} · week {cr.assignment.weekNumber} ·{' '}
+                      Week {cr.assignment.weekNumber} ·{' '}
                       {formatRange(cr.assignment.startDate, cr.assignment.endDate)}
                     </p>
                     {cr.reason && (

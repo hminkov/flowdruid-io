@@ -22,17 +22,37 @@ import {
 
 const availabilityToneMap: Record<string, string> = {
   AVAILABLE: 'bg-success-bg text-success-text',
-  BUSY: 'bg-warning-bg text-warning-text',
+  BUSY: 'bg-danger-bg text-danger-text',
   REMOTE: 'bg-info-bg text-info-text',
-  ON_LEAVE: 'bg-danger-bg text-danger-text',
+  ON_LEAVE: 'bg-warning-bg text-warning-text',
 };
 
 const availabilityDotMap: Record<string, string> = {
   AVAILABLE: 'bg-success-text',
-  BUSY: 'bg-warning-text',
+  BUSY: 'bg-danger-text',
   REMOTE: 'bg-info-text',
-  ON_LEAVE: 'bg-danger-text',
+  ON_LEAVE: 'bg-warning-text',
 };
+
+const availabilityEmojiMap: Record<string, string> = {
+  REMOTE: '🏠',
+  ON_LEAVE: '🌴',
+};
+
+// Renders an emoji for REMOTE/ON_LEAVE and a coloured dot for AVAILABLE/BUSY.
+function AvailGlyph({ status, size = 'sm' }: { status: string; size?: 'xs' | 'sm' }) {
+  const emoji = availabilityEmojiMap[status];
+  const fontSize = size === 'xs' ? '10px' : '12px';
+  const dotSize = size === 'xs' ? 'h-1 w-1' : 'h-1.5 w-1.5';
+  if (emoji) {
+    return (
+      <span className="inline-block leading-none" style={{ fontSize }}>
+        {emoji}
+      </span>
+    );
+  }
+  return <span className={`inline-block rounded-full ${dotSize} ${availabilityDotMap[status]}`} />;
+}
 
 const avatarPalettes = [
   { bg: 'var(--avatar-1-bg)', text: 'var(--avatar-1-text)' },
@@ -446,25 +466,25 @@ export function DashboardPage() {
                 <div className="mb-3 flex flex-wrap gap-1.5">
                   {t.avail > 0 && (
                     <span className="inline-flex items-center gap-1 rounded-pill bg-success-bg px-2 py-0.5 text-[10px] text-success-text">
-                      <span className={`h-1.5 w-1.5 rounded-full ${availabilityDotMap.AVAILABLE}`} />
+                      <AvailGlyph status="AVAILABLE" />
                       {t.avail} available
                     </span>
                   )}
                   {t.busy > 0 && (
                     <span className="inline-flex items-center gap-1 rounded-pill bg-warning-bg px-2 py-0.5 text-[10px] text-warning-text">
-                      <span className={`h-1.5 w-1.5 rounded-full ${availabilityDotMap.BUSY}`} />
+                      <AvailGlyph status="BUSY" />
                       {t.busy} busy
                     </span>
                   )}
                   {t.remote > 0 && (
                     <span className="inline-flex items-center gap-1 rounded-pill bg-info-bg px-2 py-0.5 text-[10px] text-info-text">
-                      <span className={`h-1.5 w-1.5 rounded-full ${availabilityDotMap.REMOTE}`} />
+                      <AvailGlyph status="REMOTE" />
                       {t.remote} remote
                     </span>
                   )}
                   {t.leave > 0 && (
                     <span className="inline-flex items-center gap-1 rounded-pill bg-danger-bg px-2 py-0.5 text-[10px] text-danger-text">
-                      <span className={`h-1.5 w-1.5 rounded-full ${availabilityDotMap.ON_LEAVE}`} />
+                      <AvailGlyph status="ON_LEAVE" />
                       {t.leave} on leave
                     </span>
                   )}
@@ -580,25 +600,25 @@ export function DashboardPage() {
                 <div className="mb-4 flex flex-wrap gap-1.5">
                   {t.avail > 0 && (
                     <span className="inline-flex items-center gap-1 rounded-pill bg-success-bg px-2 py-0.5 text-[10px] text-success-text">
-                      <span className={`h-1.5 w-1.5 rounded-full ${availabilityDotMap.AVAILABLE}`} />
+                      <AvailGlyph status="AVAILABLE" />
                       {t.avail} available
                     </span>
                   )}
                   {t.busy > 0 && (
                     <span className="inline-flex items-center gap-1 rounded-pill bg-warning-bg px-2 py-0.5 text-[10px] text-warning-text">
-                      <span className={`h-1.5 w-1.5 rounded-full ${availabilityDotMap.BUSY}`} />
+                      <AvailGlyph status="BUSY" />
                       {t.busy} busy
                     </span>
                   )}
                   {t.remote > 0 && (
                     <span className="inline-flex items-center gap-1 rounded-pill bg-info-bg px-2 py-0.5 text-[10px] text-info-text">
-                      <span className={`h-1.5 w-1.5 rounded-full ${availabilityDotMap.REMOTE}`} />
+                      <AvailGlyph status="REMOTE" />
                       {t.remote} remote
                     </span>
                   )}
                   {t.leave > 0 && (
                     <span className="inline-flex items-center gap-1 rounded-pill bg-danger-bg px-2 py-0.5 text-[10px] text-danger-text">
-                      <span className={`h-1.5 w-1.5 rounded-full ${availabilityDotMap.ON_LEAVE}`} />
+                      <AvailGlyph status="ON_LEAVE" />
                       {t.leave} on leave
                     </span>
                   )}
@@ -624,9 +644,11 @@ export function DashboardPage() {
                             {m.name}
                           </span>
                           <span
-                            className={`h-1.5 w-1.5 shrink-0 rounded-full ${availabilityDotMap[m.availability]}`}
                             title={m.availability.toLowerCase().replace('_', ' ')}
-                          />
+                            className="shrink-0"
+                          >
+                            <AvailGlyph status={m.availability} />
+                          </span>
                           <div className="flex w-28 shrink-0 items-center gap-2">
                             <div className="h-1 flex-1 overflow-hidden rounded-full bg-surface-secondary">
                               <div
@@ -707,25 +729,25 @@ export function DashboardPage() {
                 <div className="flex w-[140px] shrink-0 flex-wrap gap-1">
                   {t.avail > 0 && (
                     <span className="inline-flex items-center gap-1 rounded-pill bg-success-bg px-1.5 py-0.5 text-[10px] text-success-text">
-                      <span className={`h-1 w-1 rounded-full ${availabilityDotMap.AVAILABLE}`} />
+                      <AvailGlyph status="AVAILABLE" size="xs" />
                       {t.avail}
                     </span>
                   )}
                   {t.busy > 0 && (
                     <span className="inline-flex items-center gap-1 rounded-pill bg-warning-bg px-1.5 py-0.5 text-[10px] text-warning-text">
-                      <span className={`h-1 w-1 rounded-full ${availabilityDotMap.BUSY}`} />
+                      <AvailGlyph status="BUSY" size="xs" />
                       {t.busy}
                     </span>
                   )}
                   {t.remote > 0 && (
                     <span className="inline-flex items-center gap-1 rounded-pill bg-info-bg px-1.5 py-0.5 text-[10px] text-info-text">
-                      <span className={`h-1 w-1 rounded-full ${availabilityDotMap.REMOTE}`} />
+                      <AvailGlyph status="REMOTE" size="xs" />
                       {t.remote}
                     </span>
                   )}
                   {t.leave > 0 && (
                     <span className="inline-flex items-center gap-1 rounded-pill bg-danger-bg px-1.5 py-0.5 text-[10px] text-danger-text">
-                      <span className={`h-1 w-1 rounded-full ${availabilityDotMap.ON_LEAVE}`} />
+                      <AvailGlyph status="ON_LEAVE" size="xs" />
                       {t.leave}
                     </span>
                   )}
@@ -1281,8 +1303,9 @@ function MemberCard({
           </div>
         </button>
         <span
-          className={`shrink-0 rounded-pill px-2 py-0.5 text-[10px] ${availabilityToneMap[member.availability]}`}
+          className={`flex shrink-0 items-center gap-1 rounded-pill px-2 py-0.5 text-[10px] ${availabilityToneMap[member.availability]}`}
         >
+          <AvailGlyph status={member.availability} size="xs" />
           {member.availability.replace('_', ' ').toLowerCase()}
         </span>
       </header>

@@ -1,7 +1,12 @@
 export { Avatar, paletteFor } from './Avatar';
 export { AvatarStack } from './AvatarStack';
 export { UserPill } from './UserPill';
-export { AvailabilityBadge, AVAILABILITY_DOT } from './AvailabilityBadge';
+export {
+  AvailabilityBadge,
+  AvailabilityGlyph,
+  AVAILABILITY_DOT,
+  AVAILABILITY_EMOJI,
+} from './AvailabilityBadge';
 export { CapacityBar } from './CapacityBar';
 export { PriorityDot } from './PriorityDot';
 export { StatusPill } from './StatusPill';
