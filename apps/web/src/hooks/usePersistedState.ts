@@ -28,14 +28,23 @@ export function usePersistedState(
   const raw = searchParams.get(key);
   const value = raw ?? initial;
 
+  // IMPORTANT: use the functional updater. Without it, two back-to-back
+  // setValue calls (e.g. clear source + clear dependent filter in one
+  // onClick) both see the initial URLSearchParams snapshot — the second
+  // call overwrites the first, and one of the filters doesn't clear.
   const setValue = useCallback(
     (v: string) => {
-      const next = new URLSearchParams(searchParams);
-      if (!v || v === initial) next.delete(key);
-      else next.set(key, v);
-      setSearchParams(next, { replace: true });
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          if (!v || v === initial) next.delete(key);
+          else next.set(key, v);
+          return next;
+        },
+        { replace: true },
+      );
     },
-    [key, initial, searchParams, setSearchParams]
+    [key, initial, setSearchParams],
   );
 
   return [value, setValue];

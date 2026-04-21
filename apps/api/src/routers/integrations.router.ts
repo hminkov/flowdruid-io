@@ -1,11 +1,25 @@
 import { TRPCError } from '@trpc/server';
 import { saveSlackConfigSchema, saveJiraConfigSchema, broadcastSlackSchema } from '@flowdruid/shared';
-import { router, adminProcedure } from '../trpc';
+import { router, adminProcedure, protectedProcedure } from '../trpc';
 import { encrypt, decrypt } from '../lib/encrypt';
 import { slackQueue } from '../lib/queue';
 import { audit } from '../lib/audit';
 
 export const integrationsRouter = router({
+  // Public to every authenticated user — it's just project keys + names,
+  // no secrets. Used by the Tasks page dropdown so non-admins can filter
+  // by project too. Returns the configured projects only (what the org
+  // actually synced), not every project in Jira.
+  listJiraProjects: protectedProcedure.query(async ({ ctx }) => {
+    const config = await ctx.prisma.jiraConfig.findUnique({
+      where: { orgId: ctx.user.orgId },
+      select: { projectKeys: true, projectNames: true },
+    });
+    if (!config) return [];
+    const names = (config.projectNames ?? {}) as Record<string, string>;
+    return config.projectKeys.map((key) => ({ key, name: names[key] ?? key }));
+  }),
+
   getSlackConfig: adminProcedure.query(async ({ ctx }) => {
     const config = await ctx.prisma.slackConfig.findUnique({
       where: { orgId: ctx.user.orgId },
@@ -207,6 +221,16 @@ export const integrationsRouter = router({
         total?: number;
       };
       const projects = data.values ?? [];
+
+      // Cache the key → name map so the UI can render full names
+      // (e.g. 'Paybis' instead of 'PAYBIS') in filter dropdowns.
+      const projectNames: Record<string, string> = {};
+      for (const p of projects) projectNames[p.key] = p.name;
+      await ctx.prisma.jiraConfig.update({
+        where: { orgId: ctx.user.orgId },
+        data: { projectNames },
+      });
+
       return {
         success: true,
         total: data.total ?? projects.length,

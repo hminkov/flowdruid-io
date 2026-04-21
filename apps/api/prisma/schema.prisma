@@ -266,6 +266,10 @@ model JiraConfig {
   email        String
   apiToken     String
   projectKeys  String[]
+  // Map of project key → human-readable name, populated from the
+  // last testJira run. Used so UI filters show "Paybis" not "PAYBIS".
+  // Falls back to the key when a name is missing.
+  projectNames Json?
   syncInterval Int       @default(15)
   lastSyncAt   DateTime?
 
