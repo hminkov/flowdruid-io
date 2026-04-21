@@ -59,9 +59,13 @@ type Props = {
   };
   /** When set on mount, auto-opens the ticket with this id (deep-link / shared URL). */
   initialOpenId?: string | null;
+  /** Fired when a column hits its cap and the user clicks 'See older'. */
+  onLoadMore?: (status: TicketStatus) => void;
+  /** Which column (if any) is currently loading more. Drives the spinner. */
+  loadingMoreStatus?: TicketStatus | null;
 };
 
-export function TaskBoard({ tickets, listArgs, initialOpenId }: Props) {
+export function TaskBoard({ tickets, listArgs, initialOpenId, onLoadMore, loadingMoreStatus }: Props) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [openTicket, setOpenTicket] = useState<Ticket | null>(null);
   const [, setSearchParams] = useSearchParams();
@@ -161,14 +165,21 @@ export function TaskBoard({ tickets, listArgs, initialOpenId }: Props) {
       onDragEnd={handleDragEnd}
       onDragCancel={() => setActiveId(null)}
     >
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+      {/* Horizontal-scroll kanban so all columns sit on one row —
+          matches the Jira-native layout. Each column has a fixed
+          minWidth so cards stay readable; the row scrolls sideways
+          when the viewport can't fit every column.  */}
+      <div className="flex gap-4 overflow-x-auto pb-2">
         {STATUS_COLUMNS.map((status) => (
-          <StatusColumn
-            key={status}
-            status={status}
-            tickets={byStatus[status]}
-            onOpenTicket={setOpenTicket}
-          />
+          <div key={status} className="min-w-[18rem] flex-1">
+            <StatusColumn
+              status={status}
+              tickets={byStatus[status]}
+              onOpenTicket={setOpenTicket}
+              onLoadMore={onLoadMore}
+              loadingMore={loadingMoreStatus === status}
+            />
+          </div>
         ))}
       </div>
 

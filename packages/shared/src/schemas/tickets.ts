@@ -22,6 +22,10 @@ export const listTicketsSchema = z.object({
   status: z.enum(['TODO', 'BLOCKED', 'IN_PROGRESS', 'IN_REVIEW', 'READY_FOR_VERIFICATION', 'DONE']).optional(),
   source: z.enum(['INTERNAL', 'JIRA']).optional(),
   assigneeId: z.string().optional(),
+  // Per-call override for the default per-column cap. Only honoured
+  // when `status` is set (i.e. the caller is explicitly pulling a
+  // single column's older items).
+  limit: z.number().int().min(1).max(500).optional(),
 });
 
 export const assignTicketSchema = z.object({
