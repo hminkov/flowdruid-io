@@ -21,9 +21,10 @@ export const authRouter = router({
   login: publicProcedure.input(loginSchema).mutation(async ({ ctx, input }) => {
     const user = await ctx.prisma.user.findUnique({
       where: { email: input.email },
+      include: { org: { select: { deletedAt: true } } },
     });
 
-    if (!user || !user.active) {
+    if (!user || !user.active || user.org.deletedAt) {
       throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Invalid credentials' });
     }
 
@@ -70,10 +71,15 @@ export const authRouter = router({
 
     const stored = await ctx.prisma.refreshToken.findUnique({
       where: { token },
-      include: { user: true },
+      include: { user: { include: { org: { select: { deletedAt: true } } } } },
     });
 
-    if (!stored || stored.expiresAt < new Date() || !stored.user.active) {
+    if (
+      !stored ||
+      stored.expiresAt < new Date() ||
+      !stored.user.active ||
+      stored.user.org.deletedAt
+    ) {
       if (stored) await ctx.prisma.refreshToken.delete({ where: { id: stored.id } });
       throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Invalid refresh token' });
     }

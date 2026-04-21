@@ -1,0 +1,34 @@
+version: 2
+updates:
+  # pnpm workspaces — one entry scans every package.json in the repo.
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: UTC
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+    # Group patch / minor bumps so we don't drown in PRs. Majors still
+    # come through one-by-one so they get a proper review.
+    groups:
+      patch-minor:
+        update-types: [patch, minor]
+    ignore:
+      # Vite 6 upgrade is tied to a Vitest 4 upgrade — track the pair
+      # manually rather than via Dependabot auto-bump.
+      - dependency-name: vite
+        update-types: [version-update:semver-major]
+      - dependency-name: vitest
+        update-types: [version-update:semver-major]
+
+  # GitHub Actions workflows — keep runners + action versions current.
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: monthly
+    labels:
+      - dependencies
+      - ci

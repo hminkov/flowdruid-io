@@ -145,5 +145,66 @@ describe('users.router', () => {
 
       await expect(asUser(adminA).users.deactivate({ userId: targetB.id })).rejects.toThrow();
     });
+
+    it('revokes all refresh tokens on deactivate', async () => {
+      const org = await createOrg(testPrisma);
+      const admin = await createUser(testPrisma, { orgId: org.id, role: 'ADMIN' });
+      const target = await createUser(testPrisma, { orgId: org.id });
+
+      await testPrisma.refreshToken.createMany({
+        data: [
+          { token: 'tok-a', userId: target.id, expiresAt: new Date(Date.now() + 86_400_000) },
+          { token: 'tok-b', userId: target.id, expiresAt: new Date(Date.now() + 86_400_000) },
+        ],
+      });
+
+      await asUser(admin).users.deactivate({ userId: target.id });
+
+      const remaining = await testPrisma.refreshToken.findMany({ where: { userId: target.id } });
+      expect(remaining).toHaveLength(0);
+    });
+  });
+
+  describe('revokeSessions', () => {
+    it('deletes every refresh token for the target user', async () => {
+      const org = await createOrg(testPrisma);
+      const admin = await createUser(testPrisma, { orgId: org.id, role: 'ADMIN' });
+      const target = await createUser(testPrisma, { orgId: org.id });
+
+      await testPrisma.refreshToken.createMany({
+        data: [
+          { token: 'sess-1', userId: target.id, expiresAt: new Date(Date.now() + 86_400_000) },
+          { token: 'sess-2', userId: target.id, expiresAt: new Date(Date.now() + 86_400_000) },
+          { token: 'sess-3', userId: target.id, expiresAt: new Date(Date.now() + 86_400_000) },
+        ],
+      });
+
+      const result = await asUser(admin).users.revokeSessions({ userId: target.id });
+      expect(result.revoked).toBe(3);
+
+      const remaining = await testPrisma.refreshToken.findMany({ where: { userId: target.id } });
+      expect(remaining).toHaveLength(0);
+    });
+
+    it('rejects cross-org revocation', async () => {
+      const orgA = await createOrg(testPrisma, 'OrgA');
+      const orgB = await createOrg(testPrisma, 'OrgB');
+      const adminA = await createUser(testPrisma, { orgId: orgA.id, role: 'ADMIN' });
+      const targetB = await createUser(testPrisma, { orgId: orgB.id });
+
+      await expect(
+        asUser(adminA).users.revokeSessions({ userId: targetB.id }),
+      ).rejects.toThrow(/NOT_FOUND/);
+    });
+
+    it('rejects non-admin callers', async () => {
+      const org = await createOrg(testPrisma);
+      const lead = await createUser(testPrisma, { orgId: org.id, role: 'TEAM_LEAD' });
+      const target = await createUser(testPrisma, { orgId: org.id });
+
+      await expect(
+        asUser(lead).users.revokeSessions({ userId: target.id }),
+      ).rejects.toThrow();
+    });
   });
 });

@@ -66,4 +66,15 @@ describe('app — HTTP bootstrap smoke', () => {
     expect(typeof res.body.checks.postgres.ms).toBe('number');
     expect(typeof res.body.checks.redis.ms).toBe('number');
   });
+
+  it('/metrics exposes Prometheus text exposition', async () => {
+    // Prime at least one request so the histogram has a sample.
+    await request(app).get('/health');
+    const res = await request(app).get('/metrics');
+    expect(res.status).toBe(200);
+    expect(res.headers['content-type']).toMatch(/text\/plain/);
+    expect(res.text).toMatch(/http_request_duration_seconds/);
+    // Label cardinality guard: /trpc/<proc> collapsed, numeric ids as :id.
+    expect(res.text).not.toMatch(/path="\/trpc\/[^"]*,/);
+  });
 });

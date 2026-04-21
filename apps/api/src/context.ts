@@ -27,7 +27,16 @@ export async function createContext({ req, res }: { req: Request; res: Response 
     const token = authHeader.slice(7);
     try {
       const decoded = jwt.verify(token, process.env.JWT_SECRET!) as UserPayload;
-      user = decoded;
+      // Reject tokens for soft-deleted orgs. JWTs outlive DB state, so a
+      // still-valid access token minted before an org was deleted would
+      // otherwise keep working for the full 15-min access-token window.
+      const org = await prisma.organisation.findUnique({
+        where: { id: decoded.orgId },
+        select: { deletedAt: true },
+      });
+      if (org && !org.deletedAt) {
+        user = decoded;
+      }
     } catch {
       // Token invalid or expired — user stays null
     }
