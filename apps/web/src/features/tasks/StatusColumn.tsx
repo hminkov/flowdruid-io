@@ -16,12 +16,16 @@ function StatusColumnInner({
   onOpenTicket,
   onLoadMore,
   loadingMore,
+  forbidden,
 }: {
   status: TicketStatus;
   tickets: Ticket[];
   onOpenTicket?: (t: Ticket) => void;
   onLoadMore?: (status: TicketStatus) => void;
   loadingMore?: boolean;
+  /** Currently-dragged ticket can't land in this column (e.g. an
+   *  internal ticket dragged over a Jira-only status). */
+  forbidden?: boolean;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: status });
   const cap = status === 'DONE' ? DONE_CAP : OPEN_CAP;
@@ -31,8 +35,13 @@ function StatusColumnInner({
     <div
       ref={setNodeRef}
       className={`rounded-lg border p-3 transition-colors duration-fast ${
-        isOver ? 'border-brand-500 border-dashed bg-brand-50' : 'border-border bg-surface-secondary'
+        forbidden
+          ? 'border-danger-text border-dashed bg-danger-bg/40'
+          : isOver
+          ? 'border-brand-500 border-dashed bg-brand-50'
+          : 'border-border bg-surface-secondary'
       }`}
+      title={forbidden ? "Internal tickets don't use this column" : undefined}
     >
       <div className="mb-3 flex items-center justify-between gap-2">
         <h3 className="text-sm text-text-secondary">{STATUS_LABELS[status]}</h3>
@@ -91,6 +100,7 @@ export const StatusColumn = memo(StatusColumnInner, (prev, next) => {
   if (prev.onOpenTicket !== next.onOpenTicket) return false;
   if (prev.onLoadMore !== next.onLoadMore) return false;
   if (prev.loadingMore !== next.loadingMore) return false;
+  if (prev.forbidden !== next.forbidden) return false;
   if (prev.tickets === next.tickets) return true;
   if (prev.tickets.length !== next.tickets.length) return false;
   for (let i = 0; i < prev.tickets.length; i++) {

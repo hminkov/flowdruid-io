@@ -103,6 +103,20 @@ export const ticketsRouter = router({
     });
     if (!ticket) throw new TRPCError({ code: 'NOT_FOUND' });
 
+    // INTERNAL tickets only live in the canonical 4 statuses. Block
+    // transitions into the Jira-only columns here so a misbehaving
+    // client can't bypass the kanban's drop guard.
+    if (
+      data.status &&
+      ticket.source === 'INTERNAL' &&
+      (data.status === 'BLOCKED' || data.status === 'READY_FOR_VERIFICATION')
+    ) {
+      throw new TRPCError({
+        code: 'BAD_REQUEST',
+        message: `Internal tickets don't use the "${data.status}" column — only Jira tickets do.`,
+      });
+    }
+
     const updated = await ctx.prisma.ticket.update({
       where: { id: ticketId },
       data,
