@@ -133,11 +133,11 @@ describe('resources: cover request edges', () => {
 });
 
 describe('resources: QA envs + parking-spot updates', () => {
-  it('updateQaEnvironment patches branch + description', async () => {
+  it('updateQaEnvironment patches branch + description and writes QA_ENV_UPDATED', async () => {
     const org = await createOrg(testPrisma);
     const lead = await createUser(testPrisma, { orgId: org.id, role: 'TEAM_LEAD' });
     const env = await testPrisma.qaEnvironment.create({
-      data: { orgId: org.id, name: 'QA1', order: 1 },
+      data: { orgId: org.id, name: 'QA1', branch: 'main', order: 1 },
     });
 
     await asUser(lead).resources.updateQaEnvironment({
@@ -149,9 +149,15 @@ describe('resources: QA envs + parking-spot updates', () => {
     const after = await testPrisma.qaEnvironment.findUniqueOrThrow({ where: { id: env.id } });
     expect(after.branch).toBe('temp/qa1');
     expect(after.description).toBe('default env');
+
+    const audit = await testPrisma.auditLog.findFirstOrThrow({
+      where: { action: 'QA_ENV_UPDATED', entityId: env.id },
+    });
+    expect(audit.before).toMatchObject({ branch: 'main' });
+    expect(audit.after).toMatchObject({ branch: 'temp/qa1', description: 'default env' });
   });
 
-  it('updateParkingSpot renames the spot', async () => {
+  it('updateParkingSpot renames the spot and writes PARKING_SPOT_UPDATED', async () => {
     const org = await createOrg(testPrisma);
     const admin = await createUser(testPrisma, { orgId: org.id, role: 'ADMIN' });
     const spot = await testPrisma.parkingSpot.create({
@@ -162,9 +168,15 @@ describe('resources: QA envs + parking-spot updates', () => {
 
     const after = await testPrisma.parkingSpot.findUniqueOrThrow({ where: { id: spot.id } });
     expect(after.name).toBe('New Name');
+
+    const audit = await testPrisma.auditLog.findFirstOrThrow({
+      where: { action: 'PARKING_SPOT_UPDATED', entityId: spot.id },
+    });
+    expect(audit.before).toMatchObject({ name: 'Old' });
+    expect(audit.after).toMatchObject({ name: 'New Name' });
   });
 
-  it('createQaBooking persists + returns the new booking', async () => {
+  it('createQaBooking persists, returns the booking, and writes QA_BOOKING_CREATED', async () => {
     const org = await createOrg(testPrisma);
     const team = await createTeam(testPrisma, org.id);
     const lead = await createUser(testPrisma, { orgId: org.id, teamId: team.id, role: 'TEAM_LEAD' });
@@ -182,6 +194,39 @@ describe('resources: QA envs + parking-spot updates', () => {
 
     expect(booking.service).toBe('withdrawal-api');
     expect(booking.environmentId).toBe(env.id);
+
+    const audit = await testPrisma.auditLog.findFirstOrThrow({
+      where: { action: 'QA_BOOKING_CREATED', entityId: booking.id },
+    });
+    expect(audit.after).toMatchObject({ service: 'withdrawal-api', environmentId: env.id });
+  });
+
+  it('updateQaBooking writes QA_BOOKING_UPDATED with before/after diff', async () => {
+    const org = await createOrg(testPrisma);
+    const team = await createTeam(testPrisma, org.id);
+    const lead = await createUser(testPrisma, { orgId: org.id, teamId: team.id, role: 'TEAM_LEAD' });
+    const env = await testPrisma.qaEnvironment.create({
+      data: { orgId: org.id, name: 'QA1', order: 1 },
+    });
+    const booking = await testPrisma.qaBooking.create({
+      data: {
+        environmentId: env.id,
+        service: 'svc',
+        feature: 'f',
+        status: 'IN_DEVELOPMENT',
+      },
+    });
+
+    await asUser(lead).resources.updateQaBooking({
+      bookingId: booking.id,
+      status: 'TEST_IN_QA',
+    });
+
+    const audit = await testPrisma.auditLog.findFirstOrThrow({
+      where: { action: 'QA_BOOKING_UPDATED', entityId: booking.id },
+    });
+    expect(audit.before).toMatchObject({ status: 'IN_DEVELOPMENT' });
+    expect(audit.after).toMatchObject({ status: 'TEST_IN_QA' });
   });
 
   it('createParkingSpot rejects non-admin', async () => {
