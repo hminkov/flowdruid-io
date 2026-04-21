@@ -53,19 +53,11 @@ export function TasksPage() {
   };
   const ticketsQuery = trpc.tickets.list.useQuery(listArgs);
   const teamsQuery = trpc.teams.list.useQuery();
-  // Pull Jira project keys from whatever is currently loaded — this
-  // avoids needing an admin-only integrations query and stays in
-  // sync with what the user can actually see.
-  const allJiraKeys = useMemo(() => {
-    const keys = new Set<string>();
-    for (const t of ticketsQuery.data ?? []) {
-      if (t.source === 'JIRA' && t.jiraKey) {
-        const prefix = t.jiraKey.split('-')[0];
-        if (prefix) keys.add(prefix);
-      }
-    }
-    return [...keys].sort();
-  }, [ticketsQuery.data]);
+  // Authoritative list of synced Jira projects — only fetched when
+  // the user has switched the source filter to Jira.
+  const jiraProjectsQuery = trpc.integrations.listJiraProjects.useQuery(undefined, {
+    enabled: sourceFilter === 'JIRA',
+  });
 
   // Per-column expansion: when a user clicks 'See older work items',
   // we fetch that status with a bigger limit and keep the result in
@@ -228,8 +220,10 @@ export function TasksPage() {
             ))}
           </div>
 
-          {/* Jira project — only when Jira source is selected */}
-          {sourceFilter === 'JIRA' && allJiraKeys.length > 0 && (
+          {/* Jira project — only when Jira source is selected. The
+              list comes from the configured JiraConfig.projectKeys, so
+              users only see projects the org has actually synced. */}
+          {sourceFilter === 'JIRA' && (jiraProjectsQuery.data?.length ?? 0) > 0 && (
             <select
               value={jiraProjectFilter}
               onChange={(e) => setJiraProjectFilter(e.target.value)}
@@ -237,9 +231,9 @@ export function TasksPage() {
               title="Filter by Jira project"
             >
               <option value="">All Jira projects</option>
-              {allJiraKeys.map((k) => (
-                <option key={k} value={k}>
-                  {k}
+              {jiraProjectsQuery.data?.map((p) => (
+                <option key={p.key} value={p.key}>
+                  {p.name}
                 </option>
               ))}
             </select>
