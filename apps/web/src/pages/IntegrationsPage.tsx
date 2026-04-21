@@ -67,7 +67,19 @@ export function IntegrationsPage() {
     onError: (err) => toast.push({ kind: 'error', title: 'Test failed', message: err.message }),
   });
   const syncJira = trpc.tickets.syncJira.useMutation({
-    onSuccess: () => toast.push({ kind: 'success', title: 'Jira sync complete' }),
+    onSuccess: (data) => {
+      utils.tickets.list.invalidate();
+      const perProj = data.perProject
+        .map((p) => (p.error ? `${p.projectKey}: ${p.error}` : `${p.projectKey} ${p.count}`))
+        .join(' • ');
+      toast.push({
+        kind: data.ok ? 'success' : 'error',
+        title: data.ok
+          ? `Jira sync complete — ${data.totalUpserted} ticket${data.totalUpserted === 1 ? '' : 's'}`
+          : 'Jira sync had errors',
+        message: perProj || undefined,
+      });
+    },
     onError: (err) => toast.push({ kind: 'error', title: 'Sync failed', message: err.message }),
   });
 

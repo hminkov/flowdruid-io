@@ -40,7 +40,7 @@ interface JiraIssue {
     summary: string;
     description: unknown;
     status: { name: string };
-    priority: { name: string };
+    priority?: { name: string } | null;
     assignee?: {
       accountId: string;
       displayName: string;
@@ -49,90 +49,100 @@ interface JiraIssue {
   };
 }
 
-export async function syncJiraTickets(orgId: string): Promise<void> {
+export interface SyncReport {
+  ok: boolean;
+  perProject: Array<{
+    projectKey: string;
+    status: number | null;
+    count: number;
+    error?: string;
+  }>;
+  totalUpserted: number;
+}
+
+export async function syncJiraTickets(orgId: string): Promise<SyncReport> {
   const config = await prisma.jiraConfig.findUnique({ where: { orgId } });
-  if (!config) return;
+  if (!config) return { ok: false, perProject: [], totalUpserted: 0 };
 
   const apiToken = decrypt(config.apiToken);
   const auth = Buffer.from(`${config.email}:${apiToken}`).toString('base64');
 
-  // Get the first team in the org for ticket assignment
+  // Every Jira ticket needs a local teamId because of the schema FK.
+  // Use the first team in the org as a default bucket — an admin can
+  // rebucket later via the ticket edit UI.
   const defaultTeam = await prisma.team.findFirst({ where: { orgId } });
-  if (!defaultTeam) return;
+  if (!defaultTeam) return { ok: false, perProject: [], totalUpserted: 0 };
+
+  // Strip trailing slashes — the saved baseUrl often has one, and
+  // '//rest/api/...' 404s on some Jira tenants.
+  const base = config.baseUrl.replace(/\/+$/, '');
+
+  const report: SyncReport = { ok: true, perProject: [], totalUpserted: 0 };
 
   for (const projectKey of config.projectKeys) {
-    const jql = encodeURIComponent(`project=${projectKey}`);
-    const url = `${config.baseUrl}/rest/api/3/search?jql=${jql}&maxResults=100&fields=summary,status,priority,assignee,description`;
-
-    const res = await fetch(url, {
-      headers: {
-        Authorization: `Basic ${auth}`,
-        Accept: 'application/json',
-      },
-    });
-
-    if (!res.ok) {
-      console.error(`Jira sync failed for ${projectKey}: ${res.status}`);
-      continue;
-    }
-
-    const data = (await res.json()) as { issues: JiraIssue[] };
-
-    for (const issue of data.issues) {
-      const ticket = await prisma.ticket.upsert({
-        where: { jiraKey: issue.key },
-        create: {
-          source: 'JIRA',
-          jiraKey: issue.key,
-          jiraId: issue.id,
-          title: issue.fields.summary,
-          description: stripAdf(issue.fields.description),
-          status: mapJiraStatus(issue.fields.status.name),
-          priority: mapJiraPriority(issue.fields.priority.name),
-          teamId: defaultTeam.id,
-          syncedAt: new Date(),
-        },
-        update: {
-          title: issue.fields.summary,
-          description: stripAdf(issue.fields.description),
-          status: mapJiraStatus(issue.fields.status.name),
-          priority: mapJiraPriority(issue.fields.priority.name),
-          syncedAt: new Date(),
-        },
-      });
-
-      // Assignee mapping — if Jira's assignee email matches a User in
-      // this org, mirror the assignment into TicketAssignment. The
-      // table uses a composite PK on (ticketId, userId), so the upsert
-      // is idempotent (no duplicate rows on repeat syncs).
-      //
-      // Unassigned in Jira → clear local assignments for that ticket so
-      // the two sides stay consistent. If the Jira email doesn't match
-      // anyone locally, skip silently — visible as a gap in the UI until
-      // an admin adds the user.
-      const email = issue.fields.assignee?.emailAddress;
-      if (email) {
-        const user = await prisma.user.findFirst({
-          where: { email, orgId, active: true },
-          select: { id: true },
+    let count = 0;
+    let statusCode: number | null = null;
+    try {
+      // Modern Jira Cloud endpoint. Atlassian retired /rest/api/3/search
+      // in 2025 in favour of POST /rest/api/3/search/jql with cursor
+      // pagination. We walk nextPageToken; small/medium projects stop
+      // on the first page with isLast=true.
+      let nextPageToken: string | null = null;
+      let hadError = false;
+      do {
+        const res = await fetch(`${base}/rest/api/3/search/jql`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Basic ${auth}`,
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            jql: `project = "${projectKey}" ORDER BY updated DESC`,
+            fields: ['summary', 'status', 'priority', 'assignee', 'description'],
+            ...(nextPageToken ? { nextPageToken } : {}),
+          }),
         });
-        if (user) {
-          await prisma.ticketAssignment.upsert({
-            where: { ticketId_userId: { ticketId: ticket.id, userId: user.id } },
-            create: { ticketId: ticket.id, userId: user.id },
-            update: {},
+
+        statusCode = res.status;
+        if (!res.ok) {
+          const body = await res.text().catch(() => '');
+          report.perProject.push({
+            projectKey,
+            status: res.status,
+            count: 0,
+            error: `${res.status} ${body.slice(0, 300)}`,
           });
-          // Remove any stale assignments on this ticket that don't match
-          // the current Jira assignee — single-assignee semantics match
-          // how Jira models it.
-          await prisma.ticketAssignment.deleteMany({
-            where: { ticketId: ticket.id, userId: { not: user.id } },
-          });
+          report.ok = false;
+          hadError = true;
+          break;
         }
-      } else {
-        // Explicitly unassigned in Jira — clear any local assignments.
-        await prisma.ticketAssignment.deleteMany({ where: { ticketId: ticket.id } });
+
+        const data = (await res.json()) as {
+          issues: JiraIssue[];
+          nextPageToken?: string;
+          isLast?: boolean;
+        };
+        const issues = data.issues ?? [];
+        for (const issue of issues) {
+          await upsertJiraIssue(issue, defaultTeam.id, orgId);
+          count++;
+        }
+        nextPageToken = data.isLast === false && data.nextPageToken ? data.nextPageToken : null;
+      } while (nextPageToken);
+
+      if (!hadError) {
+        report.perProject.push({ projectKey, status: statusCode, count });
+        report.totalUpserted += count;
       }
+    } catch (err) {
+      report.perProject.push({
+        projectKey,
+        status: statusCode,
+        count,
+        error: (err as Error).message,
+      });
+      report.ok = false;
     }
   }
 
@@ -140,4 +150,55 @@ export async function syncJiraTickets(orgId: string): Promise<void> {
     where: { orgId },
     data: { lastSyncAt: new Date() },
   });
+  return report;
+}
+
+async function upsertJiraIssue(
+  issue: JiraIssue,
+  defaultTeamId: string,
+  orgId: string,
+): Promise<void> {
+  const ticket = await prisma.ticket.upsert({
+    where: { jiraKey: issue.key },
+    create: {
+      source: 'JIRA',
+      jiraKey: issue.key,
+      jiraId: issue.id,
+      title: issue.fields.summary,
+      description: stripAdf(issue.fields.description),
+      status: mapJiraStatus(issue.fields.status?.name ?? ''),
+      priority: mapJiraPriority(issue.fields.priority?.name ?? ''),
+      teamId: defaultTeamId,
+      syncedAt: new Date(),
+    },
+    update: {
+      title: issue.fields.summary,
+      description: stripAdf(issue.fields.description),
+      status: mapJiraStatus(issue.fields.status?.name ?? ''),
+      priority: mapJiraPriority(issue.fields.priority?.name ?? ''),
+      syncedAt: new Date(),
+    },
+  });
+
+  // Assignee mapping — if Jira's assignee email matches a User in
+  // this org, mirror the assignment. Unassigned → clear local rows.
+  const email = issue.fields.assignee?.emailAddress;
+  if (email) {
+    const user = await prisma.user.findFirst({
+      where: { email, orgId, active: true },
+      select: { id: true },
+    });
+    if (user) {
+      await prisma.ticketAssignment.upsert({
+        where: { ticketId_userId: { ticketId: ticket.id, userId: user.id } },
+        create: { ticketId: ticket.id, userId: user.id },
+        update: {},
+      });
+      await prisma.ticketAssignment.deleteMany({
+        where: { ticketId: ticket.id, userId: { not: user.id } },
+      });
+    }
+  } else {
+    await prisma.ticketAssignment.deleteMany({ where: { ticketId: ticket.id } });
+  }
 }
