@@ -7,8 +7,8 @@ import { STATUS_LABELS, type Ticket, type TicketStatus } from './types';
 
 // Kept in sync with the server-side caps in tickets.list. When a
 // column reaches this many rows the UI shows an expand button.
-const OPEN_CAP = 100;
-const DONE_CAP = 50;
+const OPEN_CAP = 15;
+const DONE_CAP = 15;
 
 function StatusColumnInner({
   status,
