@@ -5,10 +5,12 @@ import {
   DragOverlay,
   KeyboardSensor,
   PointerSensor,
-  closestCorners,
+  pointerWithin,
+  rectIntersection,
   useSensor,
   useSensors,
   type Announcements,
+  type CollisionDetection,
   type DragEndEvent,
   type DragStartEvent,
 } from '@dnd-kit/core';
@@ -17,6 +19,30 @@ import { StatusColumn } from './StatusColumn';
 import { TicketCardDisplay } from './TicketCard';
 import { STATUS_COLUMNS, STATUS_LABELS, type Ticket, type TicketStatus } from './types';
 import { useUpdateTicketStatus } from './useUpdateTicketStatus';
+
+// Kanban collision detection: always resolve to a column, never to
+// an individual card in a different column. Corner-based detectors
+// compete card-vs-column by raw pixel distance, which biases toward
+// whichever column has more cards reaching toward the pointer — the
+// reason dropping near IN_REVIEW / DONE boundary was landing in DONE.
+//
+// Strategy: pointerWithin first (exact containment — the pointer is
+// literally inside this column). Fall back to rectIntersection against
+// columns only, ignoring card droppables entirely for container
+// resolution.
+function makeColumnFirstDetection(): CollisionDetection {
+  return (args) => {
+    const columnContainers = args.droppableContainers.filter((c) =>
+      (STATUS_COLUMNS as readonly string[]).includes(String(c.id)),
+    );
+
+    const pointerHits = pointerWithin({ ...args, droppableContainers: columnContainers });
+    if (pointerHits.length > 0) return pointerHits;
+
+    const rectHits = rectIntersection({ ...args, droppableContainers: columnContainers });
+    return rectHits;
+  };
+}
 
 // Lazy-load the detail modal — not needed until the user clicks a card.
 const TicketDetailModal = lazy(() =>
@@ -77,6 +103,9 @@ export function TaskBoard({ tickets, listArgs, initialOpenId }: Props) {
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
+  // useMemo so the detector identity stays stable across renders.
+  const collisionDetection = useMemo(() => makeColumnFirstDetection(), []);
+
   const announcements: Announcements = {
     onDragStart: ({ active }) => {
       const t = tickets.find((x) => x.id === active.id);
@@ -124,7 +153,7 @@ export function TaskBoard({ tickets, listArgs, initialOpenId }: Props) {
   return (
     <DndContext
       sensors={sensors}
-      collisionDetection={closestCorners}
+      collisionDetection={collisionDetection}
       accessibility={{ announcements }}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
