@@ -43,18 +43,41 @@ export const standupsRouter = router({
       });
     }
 
-    // Queue Slack notification
-    await slackQueue.add(`standup.posted`, {
-      type: 'standup.posted',
-      orgId: ctx.user.orgId,
-      teamId: input.teamId,
-      userId: ctx.user.id,
-      userName: ctx.user.name,
-      yesterday: input.yesterday,
-      today: input.today,
-      capacityPct: input.capacityPct,
-      blockers: input.blockers,
+    // Check which notifications are enabled for this org. Skip the
+    // queue adds entirely when the toggle is off so we don't spam the
+    // queue with no-op jobs.
+    const slackConfig = await ctx.prisma.slackConfig.findUnique({
+      where: { orgId: ctx.user.orgId },
+      select: { notifyStandup: true, notifyBlocker: true },
     });
+
+    if (slackConfig?.notifyStandup) {
+      await slackQueue.add(`standup.posted`, {
+        type: 'standup.posted',
+        orgId: ctx.user.orgId,
+        teamId: input.teamId,
+        userId: ctx.user.id,
+        userName: ctx.user.name,
+        yesterday: input.yesterday,
+        today: input.today,
+        capacityPct: input.capacityPct,
+        blockers: input.blockers,
+      });
+    }
+
+    // Separate rotating-light alert when the standup flags a blocker —
+    // gated by the notifyBlocker toggle independently of notifyStandup,
+    // so admins can mute routine standups but still see escalations.
+    if (slackConfig?.notifyBlocker && input.blockers && input.blockers.trim()) {
+      await slackQueue.add('blocker.flagged', {
+        type: 'blocker.flagged',
+        orgId: ctx.user.orgId,
+        teamId: input.teamId,
+        userId: ctx.user.id,
+        userName: ctx.user.name,
+        blockers: input.blockers,
+      });
+    }
 
     return standup;
   }),
