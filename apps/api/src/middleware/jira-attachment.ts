@@ -72,12 +72,32 @@ export async function jiraAttachmentHandler(req: Request, res: Response) {
   // and is the one Jira points browsers at for the original file.
   const upstreamUrl = `${base}/rest/api/3/attachment/content/${encodeURIComponent(attachmentId)}`;
 
-  let upstream: Response | globalThis.Response;
+  // Jira's /attachment/content/<id> is a 302 to a signed CDN URL
+  // (media.atlassian.com / files.atlassian.com). The CDN rejects the
+  // outgoing 'Authorization: Basic' header with 400, so we can't just
+  // let fetch follow the redirect — we have to step through manually:
+  //   1. hit Jira with Basic auth, manual: redirect
+  //   2. follow the Location header with no auth header at all
+  let upstream: globalThis.Response;
   try {
-    upstream = await fetch(upstreamUrl, {
+    const jiraRes = await fetch(upstreamUrl, {
       headers: { Authorization: `Basic ${auth}`, Accept: '*/*' },
-      redirect: 'follow',
+      redirect: 'manual',
     });
+
+    if (jiraRes.status === 302 || jiraRes.status === 301 || jiraRes.status === 307) {
+      const location = jiraRes.headers.get('location');
+      if (!location) {
+        res.status(502).json({ error: 'redirect without Location' });
+        return;
+      }
+      // Follow with no Authorization header — the URL is
+      // signature-gated already.
+      upstream = await fetch(location, { headers: { Accept: '*/*' } });
+    } else {
+      // Some Jira installs may stream directly without the indirection.
+      upstream = jiraRes;
+    }
   } catch (err) {
     res.status(502).json({ error: 'upstream fetch failed', detail: (err as Error).message });
     return;
