@@ -22,6 +22,7 @@ import {
   useToast,
   paletteFor,
 } from '../../components/ui';
+import { JiraIcon } from '../../components/icons';
 import type { Ticket, TicketStatus } from './types';
 import { STATUS_LABELS } from './types';
 
@@ -32,6 +33,19 @@ const PRIORITY_TONES: Record<string, string> = {
 };
 
 import { JIRA_BASE_URL } from '../../config/brand';
+
+// "N min ago" / "2h ago" etc. — same shape as the Audit log page.
+function formatRelative(value: string | Date): string {
+  const d = typeof value === 'string' ? new Date(value) : value;
+  const mins = Math.round((Date.now() - d.getTime()) / 60_000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.round(hours / 24);
+  if (days < 14) return `${days}d ago`;
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
 
 export function TicketDetailModal({
   ticket,
@@ -71,6 +85,12 @@ export function TicketDetailModal({
 
   const utils = trpc.useUtils();
   const teamsQuery = trpc.teams.list.useQuery(undefined, { enabled: open });
+  // Configured Jira instance URL — only useful (and only fetched) when
+  // the open ticket is Jira-sourced. Falls back to the compile-time
+  // JIRA_BASE_URL when the org hasn't set a config.
+  const jiraBaseUrlQuery = trpc.integrations.jiraBaseUrl.useQuery(undefined, {
+    enabled: open && ticket?.source === 'JIRA',
+  });
   const suggestionsQuery = trpc.suggestions.list.useQuery(
     { ticketId: ticket?.id ?? '' },
     { enabled: open }
@@ -147,7 +167,9 @@ export function TicketDetailModal({
   const assigneeIds = new Set(ticket.assignees.map((a) => a.user.id));
   const isUnassigned = ticket.assignees.length === 0;
   const isAssignedToMe = user ? assigneeIds.has(user.id) : false;
-  const jiraUrl = ticket.jiraKey ? `${JIRA_BASE_URL}/browse/${ticket.jiraKey}` : null;
+  // Prefer the org-configured Jira base URL; fall back to env default.
+  const jiraBase = jiraBaseUrlQuery.data ?? JIRA_BASE_URL;
+  const jiraUrl = ticket.jiraKey ? `${jiraBase}/browse/${ticket.jiraKey}` : null;
 
   const displayKey = ticket.jiraKey || `INT-${ticket.id.slice(-4)}`;
   const shareUrl = `${window.location.origin}/t/${ticket.id}`;
@@ -286,28 +308,18 @@ export function TicketDetailModal({
         <header className="flex items-start justify-between gap-3 border-b border-border p-5">
           <div className="min-w-0 flex-1">
             <div className="mb-2 flex flex-wrap items-center gap-2">
-              <span
-                className={`rounded px-1.5 py-0.5 font-mono text-xs ${
+              <button
+                type="button"
+                onClick={() => copy(displayKey, 'Key copied')}
+                title={`Copy ${displayKey}`}
+                className={`rounded px-1.5 py-0.5 font-mono text-xs transition-colors duration-fast ${
                   ticket.source === 'JIRA'
-                    ? 'bg-info-bg text-info-text'
-                    : 'bg-neutral-bg text-neutral-text'
+                    ? 'bg-info-bg text-info-text hover:bg-info-bg/80'
+                    : 'bg-neutral-bg text-neutral-text hover:bg-neutral-bg/80'
                 }`}
               >
                 {displayKey}
-              </span>
-              {jiraUrl && (
-                <a
-                  href={jiraUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  title="Open in Jira"
-                  className="flex h-5 w-5 items-center justify-center rounded text-text-tertiary hover:bg-surface-secondary hover:text-text-primary"
-                >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3">
-                    <path d="M7 17L17 7M9 7h8v8" />
-                  </svg>
-                </a>
-              )}
+              </button>
               <StatusPill status={ticket.status} />
               <span className={`rounded-pill px-2 py-0.5 text-xs ${PRIORITY_TONES[ticket.priority]}`}>
                 {ticket.priority.toLowerCase()} priority
@@ -363,6 +375,51 @@ export function TicketDetailModal({
         </header>
 
         <div className="flex-1 overflow-y-auto p-5">
+          {/* Jira provenance banner — only for Jira-sourced tickets.
+              Makes the "this lives in Jira" framing explicit: big
+              Open-in-Jira button, last-synced timestamp, and a hint
+              that title/description are read-only here. */}
+          {ticket.source === 'JIRA' && (
+            <section className="mb-5 rounded-lg border border-info-text/20 bg-info-bg/40 p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-info-bg text-info-text">
+                    <JiraIcon className="h-5 w-5" />
+                  </span>
+                  <div>
+                    <p className="text-sm text-text-primary">
+                      Synced from Jira
+                      <span className="ml-2 font-mono text-xs text-text-secondary">
+                        {ticket.jiraKey}
+                      </span>
+                    </p>
+                    <p className="text-xs text-text-tertiary">
+                      {extended.syncedAt
+                        ? `Last synced ${formatRelative(extended.syncedAt)}`
+                        : 'Source of truth is Jira. Status changes here stay local.'}
+                    </p>
+                  </div>
+                </div>
+                {jiraUrl && (
+                  <a
+                    href={jiraUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex min-h-input shrink-0 items-center gap-1.5 rounded bg-info-text px-3 text-sm text-white transition-colors duration-fast hover:bg-info-text/85"
+                  >
+                    Open in Jira
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5">
+                      <path d="M7 17L17 7M9 7h8v8" />
+                    </svg>
+                  </a>
+                )}
+              </div>
+              <p className="mt-3 border-t border-info-text/10 pt-2 text-xs text-text-tertiary">
+                Title, description and priority are authoritative in Jira — edit there. Drag between columns to change status locally (won't push to Jira).
+              </p>
+            </section>
+          )}
+
           {/* Description */}
           {extended.description && (
             <section className="mb-5">
