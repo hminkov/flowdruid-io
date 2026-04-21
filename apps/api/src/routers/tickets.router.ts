@@ -16,52 +16,61 @@ export const ticketsRouter = router({
       baseWhere.assignees = { some: { userId: input.assigneeId } };
     }
 
-    // DONE history is what tanks the kanban — a synced project with
-    // 400 done tickets dumps 400 cards into a single column. Cap it
-    // to the last 30 days so the board stays responsive. Non-DONE
-    // columns are untouched because their natural cardinality is low.
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    const doneCutoffWhere = { updatedAt: { gte: thirtyDaysAgo } };
+    // Per-column caps. A freshly-synced Jira project can drop 10k+
+    // rows on the kanban; rendering that many cards in dnd-kit
+    // locks up the browser. Each column returns its top-N most
+    // recently updated tickets; older ones stay in the DB and are
+    // reachable via search + direct links.
+    const OPEN_STATUSES = [
+      'TODO',
+      'BLOCKED',
+      'IN_PROGRESS',
+      'IN_REVIEW',
+      'READY_FOR_VERIFICATION',
+    ] as const;
+    const PER_OPEN = 100;
+    const PER_DONE = 50;
 
+    const include = {
+      assignees: {
+        include: { user: { select: { id: true, name: true, initials: true } } },
+      },
+      team: { select: { id: true, name: true } },
+    } as const;
+
+    // Status-scoped list: caller asked for a single column's worth.
+    // When the client passes an explicit `limit` it's opting out of
+    // the default cap (e.g. user clicked 'See older work items').
     if (input.status) {
-      const where =
-        input.status === 'DONE'
-          ? { ...baseWhere, ...doneCutoffWhere, status: 'DONE' as const }
-          : { ...baseWhere, status: input.status };
+      const take = input.limit ?? (input.status === 'DONE' ? PER_DONE : PER_OPEN);
       return ctx.prisma.ticket.findMany({
-        where,
-        include: {
-          assignees: {
-            include: { user: { select: { id: true, name: true, initials: true } } },
-          },
-          team: { select: { id: true, name: true } },
-        },
+        where: { ...baseWhere, status: input.status },
+        include,
         orderBy: { updatedAt: 'desc' },
+        take,
       });
     }
 
-    // No status filter: open statuses unbounded, DONE clipped to last 30d.
-    return ctx.prisma.ticket.findMany({
-      where: {
-        ...baseWhere,
-        OR: [
-          {
-            status: {
-              in: ['TODO', 'BLOCKED', 'IN_PROGRESS', 'IN_REVIEW', 'READY_FOR_VERIFICATION'],
-            },
-          },
-          { status: 'DONE', ...doneCutoffWhere },
-        ],
-      },
-      include: {
-        assignees: {
-          include: { user: { select: { id: true, name: true, initials: true } } },
-        },
-        team: { select: { id: true, name: true } },
-      },
+    // Unscoped list: run one query per column and concat. Each
+    // column is independently capped so a TODO backlog of 1k
+    // doesn't starve the smaller columns of their slots.
+    const perStatus = await Promise.all(
+      OPEN_STATUSES.map((status) =>
+        ctx.prisma.ticket.findMany({
+          where: { ...baseWhere, status },
+          include,
+          orderBy: { updatedAt: 'desc' },
+          take: PER_OPEN,
+        }),
+      ),
+    );
+    const done = await ctx.prisma.ticket.findMany({
+      where: { ...baseWhere, status: 'DONE' },
+      include,
       orderBy: { updatedAt: 'desc' },
+      take: PER_DONE,
     });
+    return [...perStatus.flat(), ...done];
   }),
 
   create: protectedProcedure.input(createTicketSchema).mutation(async ({ ctx, input }) => {

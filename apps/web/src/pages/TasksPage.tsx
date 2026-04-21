@@ -6,7 +6,7 @@ import { usePersistedState } from '../hooks/usePersistedState';
 import { useToast } from '../components/ui';
 import { TaskBoard } from '../features/tasks/TaskBoard';
 import { SearchIcon, XIcon, PlusIcon } from '../components/icons';
-import type { Ticket } from '../features/tasks/types';
+import type { Ticket, TicketStatus } from '../features/tasks/types';
 
 type Priority = 'LOW' | 'MEDIUM' | 'HIGH';
 type Source = 'JIRA' | 'INTERNAL';
@@ -48,6 +48,36 @@ export function TasksPage() {
   const ticketsQuery = trpc.tickets.list.useQuery(listArgs);
   const teamsQuery = trpc.teams.list.useQuery();
 
+  // Per-column expansion: when a user clicks 'See older work items',
+  // we fetch that status with a bigger limit and keep the result in
+  // this map. The byStatus grouping below uses these when present so
+  // only that one column shows the full list.
+  const [expandedByStatus, setExpandedByStatus] = useState<
+    Partial<Record<TicketStatus, Ticket[]>>
+  >({});
+  const [loadingStatus, setLoadingStatus] = useState<TicketStatus | null>(null);
+
+  const handleLoadMore = async (status: TicketStatus) => {
+    if (loadingStatus) return;
+    setLoadingStatus(status);
+    try {
+      const rows = (await utils.tickets.list.fetch({
+        ...listArgs,
+        status,
+        limit: 500,
+      })) as Ticket[];
+      setExpandedByStatus((prev) => ({ ...prev, [status]: rows }));
+    } finally {
+      setLoadingStatus(null);
+    }
+  };
+
+  // Reset expansions whenever the main list args (team/source) change
+  // so the user doesn't see stale tickets from a previous scope.
+  useEffect(() => {
+    setExpandedByStatus({});
+  }, [listArgs.teamId, listArgs.source]);
+
   const createMutation = trpc.tickets.create.useMutation({
     onSuccess: () => {
       utils.tickets.list.invalidate();
@@ -59,7 +89,19 @@ export function TasksPage() {
     onError: (e) => toast.push({ kind: 'error', title: 'Create failed', message: e.message }),
   });
 
-  const allTickets = (ticketsQuery.data ?? []) as Ticket[];
+  // Combine the capped main list with any per-column expansions —
+  // expanded status gets the full fetched set; the capped rows for
+  // that status are dropped to avoid duplicates.
+  const allTickets = useMemo(() => {
+    const base = (ticketsQuery.data ?? []) as Ticket[];
+    const expandedStatuses = new Set(
+      (Object.keys(expandedByStatus) as TicketStatus[]).filter((s) => expandedByStatus[s]),
+    );
+    if (expandedStatuses.size === 0) return base;
+    const kept = base.filter((t) => !expandedStatuses.has(t.status));
+    const added = Array.from(expandedStatuses).flatMap((s) => expandedByStatus[s] ?? []);
+    return [...kept, ...added];
+  }, [ticketsQuery.data, expandedByStatus]);
 
   // Apply client-side filters
   const filteredTickets = useMemo(() => {
@@ -287,7 +329,13 @@ export function TasksPage() {
         </div>
       </div>
 
-      <TaskBoard tickets={filteredTickets} listArgs={listArgs} initialOpenId={openParam} />
+      <TaskBoard
+        tickets={filteredTickets}
+        listArgs={listArgs}
+        initialOpenId={openParam}
+        onLoadMore={handleLoadMore}
+        loadingMoreStatus={loadingStatus}
+      />
 
       {showCreate && (
         <div
