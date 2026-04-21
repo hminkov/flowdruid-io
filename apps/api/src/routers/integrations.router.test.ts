@@ -63,6 +63,52 @@ describe('integrations.router', () => {
       expect(row.notifyDone).toBe(true);
     });
 
+    it('updates toggles only — preserves existing tokens when none are sent', async () => {
+      const org = await createOrg(testPrisma);
+      const admin = await createUser(testPrisma, { orgId: org.id, role: 'ADMIN' });
+
+      await asUser(admin).integrations.saveSlackConfig({
+        botToken: 'xoxb-original',
+        signingSecret: 'sign-original',
+        notifyStandup: true,
+        notifyLeave: true,
+        notifyBlocker: true,
+        notifyDone: false,
+        notifyBroadcast: true,
+      });
+
+      // Second save omits both tokens — as the UI does when the admin
+      // only toggles a notification flag. Must not wipe creds and must
+      // not throw on encrypt(undefined) in the upsert-create branch.
+      await asUser(admin).integrations.saveSlackConfig({
+        notifyStandup: false,
+        notifyLeave: true,
+        notifyBlocker: true,
+        notifyDone: true,
+        notifyBroadcast: true,
+      });
+
+      const row = await testPrisma.slackConfig.findUniqueOrThrow({ where: { orgId: org.id } });
+      expect(decrypt(row.botToken)).toBe('xoxb-original');
+      expect(decrypt(row.signingSecret)).toBe('sign-original');
+      expect(row.notifyStandup).toBe(false);
+      expect(row.notifyDone).toBe(true);
+    });
+
+    it('rejects the first save if tokens are missing', async () => {
+      const org = await createOrg(testPrisma);
+      const admin = await createUser(testPrisma, { orgId: org.id, role: 'ADMIN' });
+      await expect(
+        asUser(admin).integrations.saveSlackConfig({
+          notifyStandup: true,
+          notifyLeave: true,
+          notifyBlocker: true,
+          notifyDone: false,
+          notifyBroadcast: true,
+        }),
+      ).rejects.toThrow(/required for the first Slack connection/i);
+    });
+
     it('rejects non-admin callers', async () => {
       const org = await createOrg(testPrisma);
       const lead = await createUser(testPrisma, { orgId: org.id, role: 'TEAM_LEAD' });

@@ -42,22 +42,26 @@ export const integrationsRouter = router({
         notifyBroadcast: input.notifyBroadcast,
       };
 
-      const saved = await tx.slackConfig.upsert({
-        where: { orgId: ctx.user.orgId },
-        // Create branch only runs when `before` is null — and we've
-        // already guaranteed the secrets are present in that case.
-        create: {
-          orgId: ctx.user.orgId,
-          botToken: encrypt(input.botToken!),
-          signingSecret: encrypt(input.signingSecret!),
-          notifyStandup: input.notifyStandup,
-          notifyLeave: input.notifyLeave,
-          notifyBlocker: input.notifyBlocker,
-          notifyDone: input.notifyDone,
-          notifyBroadcast: input.notifyBroadcast,
-        },
-        update: data,
-      });
+      // JS evaluates both branches of `upsert` before Prisma picks one,
+      // so passing encrypt(undefined) into `create` blew up on toggle-
+      // only updates. Split into explicit update/create paths.
+      const saved = before
+        ? await tx.slackConfig.update({
+            where: { orgId: ctx.user.orgId },
+            data,
+          })
+        : await tx.slackConfig.create({
+            data: {
+              orgId: ctx.user.orgId,
+              botToken: encrypt(input.botToken!),
+              signingSecret: encrypt(input.signingSecret!),
+              notifyStandup: input.notifyStandup,
+              notifyLeave: input.notifyLeave,
+              notifyBlocker: input.notifyBlocker,
+              notifyDone: input.notifyDone,
+              notifyBroadcast: input.notifyBroadcast,
+            },
+          });
       // audit() auto-redacts botToken / signingSecret by key-name match.
       await audit({ prisma: tx, user: ctx.user }, 'SLACK_CONFIG_UPDATED', 'SlackConfig', saved.id, {
         before: before
@@ -131,18 +135,21 @@ export const integrationsRouter = router({
         syncInterval: input.syncInterval,
       };
 
-      const saved = await tx.jiraConfig.upsert({
-        where: { orgId: ctx.user.orgId },
-        create: {
-          orgId: ctx.user.orgId,
-          baseUrl: input.baseUrl,
-          email: input.email,
-          apiToken: encrypt(input.apiToken!),
-          projectKeys: input.projectKeys,
-          syncInterval: input.syncInterval,
-        },
-        update: data,
-      });
+      const saved = before
+        ? await tx.jiraConfig.update({
+            where: { orgId: ctx.user.orgId },
+            data,
+          })
+        : await tx.jiraConfig.create({
+            data: {
+              orgId: ctx.user.orgId,
+              baseUrl: input.baseUrl,
+              email: input.email,
+              apiToken: encrypt(input.apiToken!),
+              projectKeys: input.projectKeys,
+              syncInterval: input.syncInterval,
+            },
+          });
       await audit({ prisma: tx, user: ctx.user }, 'JIRA_CONFIG_UPDATED', 'JiraConfig', saved.id, {
         before: before
           ? {
