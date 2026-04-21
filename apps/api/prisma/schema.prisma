@@ -202,9 +202,13 @@ model Ticket {
   // Doe in Jira (no local account yet)".
   jiraAssigneeName  String?
   jiraAssigneeEmail String?
-  // Count of image attachments on the Jira issue — drives an 'X
-  // images in Jira' hint in the UI since we don't proxy the bytes.
+  // Count of image attachments on the Jira issue — retained for
+  // quick UI hints. The full attachment list (below) carries the
+  // metadata used to render + proxy-fetch the actual files.
   jiraAttachmentCount Int @default(0)
+  // Full Jira attachment manifest: [{ id, filename, mimeType, size,
+  // isImage }]. We proxy the bytes on demand via /api/jira/attachments.
+  jiraAttachments     Json?
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
   syncedAt         DateTime?

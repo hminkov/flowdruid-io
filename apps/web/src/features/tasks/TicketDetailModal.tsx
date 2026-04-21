@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { trpc } from '../../lib/trpc';
+import { trpc, getAuthToken } from '../../lib/trpc';
 import { useAuth } from '../../hooks/useAuth';
 import { useUserDetail } from '../../hooks/useUserDetail';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
@@ -165,6 +165,13 @@ export function TicketDetailModal({
     jiraAssigneeName?: string | null;
     jiraAssigneeEmail?: string | null;
     jiraAttachmentCount?: number;
+    jiraAttachments?: Array<{
+      id: string;
+      filename: string;
+      mimeType: string;
+      size: number;
+      isImage: boolean;
+    }> | null;
   };
 
   const assigneeIds = new Set(ticket.assignees.map((a) => a.user.id));
@@ -437,6 +444,80 @@ export function TicketDetailModal({
               <h3 className="mb-1.5 text-sm text-text-tertiary">Description</h3>
               <div className="whitespace-pre-wrap break-words text-base leading-relaxed text-text-primary">
                 {extended.description}
+              </div>
+            </section>
+          )}
+
+          {/* Jira attachments — proxied through /api/jira/attachments so
+              the browser can render them without Basic auth. Images
+              render inline; non-image files show as download links. */}
+          {ticket.source === 'JIRA' && (extended.jiraAttachments?.length ?? 0) > 0 && (
+            <section className="mb-5">
+              <h3 className="mb-2 text-sm text-text-tertiary">
+                Attachments{' '}
+                <span className="text-text-primary">({extended.jiraAttachments?.length ?? 0})</span>
+              </h3>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {extended.jiraAttachments?.map((att) => {
+                  const authToken = getAuthToken() ?? '';
+                  const url = `/api/jira/attachments/${ticket.id}/${encodeURIComponent(att.id)}?token=${encodeURIComponent(authToken)}`;
+                  if (att.isImage) {
+                    return (
+                      <a
+                        key={att.id}
+                        href={url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="group block overflow-hidden rounded-lg border border-border bg-surface-secondary transition-colors duration-fast hover:border-brand-500"
+                        title={att.filename}
+                      >
+                        <img
+                          src={url}
+                          alt={att.filename}
+                          loading="lazy"
+                          className="block h-40 w-full object-cover"
+                          onError={(e) => {
+                            // Fall back to a text chip if the proxy
+                            // can't serve (permissions / gone / etc).
+                            const el = e.currentTarget;
+                            el.style.display = 'none';
+                            const sibling = el.nextElementSibling as HTMLElement | null;
+                            if (sibling) sibling.style.display = 'flex';
+                          }}
+                        />
+                        <div
+                          style={{ display: 'none' }}
+                          className="flex h-40 items-center justify-center text-xs text-text-tertiary"
+                        >
+                          Couldn't load {att.filename}
+                        </div>
+                        <div className="truncate border-t border-border bg-surface-primary px-2 py-1 text-xs text-text-secondary group-hover:text-text-primary">
+                          {att.filename}
+                        </div>
+                      </a>
+                    );
+                  }
+                  return (
+                    <a
+                      key={att.id}
+                      href={url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 rounded-lg border border-border bg-surface-secondary p-3 text-sm transition-colors duration-fast hover:border-brand-500"
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 shrink-0 text-text-tertiary">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                        <path d="M14 2v6h6" />
+                      </svg>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-text-primary">{att.filename}</p>
+                        <p className="text-xs text-text-tertiary">
+                          {att.mimeType} · {Math.round(att.size / 1024)} KB
+                        </p>
+                      </div>
+                    </a>
+                  );
+                })}
               </div>
             </section>
           )}

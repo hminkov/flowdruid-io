@@ -13,6 +13,7 @@ import { Sentry, sentryEnabled } from './lib/sentry';
 import { appRouter } from './routers';
 import { createContext, type UserPayload } from './context';
 import { slackEventsHandler } from './middleware/slack-events';
+import { jiraAttachmentHandler } from './middleware/jira-attachment';
 import { createSubscriber, eventPattern } from './lib/events';
 import { httpLogger, echoRequestId } from './lib/logger';
 import { prisma } from './lib/prisma';
@@ -35,10 +36,16 @@ export function createApp(): Express {
   app.use(httpLogger);
   app.use(echoRequestId);
 
-  // Prometheus request metrics. Exposes /metrics with per-route
-  // duration histograms + request counters. The include* flags keep
-  // cardinality bounded — we drop query strings (token leak risk)
-  // and collapse paths under /trpc/<procedure> to a single label.
+  // Prometheus request metrics. prom-client uses a module-level
+  // default registry, so multiple createApp() calls in the same
+  // test worker would collide on histogram re-registration. Clear
+  // the registry in test mode to make the bundle idempotent.
+  if (process.env.NODE_ENV === 'test') {
+    // Lazy-require so we don't pay the import cost in prod.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { register } = require('prom-client');
+    register.clear();
+  }
   app.use(
     promBundle({
       includeMethod: true,
@@ -159,6 +166,11 @@ export function createApp(): Express {
       checks,
     });
   });
+
+  // Jira attachment proxy — streams image/file bytes through the
+  // API so <img> tags can render embedded Jira images. Auth via JWT
+  // in the query string, same pattern as /api/events.
+  app.get('/api/jira/attachments/:ticketId/:attachmentId', jiraAttachmentHandler);
 
   app.get('/api/events', async (req, res) => {
     const token = (req.query.token as string | undefined) ?? '';

@@ -1,6 +1,6 @@
 import { prisma } from '../lib/prisma';
 import { decrypt } from '../lib/encrypt';
-import type { TicketStatus, TicketPriority } from '@prisma/client';
+import type { TicketStatus, TicketPriority, Prisma } from '@prisma/client';
 
 export function mapJiraStatus(jiraStatus: string): TicketStatus {
   const s = jiraStatus.toLowerCase().trim();
@@ -91,10 +91,11 @@ function walkBlock(node: AdfNode, depth = 0): string {
     case 'mediaSingle':
     case 'mediaGroup':
     case 'media':
-      // Image/attachment reference. Best-effort name/altText surface.
-      // The actual binary is gated behind Jira auth; we surface a
-      // placeholder so the prose still reads coherently.
-      return _walkMediaPlaceholder(node);
+      // Drop inline media from the prose. The images are surfaced
+      // separately in the Attachments section of the modal (proxied
+      // from Jira), so emitting a '[📎 image]' placeholder here would
+      // just be noise between the paragraphs.
+      return '';
     default:
       // Unknown block type — fall back to walking any nested content
       // so we don't drop prose inside tables, panels, etc.
@@ -103,23 +104,6 @@ function walkBlock(node: AdfNode, depth = 0): string {
       }
       return '';
   }
-}
-
-function _walkMediaPlaceholder(node: AdfNode): string {
-  const findMedia = (n: AdfNode): AdfNode | null => {
-    if (n.type === 'media') return n;
-    for (const c of n.content ?? []) {
-      const m = findMedia(c);
-      if (m) return m;
-    }
-    return null;
-  };
-  const m = findMedia(node);
-  const name =
-    (m?.attrs?.alt as string | undefined) ||
-    (m?.attrs?.name as string | undefined) ||
-    'image';
-  return `[📎 ${name}]`;
 }
 
 export function stripAdf(description: unknown): string {
@@ -163,7 +147,26 @@ interface JiraIssue {
       displayName: string;
       emailAddress?: string;
     } | null;
+    attachment?: Array<{
+      id: string;
+      filename: string;
+      mimeType: string;
+      size: number;
+      content: string;    // direct URL, auth-gated
+      thumbnail?: string; // small preview URL, auth-gated (images only)
+    }>;
   };
+}
+
+// Manifest shape we store on Ticket.jiraAttachments. The proxy route
+// uses id + filename to stream bytes; isImage drives inline rendering
+// in the UI.
+export interface StoredJiraAttachment {
+  id: string;
+  filename: string;
+  mimeType: string;
+  size: number;
+  isImage: boolean;
 }
 
 export interface SyncReport {
@@ -216,7 +219,14 @@ export async function syncJiraTickets(orgId: string): Promise<SyncReport> {
           },
           body: JSON.stringify({
             jql: `project = "${projectKey}" ORDER BY updated DESC`,
-            fields: ['summary', 'status', 'priority', 'assignee', 'description'],
+            fields: [
+              'summary',
+              'status',
+              'priority',
+              'assignee',
+              'description',
+              'attachment',
+            ],
             ...(nextPageToken ? { nextPageToken } : {}),
           }),
         });
@@ -281,6 +291,16 @@ async function upsertJiraIssue(
   const jiraAssignee = issue.fields.assignee ?? null;
   const mediaCount = countAdfMedia(issue.fields.description);
 
+  // Attachment manifest — we store metadata only; bytes are fetched
+  // on demand via the /api/jira/attachments proxy route.
+  const attachments: StoredJiraAttachment[] = (issue.fields.attachment ?? []).map((a) => ({
+    id: a.id,
+    filename: a.filename,
+    mimeType: a.mimeType,
+    size: a.size,
+    isImage: (a.mimeType ?? '').startsWith('image/'),
+  }));
+
   const ticket = await prisma.ticket.upsert({
     where: { jiraKey: issue.key },
     create: {
@@ -296,6 +316,7 @@ async function upsertJiraIssue(
       jiraAssigneeName: jiraAssignee?.displayName ?? null,
       jiraAssigneeEmail: jiraAssignee?.emailAddress ?? null,
       jiraAttachmentCount: mediaCount,
+      jiraAttachments: attachments as unknown as Prisma.InputJsonValue,
     },
     update: {
       title: issue.fields.summary,
@@ -306,6 +327,7 @@ async function upsertJiraIssue(
       jiraAssigneeName: jiraAssignee?.displayName ?? null,
       jiraAssigneeEmail: jiraAssignee?.emailAddress ?? null,
       jiraAttachmentCount: mediaCount,
+      jiraAttachments: attachments as unknown as Prisma.InputJsonValue,
     },
   });
 
