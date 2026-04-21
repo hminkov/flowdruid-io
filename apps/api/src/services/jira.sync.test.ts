@@ -89,17 +89,21 @@ describe('jira.sync ADF stripping', () => {
     expect(stripAdf(adf)).toContain('- b');
   });
 
-  it('emits a placeholder for image/media nodes', () => {
+  it('drops inline media from the prose (images show in the Attachments section instead)', () => {
     const adf = {
       type: 'doc',
       content: [
+        { type: 'paragraph', content: [{ type: 'text', text: 'see below' }] },
         {
           type: 'mediaSingle',
           content: [{ type: 'media', attrs: { alt: 'login-screen.png' } }],
         },
+        { type: 'paragraph', content: [{ type: 'text', text: 'and then' }] },
       ],
     };
-    expect(stripAdf(adf)).toContain('[📎 login-screen.png]');
+    // The media node is dropped entirely — no '[📎 ...]' marker, no
+    // stray blank block from the walker either.
+    expect(stripAdf(adf)).toBe('see below\n\nand then');
   });
 
   it('returns empty string for null / undefined / malformed input', () => {
