@@ -47,13 +47,14 @@ describe('slack.worker processSlackJob', () => {
     postMessage.mockClear();
   });
 
-  it('standup.posted posts to the resolved team channel with a capacity bar', async () => {
+  it('standup.posted posts to the resolved team channel with Block Kit', async () => {
     await processSlackJob(
       job({
         type: 'standup.posted',
         orgId: 'org-1',
         teamId: 'team-1',
         userName: 'Alice',
+        yesterday: 'fixed pagination',
         today: 'shipping X',
         capacityPct: 50,
         blockers: null,
@@ -62,28 +63,36 @@ describe('slack.worker processSlackJob', () => {
     expect(postMessage).toHaveBeenCalledTimes(1);
     const args = postMessage.mock.calls[0]![0];
     expect(args.channel).toBe('C-TEAM');
+    // Fallback text for notifications + legacy clients.
     expect(args.text).toContain('Alice');
-    expect(args.text).toContain('shipping X');
     expect(args.text).toContain('50%');
-    // Capacity bar rendered with 5 filled blocks + 5 empty.
-    expect(args.text).toContain('█'.repeat(5));
-    expect(args.text).toContain('░'.repeat(5));
+    // Rich layout via Block Kit.
+    expect(Array.isArray(args.blocks)).toBe(true);
+    const joined = JSON.stringify(args.blocks);
+    expect(joined).toContain('Alice');
+    expect(joined).toContain('shipping X');
+    expect(joined).toContain('fixed pagination');
+    expect(joined).toContain('50%');
+    // Capacity indicator is a single emoji keyword, not Unicode art.
+    expect(joined).toMatch(/:battery:|:zap:|:hourglass_flowing_sand:|:red_circle:/);
   });
 
-  it('standup.posted with blockers includes the blocker warning line', async () => {
+  it('standup.posted with blockers appends a warning section', async () => {
     await processSlackJob(
       job({
         type: 'standup.posted',
         orgId: 'org-1',
         teamId: 'team-1',
         userName: 'Bob',
+        yesterday: 'y',
         today: 't',
         capacityPct: 80,
         blockers: 'DB migration hangs',
       }),
     );
-    expect(postMessage.mock.calls[0]![0].text).toContain('DB migration hangs');
-    expect(postMessage.mock.calls[0]![0].text).toContain(':warning:');
+    const joined = JSON.stringify(postMessage.mock.calls[0]![0].blocks);
+    expect(joined).toContain('DB migration hangs');
+    expect(joined).toContain(':warning:');
   });
 
   it('leave.approved posts a palm-tree message', async () => {
