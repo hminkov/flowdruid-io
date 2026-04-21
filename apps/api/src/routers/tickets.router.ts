@@ -140,7 +140,7 @@ export const ticketsRouter = router({
     .mutation(async ({ ctx }) => {
       // Import dynamically to avoid circular deps
       const { syncJiraTickets } = await import('../services/jira.sync');
-      await syncJiraTickets(ctx.user.orgId);
-      return { success: true };
+      const report = await syncJiraTickets(ctx.user.orgId);
+      return { success: report.ok, ...report };
     }),
 });
