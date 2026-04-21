@@ -105,13 +105,36 @@ export function AllTeamsPage() {
     setChannelDraft(current ?? '');
   };
 
+  // Accept either a raw channel ID or the full "Copy link" URL — users
+  // paste whichever they happen to have on the clipboard. A Slack
+  // channel link looks like https://<ws>.slack.com/archives/<ID>, and
+  // the ID format is always a letter (C/G/D) followed by alphanumerics.
+  const extractChannelId = (raw: string): string | null => {
+    const trimmed = raw.trim();
+    if (trimmed === '') return null;
+    const urlMatch = trimmed.match(/\/archives\/([A-Z0-9]+)/i);
+    if (urlMatch) return urlMatch[1]!.toUpperCase();
+    const idMatch = trimmed.match(/^([CGD][A-Z0-9]{8,})$/i);
+    if (idMatch) return idMatch[1]!.toUpperCase();
+    return null;
+  };
+
   const saveChannel = (teamId: string) => {
     const trimmed = channelDraft.trim();
-    updateTeamMutation.mutate({
-      teamId,
-      // Send null to clear the channel; otherwise the trimmed string.
-      slackChannelId: trimmed === '' ? null : trimmed,
-    });
+    if (trimmed === '') {
+      updateTeamMutation.mutate({ teamId, slackChannelId: null });
+      return;
+    }
+    const id = extractChannelId(trimmed);
+    if (!id) {
+      toast.push({
+        kind: 'error',
+        title: 'Invalid channel',
+        message: 'Paste a Slack channel URL or an ID starting with C/G/D.',
+      });
+      return;
+    }
+    updateTeamMutation.mutate({ teamId, slackChannelId: id });
   };
 
   const handleBroadcast = (e: FormEvent) => {
@@ -267,7 +290,7 @@ export function AllTeamsPage() {
                       autoFocus
                       value={channelDraft}
                       onChange={(e) => setChannelDraft(e.target.value)}
-                      placeholder="C0123ABCD"
+                      placeholder="C0123ABCD or Slack channel URL"
                       className="min-h-input flex-1 rounded border border-border bg-surface-primary px-2 font-mono text-xs text-text-primary placeholder:text-text-tertiary"
                     />
                     <button
@@ -310,9 +333,18 @@ export function AllTeamsPage() {
             <form
               onSubmit={(e) => {
                 e.preventDefault();
+                const extracted = extractChannelId(newTeamChannel);
+                if (newTeamChannel.trim() !== '' && !extracted) {
+                  toast.push({
+                    kind: 'error',
+                    title: 'Invalid channel',
+                    message: 'Paste a Slack channel URL or an ID starting with C/G/D.',
+                  });
+                  return;
+                }
                 createTeamMutation.mutate({
                   name: newTeamName,
-                  slackChannelId: newTeamChannel.trim() || undefined,
+                  slackChannelId: extracted ?? undefined,
                 });
               }}
               className="space-y-3"
