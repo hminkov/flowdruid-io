@@ -20,6 +20,17 @@ export const integrationsRouter = router({
     return config.projectKeys.map((key) => ({ key, name: names[key] ?? key }));
   }),
 
+  // Returns the configured Jira instance URL for building deep links
+  // (Open in Jira buttons on ticket cards/modals). No secrets.
+  jiraBaseUrl: protectedProcedure.query(async ({ ctx }) => {
+    const config = await ctx.prisma.jiraConfig.findUnique({
+      where: { orgId: ctx.user.orgId },
+      select: { baseUrl: true },
+    });
+    if (!config) return null;
+    return config.baseUrl.replace(/\/+$/, '');
+  }),
+
   getSlackConfig: adminProcedure.query(async ({ ctx }) => {
     const config = await ctx.prisma.slackConfig.findUnique({
       where: { orgId: ctx.user.orgId },
