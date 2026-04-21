@@ -7,20 +7,49 @@ import { slackQueue } from '../lib/queue';
 
 export const ticketsRouter = router({
   list: protectedProcedure.input(listTicketsSchema).query(async ({ ctx, input }) => {
-    const where: Record<string, unknown> = {};
-
-    // Scope to org teams
-    where.team = { orgId: ctx.user.orgId };
-
-    if (input.teamId) where.teamId = input.teamId;
-    if (input.status) where.status = input.status;
-    if (input.source) where.source = input.source;
+    // Scope to org teams — always applied first so cross-org data
+    // can't leak via other filters.
+    const baseWhere: Record<string, unknown> = { team: { orgId: ctx.user.orgId } };
+    if (input.teamId) baseWhere.teamId = input.teamId;
+    if (input.source) baseWhere.source = input.source;
     if (input.assigneeId) {
-      where.assignees = { some: { userId: input.assigneeId } };
+      baseWhere.assignees = { some: { userId: input.assigneeId } };
     }
 
+    // DONE history is what tanks the kanban — a synced project with
+    // 400 done tickets dumps 400 cards into a single column. Cap it
+    // to the last 30 days so the board stays responsive. Non-DONE
+    // columns are untouched because their natural cardinality is low.
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const doneCutoffWhere = { updatedAt: { gte: thirtyDaysAgo } };
+
+    if (input.status) {
+      const where =
+        input.status === 'DONE'
+          ? { ...baseWhere, ...doneCutoffWhere, status: 'DONE' as const }
+          : { ...baseWhere, status: input.status };
+      return ctx.prisma.ticket.findMany({
+        where,
+        include: {
+          assignees: {
+            include: { user: { select: { id: true, name: true, initials: true } } },
+          },
+          team: { select: { id: true, name: true } },
+        },
+        orderBy: { updatedAt: 'desc' },
+      });
+    }
+
+    // No status filter: open statuses unbounded, DONE clipped to last 30d.
     return ctx.prisma.ticket.findMany({
-      where,
+      where: {
+        ...baseWhere,
+        OR: [
+          { status: { in: ['TODO', 'IN_PROGRESS', 'IN_REVIEW'] } },
+          { status: 'DONE', ...doneCutoffWhere },
+        ],
+      },
       include: {
         assignees: {
           include: { user: { select: { id: true, name: true, initials: true } } },

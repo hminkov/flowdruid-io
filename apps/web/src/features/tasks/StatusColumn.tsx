@@ -1,9 +1,10 @@
+import { memo } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { TicketCard } from './TicketCard';
 import { STATUS_LABELS, type Ticket, type TicketStatus } from './types';
 
-export function StatusColumn({
+function StatusColumnInner({
   status,
   tickets,
   onOpenTicket,
@@ -43,3 +44,24 @@ export function StatusColumn({
     </div>
   );
 }
+
+/**
+ * Memoised so column re-renders only when its own ticket list changes.
+ * Without this, any drag event or filter toggle re-renders every column
+ * — and every ticket card inside each column — which is the difference
+ * between a board that feels instant and one that janks visibly.
+ */
+export const StatusColumn = memo(StatusColumnInner, (prev, next) => {
+  if (prev.status !== next.status) return false;
+  if (prev.onOpenTicket !== next.onOpenTicket) return false;
+  if (prev.tickets === next.tickets) return true;
+  if (prev.tickets.length !== next.tickets.length) return false;
+  for (let i = 0; i < prev.tickets.length; i++) {
+    const a = prev.tickets[i]!;
+    const b = next.tickets[i]!;
+    if (a.id !== b.id || a.status !== b.status || a.priority !== b.priority || a.title !== b.title) {
+      return false;
+    }
+  }
+  return true;
+});
