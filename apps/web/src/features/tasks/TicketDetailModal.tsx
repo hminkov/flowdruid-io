@@ -589,10 +589,38 @@ export function TicketDetailModal({
               render inline; non-image files show as download links. */}
           {ticket.source === 'JIRA' && (extended.jiraAttachments?.length ?? 0) > 0 && (
             <section className="mb-5">
-              <h3 className="mb-2 text-sm text-text-tertiary">
-                Attachments{' '}
-                <span className="text-text-primary">({extended.jiraAttachments?.length ?? 0})</span>
-              </h3>
+              <div className="mb-2 flex items-center justify-between">
+                <h3 className="text-sm text-text-tertiary">
+                  Attachments{' '}
+                  <span className="text-text-primary">({extended.jiraAttachments?.length ?? 0})</span>
+                </h3>
+                {(extended.jiraAttachments?.length ?? 0) > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      // Trigger a download per attachment via a
+                      // temporary <a download> click. 100ms stagger so
+                      // the browser doesn't squash concurrent clicks.
+                      (extended.jiraAttachments ?? []).forEach((att, i) => {
+                        setTimeout(() => {
+                          const a = document.createElement('a');
+                          a.href = attachmentUrl(ticket.id, att.id);
+                          a.download = att.filename;
+                          document.body.appendChild(a);
+                          a.click();
+                          document.body.removeChild(a);
+                        }, i * 100);
+                      });
+                    }}
+                    className="flex items-center gap-1 rounded border border-border bg-surface-primary px-2 py-0.5 text-xs text-text-secondary hover:border-brand-500 hover:text-text-primary"
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" />
+                    </svg>
+                    Download all
+                  </button>
+                )}
+              </div>
               <div className="grid gap-2 sm:grid-cols-2">
                 {extended.jiraAttachments?.map((att) => {
                   const url = attachmentUrl(ticket.id, att.id);
