@@ -59,7 +59,15 @@ function walkInline(node: AdfNode): string {
   return '';
 }
 
-function walkBlock(node: AdfNode, depth = 0): string {
+// Walker state — passed through so media markers pick up a stable
+// 0-based index as we traverse the document in order. The frontend
+// matches each marker back to ticket.jiraAttachments[index] so inline
+// images render where they appeared in the Jira issue.
+interface WalkCtx {
+  mediaCount: number;
+}
+
+function walkBlock(node: AdfNode, ctx: WalkCtx, depth = 0): string {
   if (!node) return '';
   switch (node.type) {
     case 'paragraph':
@@ -75,7 +83,7 @@ function walkBlock(node: AdfNode, depth = 0): string {
       return (node.content ?? [])
         .map((li, i) => {
           const prefix = node.type === 'orderedList' ? `${i + 1}. ` : '- ';
-          const inner = (li.content ?? []).map((n) => walkBlock(n, depth + 1)).join('\n');
+          const inner = (li.content ?? []).map((n) => walkBlock(n, ctx, depth + 1)).join('\n');
           return ' '.repeat(depth * 2) + prefix + inner.replace(/\n/g, '\n' + ' '.repeat((depth + 1) * 2));
         })
         .join('\n');
@@ -83,24 +91,37 @@ function walkBlock(node: AdfNode, depth = 0): string {
       return '```\n' + (node.content ?? []).map(walkInline).join('') + '\n```';
     case 'blockquote':
       return (node.content ?? [])
-        .map((b) => walkBlock(b, depth))
+        .map((b) => walkBlock(b, ctx, depth))
         .join('\n\n')
         .replace(/^/gm, '> ');
     case 'rule':
       return '---';
     case 'mediaSingle':
     case 'mediaGroup':
-    case 'media':
-      // Drop inline media from the prose. The images are surfaced
-      // separately in the Attachments section of the modal (proxied
-      // from Jira), so emitting a '[📎 image]' placeholder here would
-      // just be noise between the paragraphs.
-      return '';
+    case 'media': {
+      // Count every media node in document order. The frontend splits
+      // the description on '{{img:N}}' markers and renders an <img>
+      // at each position using jiraAttachments[N]. Ordinal matching
+      // (not id-based) because ADF media ids are in a different
+      // namespace from fields.attachment ids on Jira Cloud.
+      //
+      // mediaSingle / mediaGroup wrap one or more media nodes — walk
+      // into them so nested media still counts.
+      if (node.type === 'media') {
+        const marker = `{{img:${ctx.mediaCount}}}`;
+        ctx.mediaCount++;
+        return marker;
+      }
+      return (node.content ?? [])
+        .map((c) => walkBlock(c, ctx, depth))
+        .filter((s) => s.length > 0)
+        .join('\n\n');
+    }
     default:
       // Unknown block type — fall back to walking any nested content
       // so we don't drop prose inside tables, panels, etc.
       if (Array.isArray(node.content)) {
-        return node.content.map((c) => walkBlock(c, depth)).join('\n\n');
+        return node.content.map((c) => walkBlock(c, ctx, depth)).join('\n\n');
       }
       return '';
   }
@@ -110,7 +131,8 @@ export function stripAdf(description: unknown): string {
   if (!description || typeof description !== 'object') return '';
   try {
     const doc = description as AdfNode;
-    const blocks = (doc.content ?? []).map((b) => walkBlock(b)).filter((s) => s.length > 0);
+    const ctx: WalkCtx = { mediaCount: 0 };
+    const blocks = (doc.content ?? []).map((b) => walkBlock(b, ctx)).filter((s) => s.length > 0);
     return blocks.join('\n\n').trim();
   } catch {
     return '';

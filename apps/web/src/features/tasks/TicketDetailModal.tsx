@@ -34,6 +34,105 @@ const PRIORITY_TONES: Record<string, string> = {
 
 import { JIRA_BASE_URL } from '../../config/brand';
 
+type Attachment = {
+  id: string;
+  filename: string;
+  mimeType: string;
+  size: number;
+  isImage: boolean;
+};
+
+function attachmentUrl(ticketId: string, attachmentId: string): string {
+  const token = getAuthToken() ?? '';
+  return `/api/jira/attachments/${ticketId}/${encodeURIComponent(attachmentId)}?token=${encodeURIComponent(token)}`;
+}
+
+/**
+ * Parse a Jira description into text + image parts.
+ *
+ * ADF media nodes were stripped to `{{img:N}}` markers during sync,
+ * where N is the 0-based index into `jiraAttachments`. We split on
+ * the markers and emit two-typed chunks so the parent can render
+ * each part appropriately (whitespace-preserved text, inline images).
+ */
+function parseDescription(
+  text: string,
+  attachments: Attachment[],
+): Array<{ kind: 'text'; text: string } | { kind: 'image'; att: Attachment }> {
+  const parts: Array<{ kind: 'text'; text: string } | { kind: 'image'; att: Attachment }> = [];
+  const re = /\{\{img:(\d+)\}\}/g;
+  let lastIndex = 0;
+  for (const m of text.matchAll(re)) {
+    const start = m.index ?? 0;
+    if (start > lastIndex) parts.push({ kind: 'text', text: text.slice(lastIndex, start) });
+    const idx = Number(m[1]);
+    const att = attachments[idx];
+    // Only images count for inline rendering — a file attachment
+    // listed in the description would look weird inline, so fall back
+    // to a link representation in that case (handled by the renderer).
+    if (att) parts.push({ kind: 'image', att });
+    lastIndex = start + m[0].length;
+  }
+  if (lastIndex < text.length) parts.push({ kind: 'text', text: text.slice(lastIndex) });
+  return parts;
+}
+
+function Lightbox({
+  url,
+  filename,
+  onClose,
+}: {
+  url: string;
+  filename: string;
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [onClose]);
+
+  return (
+    <div
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-8"
+      onClick={onClose}
+    >
+      <div
+        className="relative flex max-h-full max-w-[90vw] flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mb-2 flex items-center justify-between gap-3 text-white">
+          <p className="truncate text-sm opacity-90">{filename}</p>
+          <div className="flex shrink-0 items-center gap-2">
+            <a
+              href={url}
+              download={filename}
+              className="rounded bg-white/10 px-3 py-1 text-xs text-white hover:bg-white/20"
+            >
+              Download
+            </a>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close"
+              className="flex h-7 w-7 items-center justify-center rounded bg-white/10 text-white hover:bg-white/20"
+            >
+              <XIcon className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+        <img
+          src={url}
+          alt={filename}
+          className="max-h-[80vh] max-w-[90vw] rounded-lg object-contain shadow-float"
+        />
+      </div>
+    </div>
+  );
+}
+
 // "N min ago" / "2h ago" etc. — same shape as the Audit log page.
 function formatRelative(value: string | Date): string {
   const d = typeof value === 'string' ? new Date(value) : value;
@@ -82,6 +181,7 @@ export function TicketDetailModal({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [editingPoints, setEditingPoints] = useState(false);
   const [pointsDraft, setPointsDraft] = useState<string>('');
+  const [lightbox, setLightbox] = useState<Attachment | null>(null);
 
   const utils = trpc.useUtils();
   const teamsQuery = trpc.teams.list.useQuery(undefined, { enabled: open });
@@ -438,12 +538,48 @@ export function TicketDetailModal({
             </section>
           )}
 
-          {/* Description — preserve paragraphs/lists from ADF */}
+          {/* Description — preserve paragraphs/lists from ADF and
+              render inline images at the positions they appeared in
+              Jira (from {{img:N}} markers the sync emitted). */}
           {extended.description && (
             <section className="mb-5">
               <h3 className="mb-1.5 text-sm text-text-tertiary">Description</h3>
-              <div className="whitespace-pre-wrap break-words text-base leading-relaxed text-text-primary">
-                {extended.description}
+              <div className="space-y-3 text-base leading-relaxed text-text-primary">
+                {parseDescription(
+                  extended.description,
+                  (extended.jiraAttachments ?? []) as Attachment[],
+                ).map((part, i) =>
+                  part.kind === 'text' ? (
+                    <div key={i} className="whitespace-pre-wrap break-words">
+                      {part.text}
+                    </div>
+                  ) : part.att.isImage ? (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => setLightbox(part.att)}
+                      className="block w-full max-w-md overflow-hidden rounded-lg border border-border bg-surface-secondary transition-opacity hover:opacity-90"
+                      title={`Open ${part.att.filename}`}
+                    >
+                      <img
+                        src={attachmentUrl(ticket.id, part.att.id)}
+                        alt={part.att.filename}
+                        loading="lazy"
+                        className="block max-h-80 w-full object-contain"
+                      />
+                    </button>
+                  ) : (
+                    <a
+                      key={i}
+                      href={attachmentUrl(ticket.id, part.att.id)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 rounded border border-border bg-surface-secondary px-2 py-1 text-sm text-text-secondary hover:text-text-primary"
+                    >
+                      {part.att.filename}
+                    </a>
+                  ),
+                )}
               </div>
             </section>
           )}
@@ -459,16 +595,14 @@ export function TicketDetailModal({
               </h3>
               <div className="grid gap-2 sm:grid-cols-2">
                 {extended.jiraAttachments?.map((att) => {
-                  const authToken = getAuthToken() ?? '';
-                  const url = `/api/jira/attachments/${ticket.id}/${encodeURIComponent(att.id)}?token=${encodeURIComponent(authToken)}`;
+                  const url = attachmentUrl(ticket.id, att.id);
                   if (att.isImage) {
                     return (
-                      <a
+                      <button
                         key={att.id}
-                        href={url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="group block overflow-hidden rounded-lg border border-border bg-surface-secondary transition-colors duration-fast hover:border-brand-500"
+                        type="button"
+                        onClick={() => setLightbox(att as Attachment)}
+                        className="group block overflow-hidden rounded-lg border border-border bg-surface-secondary text-left transition-colors duration-fast hover:border-brand-500"
                         title={att.filename}
                       >
                         <img
@@ -477,8 +611,6 @@ export function TicketDetailModal({
                           loading="lazy"
                           className="block h-40 w-full object-cover"
                           onError={(e) => {
-                            // Fall back to a text chip if the proxy
-                            // can't serve (permissions / gone / etc).
                             const el = e.currentTarget;
                             el.style.display = 'none';
                             const sibling = el.nextElementSibling as HTMLElement | null;
@@ -494,7 +626,7 @@ export function TicketDetailModal({
                         <div className="truncate border-t border-border bg-surface-primary px-2 py-1 text-xs text-text-secondary group-hover:text-text-primary">
                           {att.filename}
                         </div>
-                      </a>
+                      </button>
                     );
                   }
                   return (
@@ -826,6 +958,14 @@ export function TicketDetailModal({
           </section>
         </div>
       </div>
+
+      {lightbox && (
+        <Lightbox
+          url={attachmentUrl(ticket.id, lightbox.id)}
+          filename={lightbox.filename}
+          onClose={() => setLightbox(null)}
+        />
+      )}
     </div>
   );
 }

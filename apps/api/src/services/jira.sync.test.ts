@@ -89,21 +89,17 @@ describe('jira.sync ADF stripping', () => {
     expect(stripAdf(adf)).toContain('- b');
   });
 
-  it('drops inline media from the prose (images show in the Attachments section instead)', () => {
+  it('emits ordinal {{img:N}} markers for media nodes in document order', () => {
     const adf = {
       type: 'doc',
       content: [
-        { type: 'paragraph', content: [{ type: 'text', text: 'see below' }] },
-        {
-          type: 'mediaSingle',
-          content: [{ type: 'media', attrs: { alt: 'login-screen.png' } }],
-        },
-        { type: 'paragraph', content: [{ type: 'text', text: 'and then' }] },
+        { type: 'paragraph', content: [{ type: 'text', text: 'first' }] },
+        { type: 'mediaSingle', content: [{ type: 'media', attrs: { id: 'uuid-a' } }] },
+        { type: 'paragraph', content: [{ type: 'text', text: 'second' }] },
+        { type: 'mediaSingle', content: [{ type: 'media', attrs: { id: 'uuid-b' } }] },
       ],
     };
-    // The media node is dropped entirely — no '[📎 ...]' marker, no
-    // stray blank block from the walker either.
-    expect(stripAdf(adf)).toBe('see below\n\nand then');
+    expect(stripAdf(adf)).toBe('first\n\n{{img:0}}\n\nsecond\n\n{{img:1}}');
   });
 
   it('returns empty string for null / undefined / malformed input', () => {
