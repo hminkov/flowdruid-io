@@ -9,7 +9,7 @@ import { testPrisma } from './setup';
  * to run without crashing — including `res.cookie` (used by the auth
  * router to set the refresh-token cookie).
  */
-function mockReqRes(): { req: Request; res: Response } {
+function mockReqRes(cookies: Record<string, string> = {}): { req: Request; res: Response } {
   const headers: Record<string, string> = {};
   const res = {
     cookie: () => res,
@@ -24,7 +24,7 @@ function mockReqRes(): { req: Request; res: Response } {
     send: () => res,
     end: () => res,
   } as unknown as Response;
-  const req = { headers: {}, cookies: {} } as unknown as Request;
+  const req = { headers: {}, cookies } as unknown as Request;
   return { req, res };
 }
 
@@ -38,8 +38,8 @@ function mockReqRes(): { req: Request; res: Response } {
  * This skips the HTTP layer entirely — faster than SuperTest, and
  * still exercises all the procedure-level authz middleware.
  */
-export function asUser(user?: User) {
-  const { req, res } = mockReqRes();
+export function asUser(user?: User, opts?: { cookies?: Record<string, string> }) {
+  const { req, res } = mockReqRes(opts?.cookies);
   const ctx: Context = {
     req,
     res,

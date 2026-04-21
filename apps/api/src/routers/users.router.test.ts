@@ -5,6 +5,64 @@ import { createOrg, createTeam, createUser } from '../test/fixtures';
 import { asUser } from '../test/caller';
 
 describe('users.router', () => {
+  describe('invite', () => {
+    it('creates an active user, returns a temp password, writes USER_CREATED audit', async () => {
+      const org = await createOrg(testPrisma);
+      const admin = await createUser(testPrisma, { orgId: org.id, role: 'ADMIN' });
+
+      const result = await asUser(admin).users.invite({
+        email: 'fresh@acme.com',
+        name: 'Fresh Person',
+        initials: 'FP',
+        role: 'DEVELOPER',
+      });
+
+      expect(result.userId).toBeTruthy();
+      expect(typeof result.tempPassword).toBe('string');
+      expect(result.tempPassword.length).toBeGreaterThanOrEqual(12);
+
+      const created = await testPrisma.user.findUniqueOrThrow({ where: { id: result.userId } });
+      expect(created.active).toBe(true);
+      expect(created.orgId).toBe(org.id);
+      expect(created.passwordHash).not.toBe(result.tempPassword); // hashed
+
+      const audit = await testPrisma.auditLog.findFirstOrThrow({
+        where: { action: 'USER_CREATED', entityId: result.userId },
+      });
+      const after = audit.after as Record<string, unknown>;
+      expect(after.email).toBe('fresh@acme.com');
+      expect(after.passwordHash).toBeUndefined(); // redacted
+    });
+
+    it('refuses duplicate emails', async () => {
+      const org = await createOrg(testPrisma);
+      const admin = await createUser(testPrisma, { orgId: org.id, role: 'ADMIN' });
+      await createUser(testPrisma, { orgId: org.id, email: 'taken@acme.com' });
+
+      await expect(
+        asUser(admin).users.invite({
+          email: 'taken@acme.com',
+          name: 'Dup',
+          initials: 'DU',
+          role: 'DEVELOPER',
+        }),
+      ).rejects.toThrow(/already in use/i);
+    });
+
+    it('rejects non-admin callers', async () => {
+      const org = await createOrg(testPrisma);
+      const lead = await createUser(testPrisma, { orgId: org.id, role: 'TEAM_LEAD' });
+      await expect(
+        asUser(lead).users.invite({
+          email: 'new@acme.com',
+          name: 'X',
+          initials: 'X',
+          role: 'DEVELOPER',
+        }),
+      ).rejects.toThrow();
+    });
+  });
+
   describe('update (role change)', () => {
     it('changes role and writes an audit row', async () => {
       const org = await createOrg(testPrisma);
