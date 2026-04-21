@@ -2,7 +2,7 @@ import { prisma } from '../lib/prisma';
 import { decrypt } from '../lib/encrypt';
 import type { TicketStatus, TicketPriority } from '@prisma/client';
 
-function mapJiraStatus(jiraStatus: string): TicketStatus {
+export function mapJiraStatus(jiraStatus: string): TicketStatus {
   const s = jiraStatus.toLowerCase();
   if (s === 'to do' || s === 'open' || s === 'backlog') return 'TODO';
   if (s === 'in progress') return 'IN_PROGRESS';
@@ -11,14 +11,14 @@ function mapJiraStatus(jiraStatus: string): TicketStatus {
   return 'TODO';
 }
 
-function mapJiraPriority(jiraPriority: string): TicketPriority {
+export function mapJiraPriority(jiraPriority: string): TicketPriority {
   const p = jiraPriority.toLowerCase();
   if (p === 'highest' || p === 'high') return 'HIGH';
   if (p === 'medium') return 'MEDIUM';
   return 'LOW';
 }
 
-function stripAdf(description: unknown): string {
+export function stripAdf(description: unknown): string {
   if (!description || typeof description !== 'object') return '';
   try {
     const doc = description as { content?: Array<{ content?: Array<{ text?: string }> }> };

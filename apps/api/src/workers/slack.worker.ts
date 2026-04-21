@@ -26,7 +26,7 @@ async function getTeamChannelId(teamId: string): Promise<string | null> {
   return team?.slackChannelId || null;
 }
 
-async function processSlackJob(job: Job<SlackJobData>) {
+export async function processSlackJob(job: Job<SlackJobData>) {
   const { type, orgId, teamId } = job.data;
   const client = await getSlackClient(orgId);
   if (!client) return;
