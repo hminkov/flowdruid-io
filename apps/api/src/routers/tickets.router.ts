@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { createTicketSchema, updateTicketSchema, listTicketsSchema, assignTicketSchema } from '@flowdruid/shared';
 import { router, protectedProcedure, leadProcedure } from '../trpc';
 import { audit } from '../lib/audit';
+import { slackQueue } from '../lib/queue';
 
 export const ticketsRouter = router({
   list: protectedProcedure.input(listTicketsSchema).query(async ({ ctx, input }) => {
@@ -57,7 +58,7 @@ export const ticketsRouter = router({
     });
     if (!ticket) throw new TRPCError({ code: 'NOT_FOUND' });
 
-    return ctx.prisma.ticket.update({
+    const updated = await ctx.prisma.ticket.update({
       where: { id: ticketId },
       data,
       include: {
@@ -66,6 +67,29 @@ export const ticketsRouter = router({
         },
       },
     });
+
+    // Slack ping when a ticket transitions INTO Done. Only fire on the
+    // transition, not on repeat saves while already Done, and only when
+    // the org has ticket-done notifications enabled.
+    if (data.status === 'DONE' && ticket.status !== 'DONE') {
+      const slackConfig = await ctx.prisma.slackConfig.findUnique({
+        where: { orgId: ctx.user.orgId },
+        select: { notifyDone: true },
+      });
+      if (slackConfig?.notifyDone) {
+        await slackQueue.add('ticket.done', {
+          type: 'ticket.done',
+          orgId: ctx.user.orgId,
+          teamId: ticket.teamId,
+          userId: ctx.user.id,
+          userName: ctx.user.name,
+          ticketKey: ticket.jiraKey ?? ticket.id.slice(-8),
+          ticketTitle: updated.title,
+        });
+      }
+    }
+
+    return updated;
   }),
 
   delete: protectedProcedure
