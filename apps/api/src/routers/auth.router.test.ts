@@ -47,6 +47,39 @@ describe('auth.router', () => {
     ).rejects.toThrow();
   });
 
+  it('refuses login when the org is soft-deleted', async () => {
+    const org = await createOrg(testPrisma);
+    await createUser(testPrisma, { orgId: org.id, email: 'orphan@acme.com' });
+    await testPrisma.organisation.update({
+      where: { id: org.id },
+      data: { deletedAt: new Date() },
+    });
+
+    await expect(
+      asUser().auth.login({ email: 'orphan@acme.com', password: TEST_PASSWORD }),
+    ).rejects.toThrow(/Invalid credentials/i);
+  });
+
+  it('refresh burns the token when the org has been soft-deleted', async () => {
+    const org = await createOrg(testPrisma);
+    const user = await createUser(testPrisma, { orgId: org.id });
+    const inFuture = new Date();
+    inFuture.setDate(inFuture.getDate() + 7);
+    await testPrisma.refreshToken.create({
+      data: { token: 'tombstone', userId: user.id, expiresAt: inFuture },
+    });
+    await testPrisma.organisation.update({
+      where: { id: org.id },
+      data: { deletedAt: new Date() },
+    });
+
+    await expect(
+      asUser(undefined, { cookies: { refreshToken: 'tombstone' } }).auth.refresh(),
+    ).rejects.toThrow(/Invalid refresh token/i);
+    const rows = await testPrisma.refreshToken.findMany({ where: { token: 'tombstone' } });
+    expect(rows).toHaveLength(0);
+  });
+
   describe('refresh', () => {
     it('rotates the refresh token and issues a fresh access token', async () => {
       const org = await createOrg(testPrisma);

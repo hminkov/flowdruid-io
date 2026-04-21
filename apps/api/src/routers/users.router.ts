@@ -85,6 +85,25 @@ export const usersRouter = router({
       });
     }),
 
+  // Force-logout a user by deleting every refresh token on their
+  // account. Useful when a laptop is lost, a password is rotated,
+  // or someone's role changes and we don't want their existing
+  // session to keep running at the old scope.
+  revokeSessions: adminProcedure
+    .input(z.object({ userId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const target = await ctx.prisma.user.findFirst({
+        where: { id: input.userId, orgId: ctx.user.orgId },
+        select: { id: true },
+      });
+      if (!target) throw new TRPCError({ code: 'NOT_FOUND' });
+
+      const result = await ctx.prisma.refreshToken.deleteMany({
+        where: { userId: input.userId },
+      });
+      return { revoked: result.count };
+    }),
+
   deactivate: adminProcedure
     .input(z.object({ userId: z.string() }))
     .mutation(async ({ ctx, input }) => {
@@ -98,6 +117,9 @@ export const usersRouter = router({
           where: { id: input.userId, orgId: ctx.user.orgId },
           data: { active: false },
         });
+        // A deactivated user should immediately lose every active
+        // session, not just the next time their access token expires.
+        await tx.refreshToken.deleteMany({ where: { userId: input.userId } });
         await audit({ prisma: tx, user: ctx.user }, 'USER_DEACTIVATED', 'User', input.userId, {
           before: { email: before.email, name: before.name, active: before.active },
           after: { active: false },

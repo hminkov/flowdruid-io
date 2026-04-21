@@ -86,11 +86,16 @@ enum NotificationType {
 }
 
 model Organisation {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   name      String
-  slug      String   @unique
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  slug      String    @unique
+  // deletedAt marks an org as off-boarded. Every app query MUST filter
+  // where: { org: { deletedAt: null } } or operate on a context whose
+  // user belongs to a non-deleted org. The auth middleware enforces
+  // the second case; manual checks handle the first.
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
   teams           Team[]
   users           User[]

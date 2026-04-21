@@ -17,6 +17,7 @@ import { createSubscriber, eventPattern } from './lib/events';
 import { httpLogger, echoRequestId } from './lib/logger';
 import { prisma } from './lib/prisma';
 import { redis } from './lib/redis';
+import promBundle from 'express-prom-bundle';
 
 /**
  * Build the Express app with every route + middleware wired.
@@ -33,6 +34,31 @@ export function createApp(): Express {
 
   app.use(httpLogger);
   app.use(echoRequestId);
+
+  // Prometheus request metrics. Exposes /metrics with per-route
+  // duration histograms + request counters. The include* flags keep
+  // cardinality bounded — we drop query strings (token leak risk)
+  // and collapse paths under /trpc/<procedure> to a single label.
+  app.use(
+    promBundle({
+      includeMethod: true,
+      includePath: true,
+      includeStatusCode: true,
+      metricsPath: '/metrics',
+      // Merge /trpc/auth.login and /trpc/auth.login,auth.refresh
+      // (batched tRPC) into the first procedure — keeps the label
+      // cardinality sane on a dashboard.
+      normalizePath: (req) => {
+        const url = req.originalUrl || req.url || '';
+        if (url.startsWith('/trpc/')) {
+          const path = url.split('?')[0] ?? '';
+          const first = path.slice('/trpc/'.length).split(',')[0] ?? 'unknown';
+          return `/trpc/${first}`;
+        }
+        return (url.split('?')[0] ?? '/').replace(/\/\d+/g, '/:id');
+      },
+    }),
+  );
 
   app.use(
     helmet({
