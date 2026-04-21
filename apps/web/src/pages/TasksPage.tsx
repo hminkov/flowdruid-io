@@ -89,6 +89,17 @@ export function TasksPage() {
     setExpandedByStatus({});
   }, [listArgs.teamId, listArgs.source, listArgs.jiraProject]);
 
+  // Keep the Jira project filter gated on source — if the user
+  // switches away from Jira (via the source pill, or a stale URL),
+  // clear the project so it doesn't silently scope future queries
+  // once they come back. The effect runs after source has committed,
+  // sidestepping the stale-closure hazard in the onClick handler.
+  useEffect(() => {
+    if (sourceFilter !== 'JIRA' && jiraProjectFilter) {
+      setJiraProjectFilter('');
+    }
+  }, [sourceFilter, jiraProjectFilter, setJiraProjectFilter]);
+
   const createMutation = trpc.tickets.create.useMutation({
     onSuccess: () => {
       utils.tickets.list.invalidate();
@@ -205,10 +216,7 @@ export function TasksPage() {
             ].map((s) => (
               <button
                 key={s.v || 'all'}
-                onClick={() => {
-                  setSourceFilter(s.v);
-                  if (s.v !== 'JIRA') setJiraProjectFilter('');
-                }}
+                onClick={() => setSourceFilter(s.v)}
                 className={`rounded-pill px-3 py-1 text-sm transition-colors duration-fast ${
                   sourceFilter === s.v
                     ? 'bg-brand-600 text-white'

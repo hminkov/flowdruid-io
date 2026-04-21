@@ -31,6 +31,20 @@ export const STATUS_COLUMNS: readonly TicketStatus[] = [
   'DONE',
 ] as const;
 
+// Internal tickets don't use the full Jira workflow — only the four
+// canonical states. Drops onto the other two are rejected.
+export const INTERNAL_ALLOWED_STATUSES: readonly TicketStatus[] = [
+  'TODO',
+  'IN_PROGRESS',
+  'IN_REVIEW',
+  'DONE',
+] as const;
+
+export function isStatusAllowed(source: TicketSource, status: TicketStatus): boolean {
+  if (source === 'JIRA') return true;
+  return (INTERNAL_ALLOWED_STATUSES as readonly TicketStatus[]).includes(status);
+}
+
 export const STATUS_LABELS: Record<TicketStatus, string> = {
   TODO: 'Open issues',
   BLOCKED: 'Blocked',

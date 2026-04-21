@@ -17,8 +17,16 @@ import {
 import { sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import { StatusColumn } from './StatusColumn';
 import { TicketCardDisplay } from './TicketCard';
-import { STATUS_COLUMNS, STATUS_LABELS, type Ticket, type TicketStatus } from './types';
+import {
+  INTERNAL_ALLOWED_STATUSES,
+  STATUS_COLUMNS,
+  STATUS_LABELS,
+  isStatusAllowed,
+  type Ticket,
+  type TicketStatus,
+} from './types';
 import { useUpdateTicketStatus } from './useUpdateTicketStatus';
+import { useToast } from '../../components/ui';
 
 // Kanban collision detection: always resolve to a column, never to
 // an individual card in a different column. Corner-based detectors
@@ -69,6 +77,14 @@ export function TaskBoard({ tickets, listArgs, initialOpenId, onLoadMore, loadin
   const [activeId, setActiveId] = useState<string | null>(null);
   const [openTicket, setOpenTicket] = useState<Ticket | null>(null);
   const [, setSearchParams] = useSearchParams();
+  const toast = useToast();
+
+  // Internal tickets use only the canonical 4 statuses. Collapse the
+  // board to that set when the user has filtered to Internal only;
+  // in All / Jira views show every column so Jira-native columns
+  // (BLOCKED, READY_FOR_VERIFICATION) remain visible.
+  const visibleColumns: readonly TicketStatus[] =
+    listArgs.source === 'INTERNAL' ? INTERNAL_ALLOWED_STATUSES : STATUS_COLUMNS;
 
   // Auto-open from ?open=<id> exactly once, as soon as the ticket is in the loaded list.
   const hasAutoOpened = useState({ done: false })[0];
@@ -103,6 +119,16 @@ export function TaskBoard({ tickets, listArgs, initialOpenId, onLoadMore, loadin
   }, [tickets]);
 
   const activeTicket = activeId ? tickets.find((t) => t.id === activeId) ?? null : null;
+
+  // Columns that reject the currently-dragged ticket. Drives the red
+  // outline on the column + the toast when the user releases over one.
+  const forbiddenStatuses = useMemo(() => {
+    if (!activeTicket) return new Set<TicketStatus>();
+    if (activeTicket.source === 'JIRA') return new Set<TicketStatus>();
+    return new Set<TicketStatus>(
+      STATUS_COLUMNS.filter((s) => !isStatusAllowed('INTERNAL', s)),
+    );
+  }, [activeTicket]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -153,6 +179,17 @@ export function TaskBoard({ tickets, listArgs, initialOpenId, onLoadMore, loadin
     const destination = resolveStatus(String(over.id), tickets);
     if (!destination || destination === current.status) return;
 
+    // Internal tickets can't live in Jira-only columns. Short-circuit
+    // before the mutation fires so optimistic update doesn't flicker.
+    if (!isStatusAllowed(current.source, destination)) {
+      toast.push({
+        kind: 'error',
+        title: 'Column not available',
+        message: `Internal tickets don't use "${STATUS_LABELS[destination]}". Only Jira tickets do.`,
+      });
+      return;
+    }
+
     updateStatus.mutate({ ticketId, status: destination });
   };
 
@@ -170,7 +207,7 @@ export function TaskBoard({ tickets, listArgs, initialOpenId, onLoadMore, loadin
           minWidth so cards stay readable; the row scrolls sideways
           when the viewport can't fit every column.  */}
       <div className="flex gap-4 overflow-x-auto pb-2">
-        {STATUS_COLUMNS.map((status) => (
+        {visibleColumns.map((status) => (
           <div key={status} className="min-w-[18rem] flex-1">
             <StatusColumn
               status={status}
@@ -178,6 +215,7 @@ export function TaskBoard({ tickets, listArgs, initialOpenId, onLoadMore, loadin
               onOpenTicket={setOpenTicket}
               onLoadMore={onLoadMore}
               loadingMore={loadingMoreStatus === status}
+              forbidden={forbiddenStatuses.has(status)}
             />
           </div>
         ))}
