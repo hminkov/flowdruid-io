@@ -180,18 +180,36 @@ export const integrationsRouter = router({
       const token = decrypt(config.apiToken);
       const auth = Buffer.from(`${config.email}:${token}`).toString('base64');
 
-      const res = await fetch(`${config.baseUrl}/rest/api/3/project`, {
-        headers: {
-          Authorization: `Basic ${auth}`,
-          Accept: 'application/json',
+      // /project/search is the current recommended endpoint — it
+      // supports pagination (up to 50 per page by default, maxResults=100
+      // bumps that) and returns the same shape across all Jira Cloud
+      // tenants. The legacy /project sometimes returns 0 entries on
+      // newer instances even when the user has project access.
+      const res = await fetch(
+        `${config.baseUrl}/rest/api/3/project/search?maxResults=100`,
+        {
+          headers: {
+            Authorization: `Basic ${auth}`,
+            Accept: 'application/json',
+          },
         },
-      });
+      );
 
-      if (!res.ok) throw new Error(`Jira API returned ${res.status}`);
+      if (!res.ok) {
+        const body = await res.text().catch(() => '');
+        throw new Error(
+          `Jira API returned ${res.status}${body ? ` — ${body.slice(0, 200)}` : ''}`,
+        );
+      }
 
-      const projects = (await res.json()) as Array<{ key: string; name: string }>;
+      const data = (await res.json()) as {
+        values?: Array<{ key: string; name: string }>;
+        total?: number;
+      };
+      const projects = data.values ?? [];
       return {
         success: true,
+        total: data.total ?? projects.length,
         projects: projects.map((p) => ({ key: p.key, name: p.name })),
       };
     } catch (err) {
