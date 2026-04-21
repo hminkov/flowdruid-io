@@ -23,8 +23,21 @@ export function encrypt(plaintext: string): string {
 }
 
 export function decrypt(ciphertext: string): string {
+  if (typeof ciphertext !== 'string' || ciphertext.length === 0) {
+    throw new Error('decrypt: expected non-empty string');
+  }
+  const parts = ciphertext.split(':');
+  if (parts.length !== 3) {
+    // A stored value without the three-part iv:authTag:payload shape
+    // is almost certainly a plaintext placeholder (e.g. from a seed or
+    // a manual DB insert). Fail with a message the caller can act on
+    // instead of leaking the cryptic Buffer.from(undefined) error.
+    throw new Error(
+      'decrypt: malformed ciphertext (expected iv:authTag:payload). Re-save the credential.',
+    );
+  }
+  const [ivHex, authTagHex, encryptedHex] = parts as [string, string, string];
   const key = getKey();
-  const [ivHex, authTagHex, encryptedHex] = ciphertext.split(':');
 
   const iv = Buffer.from(ivHex, 'hex');
   const authTag = Buffer.from(authTagHex, 'hex');

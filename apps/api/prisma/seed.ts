@@ -1029,31 +1029,13 @@ async function main() {
     },
   });
 
-  // ─── INTEGRATIONS (placeholders) ────────────────────────────────────────
-  await prisma.slackConfig.create({
-    data: {
-      orgId: org.id,
-      botToken: 'xoxb-PLACEHOLDER-REPLACE-VIA-UI',
-      signingSecret: 'PLACEHOLDER-REPLACE-VIA-UI',
-      notifyStandup: true,
-      notifyLeave: true,
-      notifyBlocker: true,
-      notifyDone: false,
-      notifyBroadcast: true,
-    },
-  });
-
-  await prisma.jiraConfig.create({
-    data: {
-      orgId: org.id,
-      baseUrl: 'https://acme.atlassian.net',
-      email: 'alex.morgan@acme.com',
-      apiToken: 'PLACEHOLDER-REPLACE-VIA-UI',
-      projectKeys: ['DW', 'EX', 'AC', 'QA'],
-      syncInterval: 15,
-      lastSyncAt: hoursAgo(1),
-    },
-  });
+  // ─── INTEGRATIONS ────────────────────────────────────────────────────────
+  // Deliberately NOT seeded. SlackConfig.botToken + JiraConfig.apiToken are
+  // stored AES-256-GCM encrypted and any plaintext placeholder here
+  // (`PLACEHOLDER-REPLACE-VIA-UI`) is undecryptable — the first Test
+  // connection blows up inside decrypt() with a cryptic Buffer error.
+  // Leave the table empty so the Integrations UI shows the first-time
+  // flow and forces the admin to paste real creds.
 
   // ─── PARKING SPOTS + ASSIGNMENTS ─────────────────────────────────────────
   const parkingSpotIds: Record<string, string> = {};
