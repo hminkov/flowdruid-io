@@ -18,7 +18,7 @@
     "@trpc/server": "^11.0.0-rc.648",
     "archiver": "^7.0.1",
     "bcryptjs": "^2.4.3",
-    "bullmq": "^5.25.0",
+    "bullmq": "^5.75.2",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "express": "^4.21.1",
