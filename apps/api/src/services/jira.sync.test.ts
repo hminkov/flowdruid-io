@@ -44,14 +44,62 @@ describe('jira.sync priority mapping', () => {
 });
 
 describe('jira.sync ADF stripping', () => {
-  it('extracts text from a nested ADF doc', () => {
+  it('concatenates inline text nodes within a paragraph (no added spaces)', () => {
     const adf = {
       type: 'doc',
       content: [
-        { type: 'paragraph', content: [{ type: 'text', text: 'Hello' }, { type: 'text', text: ' ' }, { type: 'text', text: 'world' }] },
+        {
+          type: 'paragraph',
+          content: [
+            { type: 'text', text: 'Hello' },
+            { type: 'text', text: ' ' },
+            { type: 'text', text: 'world' },
+          ],
+        },
       ],
     };
-    expect(stripAdf(adf)).toBe('Hello   world');
+    expect(stripAdf(adf)).toBe('Hello world');
+  });
+
+  it('separates paragraphs with blank lines', () => {
+    const adf = {
+      type: 'doc',
+      content: [
+        { type: 'paragraph', content: [{ type: 'text', text: 'first' }] },
+        { type: 'paragraph', content: [{ type: 'text', text: 'second' }] },
+      ],
+    };
+    expect(stripAdf(adf)).toBe('first\n\nsecond');
+  });
+
+  it('renders bullet lists with "- " prefixes', () => {
+    const adf = {
+      type: 'doc',
+      content: [
+        {
+          type: 'bulletList',
+          content: [
+            { type: 'listItem', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'a' }] }] },
+            { type: 'listItem', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'b' }] }] },
+          ],
+        },
+      ],
+    };
+    expect(stripAdf(adf)).toContain('- a');
+    expect(stripAdf(adf)).toContain('- b');
+  });
+
+  it('emits a placeholder for image/media nodes', () => {
+    const adf = {
+      type: 'doc',
+      content: [
+        {
+          type: 'mediaSingle',
+          content: [{ type: 'media', attrs: { alt: 'login-screen.png' } }],
+        },
+      ],
+    };
+    expect(stripAdf(adf)).toContain('[📎 login-screen.png]');
   });
 
   it('returns empty string for null / undefined / malformed input', () => {

@@ -197,6 +197,14 @@ model Ticket {
   priority         TicketPriority @default(MEDIUM)
   teamId           String
   complexityPoints Int?           // 1–10, nullable until groomed
+  // Jira assignee as reported by Jira — kept even when we can't match
+  // the email to a local user, so the UI can show "assigned to John
+  // Doe in Jira (no local account yet)".
+  jiraAssigneeName  String?
+  jiraAssigneeEmail String?
+  // Count of image attachments on the Jira issue — drives an 'X
+  // images in Jira' hint in the UI since we don't proxy the bytes.
+  jiraAttachmentCount Int @default(0)
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
   syncedAt         DateTime?

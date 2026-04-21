@@ -30,19 +30,124 @@ export function mapJiraPriority(jiraPriority: string): TicketPriority {
   return 'LOW';
 }
 
+// ADF (Atlassian Document Format) → plain text that keeps paragraph
+// structure. Blocks are separated by blank lines, hard-breaks by a
+// single newline, list items are prefixed with "- ". Images are
+// emitted as "[image: <name>]" placeholders because the bytes live
+// behind Jira auth — rendering them would need a backend proxy.
+type AdfNode = {
+  type?: string;
+  text?: string;
+  content?: AdfNode[];
+  attrs?: Record<string, unknown>;
+};
+
+function walkInline(node: AdfNode): string {
+  if (!node) return '';
+  if (node.type === 'text') return node.text ?? '';
+  if (node.type === 'hardBreak') return '\n';
+  if (node.type === 'mention') {
+    const text = (node.attrs?.text as string | undefined) ?? '';
+    return text || (node.attrs?.displayName as string | undefined) || '@user';
+  }
+  if (node.type === 'emoji') {
+    return (node.attrs?.shortName as string | undefined) ?? '';
+  }
+  if (Array.isArray(node.content)) {
+    return node.content.map(walkInline).join('');
+  }
+  return '';
+}
+
+function walkBlock(node: AdfNode, depth = 0): string {
+  if (!node) return '';
+  switch (node.type) {
+    case 'paragraph':
+      return (node.content ?? []).map(walkInline).join('').trimEnd();
+    case 'heading':
+      // Represent Jira headings with markdown-style prefixes so they
+      // stand out in the plain-text rendering without needing a
+      // markdown renderer on the client.
+      return '#'.repeat(Math.min(3, Number(node.attrs?.level) || 1)) +
+        ' ' + (node.content ?? []).map(walkInline).join('');
+    case 'bulletList':
+    case 'orderedList':
+      return (node.content ?? [])
+        .map((li, i) => {
+          const prefix = node.type === 'orderedList' ? `${i + 1}. ` : '- ';
+          const inner = (li.content ?? []).map((n) => walkBlock(n, depth + 1)).join('\n');
+          return ' '.repeat(depth * 2) + prefix + inner.replace(/\n/g, '\n' + ' '.repeat((depth + 1) * 2));
+        })
+        .join('\n');
+    case 'codeBlock':
+      return '```\n' + (node.content ?? []).map(walkInline).join('') + '\n```';
+    case 'blockquote':
+      return (node.content ?? [])
+        .map((b) => walkBlock(b, depth))
+        .join('\n\n')
+        .replace(/^/gm, '> ');
+    case 'rule':
+      return '---';
+    case 'mediaSingle':
+    case 'mediaGroup':
+    case 'media':
+      // Image/attachment reference. Best-effort name/altText surface.
+      // The actual binary is gated behind Jira auth; we surface a
+      // placeholder so the prose still reads coherently.
+      return _walkMediaPlaceholder(node);
+    default:
+      // Unknown block type — fall back to walking any nested content
+      // so we don't drop prose inside tables, panels, etc.
+      if (Array.isArray(node.content)) {
+        return node.content.map((c) => walkBlock(c, depth)).join('\n\n');
+      }
+      return '';
+  }
+}
+
+function _walkMediaPlaceholder(node: AdfNode): string {
+  const findMedia = (n: AdfNode): AdfNode | null => {
+    if (n.type === 'media') return n;
+    for (const c of n.content ?? []) {
+      const m = findMedia(c);
+      if (m) return m;
+    }
+    return null;
+  };
+  const m = findMedia(node);
+  const name =
+    (m?.attrs?.alt as string | undefined) ||
+    (m?.attrs?.name as string | undefined) ||
+    'image';
+  return `[📎 ${name}]`;
+}
+
 export function stripAdf(description: unknown): string {
   if (!description || typeof description !== 'object') return '';
   try {
-    const doc = description as { content?: Array<{ content?: Array<{ text?: string }> }> };
-    return (
-      doc.content
-        ?.flatMap((block) => block.content?.map((inline) => inline.text || '') || [])
-        .join(' ')
-        .trim() || ''
-    );
+    const doc = description as AdfNode;
+    const blocks = (doc.content ?? []).map((b) => walkBlock(b)).filter((s) => s.length > 0);
+    return blocks.join('\n\n').trim();
   } catch {
     return '';
   }
+}
+
+// Count media nodes (images + attachments) in an ADF tree so the UI
+// can show a "X attachments in Jira" hint.
+export function countAdfMedia(description: unknown): number {
+  if (!description || typeof description !== 'object') return 0;
+  let n = 0;
+  const walk = (node: AdfNode) => {
+    if (node.type === 'media') n++;
+    for (const c of node.content ?? []) walk(c);
+  };
+  try {
+    walk(description as AdfNode);
+  } catch {
+    return 0;
+  }
+  return n;
 }
 
 interface JiraIssue {
@@ -170,6 +275,12 @@ async function upsertJiraIssue(
   defaultTeamId: string,
   orgId: string,
 ): Promise<void> {
+  // Keep the raw Jira assignee metadata on the ticket regardless of
+  // whether we can match the email to a local user. Lets the UI show
+  // 'assigned to John Doe in Jira (no local account)'.
+  const jiraAssignee = issue.fields.assignee ?? null;
+  const mediaCount = countAdfMedia(issue.fields.description);
+
   const ticket = await prisma.ticket.upsert({
     where: { jiraKey: issue.key },
     create: {
@@ -182,6 +293,9 @@ async function upsertJiraIssue(
       priority: mapJiraPriority(issue.fields.priority?.name ?? ''),
       teamId: defaultTeamId,
       syncedAt: new Date(),
+      jiraAssigneeName: jiraAssignee?.displayName ?? null,
+      jiraAssigneeEmail: jiraAssignee?.emailAddress ?? null,
+      jiraAttachmentCount: mediaCount,
     },
     update: {
       title: issue.fields.summary,
@@ -189,6 +303,9 @@ async function upsertJiraIssue(
       status: mapJiraStatus(issue.fields.status?.name ?? ''),
       priority: mapJiraPriority(issue.fields.priority?.name ?? ''),
       syncedAt: new Date(),
+      jiraAssigneeName: jiraAssignee?.displayName ?? null,
+      jiraAssigneeEmail: jiraAssignee?.emailAddress ?? null,
+      jiraAttachmentCount: mediaCount,
     },
   });
 

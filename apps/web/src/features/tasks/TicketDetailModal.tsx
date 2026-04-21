@@ -162,6 +162,9 @@ export function TicketDetailModal({
     createdAt?: string | Date;
     updatedAt?: string | Date;
     syncedAt?: string | Date | null;
+    jiraAssigneeName?: string | null;
+    jiraAssigneeEmail?: string | null;
+    jiraAttachmentCount?: number;
   };
 
   const assigneeIds = new Set(ticket.assignees.map((a) => a.user.id));
@@ -414,17 +417,27 @@ export function TicketDetailModal({
                   </a>
                 )}
               </div>
-              <p className="mt-3 border-t border-info-text/10 pt-2 text-xs text-text-tertiary">
-                Title, description and priority are authoritative in Jira — edit there. Drag between columns to change status locally (won't push to Jira).
-              </p>
+              <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-info-text/10 pt-2 text-xs text-text-tertiary">
+                {(extended.jiraAttachmentCount ?? 0) > 0 && (
+                  <span className="flex items-center gap-1">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3">
+                      <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+                    </svg>
+                    {extended.jiraAttachmentCount} image{(extended.jiraAttachmentCount ?? 0) > 1 ? 's' : ''} in Jira — view there
+                  </span>
+                )}
+                <span className="ml-auto">Edit title/description/priority in Jira • drag columns locally</span>
+              </div>
             </section>
           )}
 
-          {/* Description */}
+          {/* Description — preserve paragraphs/lists from ADF */}
           {extended.description && (
             <section className="mb-5">
               <h3 className="mb-1.5 text-sm text-text-tertiary">Description</h3>
-              <p className="whitespace-pre-wrap text-base text-text-primary">{extended.description}</p>
+              <div className="whitespace-pre-wrap break-words text-base leading-relaxed text-text-primary">
+                {extended.description}
+              </div>
             </section>
           )}
 
@@ -483,6 +496,53 @@ export function TicketDetailModal({
               </button>
             )}
           </section>
+
+          {/* Jira assignee — the raw value reported by Jira, separate
+              from the local assignees mirror below. Surfaces the
+              Jira-side owner even when we couldn't match the email
+              to a Flowdruid user. */}
+          {ticket.source === 'JIRA' && extended.jiraAssigneeName && (
+            <section className="mb-5">
+              <h3 className="mb-1.5 text-sm text-text-tertiary">Jira assignee</h3>
+              {(() => {
+                const jiraEmail = extended.jiraAssigneeEmail ?? '';
+                const matched = ticket.assignees.find((a) => {
+                  // If the local user's id was added on sync, the link
+                  // is implicit — but we don't carry email back on the
+                  // ticket list payload, so fall back to name match.
+                  return a.user.name === extended.jiraAssigneeName;
+                });
+                return (
+                  <div className="rounded border border-border bg-surface-secondary p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <div>
+                        <p className="text-sm text-text-primary">{extended.jiraAssigneeName}</p>
+                        {jiraEmail && (
+                          <p className="mt-0.5 font-mono text-xs text-text-tertiary">{jiraEmail}</p>
+                        )}
+                      </div>
+                      {matched ? (
+                        <button
+                          onClick={() => openUser(matched.user.id)}
+                          className="flex items-center gap-1.5 rounded-pill bg-success-bg px-2 py-0.5 text-xs text-success-text hover:opacity-80"
+                        >
+                          <CheckIcon className="h-3 w-3" />
+                          Linked to {matched.user.name}
+                        </button>
+                      ) : (
+                        <span
+                          title="No Flowdruid user with this email — invite them to auto-link on the next sync."
+                          className="rounded-pill bg-warning-bg px-2 py-0.5 text-xs text-warning-text"
+                        >
+                          No local account
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
+            </section>
+          )}
 
           {/* Assignees */}
           <section className="mb-5">
