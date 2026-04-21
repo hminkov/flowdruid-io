@@ -55,6 +55,20 @@ describe('lib/encrypt', () => {
     expect(() => decrypt(`${iv}:${tamperedTag}:${ct}`)).toThrow();
   });
 
+  it('rejects a malformed (non-three-part) ciphertext with a clear message', () => {
+    // A plaintext placeholder accidentally stored in the DB (from an
+    // old seed, or a manual insert) must fail fast, not blow up with
+    // the cryptic Buffer.from(undefined) error we used to get.
+    expect(() => decrypt('PLACEHOLDER-REPLACE-VIA-UI')).toThrow(/malformed ciphertext/i);
+    expect(() => decrypt('only:two')).toThrow(/malformed ciphertext/i);
+  });
+
+  it('rejects empty / non-string input with a clear message', () => {
+    // @ts-expect-error intentionally passing wrong type
+    expect(() => decrypt(undefined)).toThrow(/non-empty string/i);
+    expect(() => decrypt('')).toThrow(/non-empty string/i);
+  });
+
   it('throws when ENCRYPTION_KEY is missing', () => {
     const prev = process.env.ENCRYPTION_KEY;
     delete process.env.ENCRYPTION_KEY;
