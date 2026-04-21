@@ -1,8 +1,11 @@
 import { z } from 'zod';
 
 export const saveSlackConfigSchema = z.object({
-  botToken: z.string().min(1),
-  signingSecret: z.string().min(1),
+  // Secrets are optional so admins can edit notification toggles without
+  // re-entering them every time. On first save (no existing config) the
+  // router rejects when they're missing.
+  botToken: z.string().min(1).optional(),
+  signingSecret: z.string().min(1).optional(),
   notifyStandup: z.boolean().default(true),
   notifyLeave: z.boolean().default(true),
   notifyBlocker: z.boolean().default(true),
@@ -13,7 +16,8 @@ export const saveSlackConfigSchema = z.object({
 export const saveJiraConfigSchema = z.object({
   baseUrl: z.string().url(),
   email: z.string().email(),
-  apiToken: z.string().min(1),
+  // Same treatment as Slack: optional on updates, required on first save.
+  apiToken: z.string().min(1).optional(),
   projectKeys: z.array(z.string().min(1)),
   syncInterval: z.number().int().min(5).max(60).default(15),
 });

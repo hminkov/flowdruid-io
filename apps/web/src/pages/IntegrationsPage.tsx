@@ -19,6 +19,9 @@ export function IntegrationsPage() {
   const [slackNotifyBlocker, setSlackNotifyBlocker] = useState(true);
   const [slackNotifyDone, setSlackNotifyDone] = useState(false);
   const [slackNotifyBroadcast, setSlackNotifyBroadcast] = useState(true);
+  // When already connected, default to read-only creds + toggle-only
+  // saves. The admin has to click Edit to reveal the token inputs.
+  const [slackEditCreds, setSlackEditCreds] = useState(false);
 
   // Jira
   const [jiraBaseUrl, setJiraBaseUrl] = useState('');
@@ -26,6 +29,7 @@ export function IntegrationsPage() {
   const [jiraApiToken, setJiraApiToken] = useState('');
   const [jiraProjectKeys, setJiraProjectKeys] = useState('');
   const [jiraSyncInterval, setJiraSyncInterval] = useState(15);
+  const [jiraEditCreds, setJiraEditCreds] = useState(false);
 
   const utils = trpc.useUtils();
   const toast = useToast();
@@ -38,6 +42,9 @@ export function IntegrationsPage() {
   const saveSlack = trpc.integrations.saveSlackConfig.useMutation({
     onSuccess: () => {
       utils.integrations.getSlackConfig.invalidate();
+      setSlackEditCreds(false);
+      setSlackBotToken('');
+      setSlackSigningSecret('');
       toast.push({ kind: 'success', title: 'Slack config saved' });
     },
     onError: (err) => toast.push({ kind: 'error', title: 'Save failed', message: err.message }),
@@ -50,6 +57,8 @@ export function IntegrationsPage() {
   const saveJira = trpc.integrations.saveJiraConfig.useMutation({
     onSuccess: () => {
       utils.integrations.getJiraConfig.invalidate();
+      setJiraEditCreds(false);
+      setJiraApiToken('');
       toast.push({ kind: 'success', title: 'Jira config saved' });
     },
     onError: (err) => toast.push({ kind: 'error', title: 'Save failed', message: err.message }),
@@ -70,11 +79,37 @@ export function IntegrationsPage() {
     }
   }, [testJira.data, jiraConfig.data?.projectKeys]);
 
+  // Hydrate editable toggles + Jira non-secret fields from the saved
+  // config. Runs each time the query returns fresh data (e.g. after save
+  // invalidation). Does NOT touch token fields — those stay blank in
+  // edit mode; the server-returned mask is shown separately when not.
+  useEffect(() => {
+    if (slackConfig.data) {
+      setSlackNotifyStandup(slackConfig.data.notifyStandup);
+      setSlackNotifyLeave(slackConfig.data.notifyLeave);
+      setSlackNotifyBlocker(slackConfig.data.notifyBlocker);
+      setSlackNotifyDone(slackConfig.data.notifyDone);
+      setSlackNotifyBroadcast(slackConfig.data.notifyBroadcast);
+    }
+  }, [slackConfig.data]);
+
+  useEffect(() => {
+    if (jiraConfig.data) {
+      setJiraBaseUrl(jiraConfig.data.baseUrl);
+      setJiraEmail(jiraConfig.data.email);
+      setJiraSyncInterval(jiraConfig.data.syncInterval);
+      setJiraProjectKeys(jiraConfig.data.projectKeys.join(', '));
+    }
+  }, [jiraConfig.data]);
+
   const handleSaveSlack = (e: FormEvent) => {
     e.preventDefault();
+    // Only include token fields when the admin is actively editing
+    // credentials. Sending them blank on every toggle change would wipe
+    // the saved values.
+    const sendingCreds = slackEditCreds || !slackConfig.data;
     saveSlack.mutate({
-      botToken: slackBotToken,
-      signingSecret: slackSigningSecret,
+      ...(sendingCreds ? { botToken: slackBotToken, signingSecret: slackSigningSecret } : {}),
       notifyStandup: slackNotifyStandup,
       notifyLeave: slackNotifyLeave,
       notifyBlocker: slackNotifyBlocker,
@@ -94,10 +129,11 @@ export function IntegrationsPage() {
             .map((k) => k.trim())
             .filter(Boolean);
 
+    const sendingToken = jiraEditCreds || !jiraConfig.data;
     saveJira.mutate({
       baseUrl: jiraBaseUrl,
       email: jiraEmail,
-      apiToken: jiraApiToken,
+      ...(sendingToken ? { apiToken: jiraApiToken } : {}),
       projectKeys: effectiveKeys,
       syncInterval: jiraSyncInterval,
     });
@@ -145,22 +181,64 @@ export function IntegrationsPage() {
         </div>
 
         <form onSubmit={handleSaveSlack} className="space-y-3">
-          <input
-            value={slackBotToken}
-            onChange={(e) => setSlackBotToken(e.target.value)}
-            type="password"
-            placeholder="Bot token (xoxb-…)"
-            required
-            className="min-h-input w-full rounded border border-border bg-surface-primary px-3 text-base text-text-primary placeholder:text-text-tertiary"
-          />
-          <input
-            value={slackSigningSecret}
-            onChange={(e) => setSlackSigningSecret(e.target.value)}
-            type="password"
-            placeholder="Signing secret"
-            required
-            className="min-h-input w-full rounded border border-border bg-surface-primary px-3 text-base text-text-primary placeholder:text-text-tertiary"
-          />
+          {slackConfig.data && !slackEditCreds ? (
+            <div className="space-y-2 rounded border border-border bg-surface-secondary p-3">
+              <div className="flex items-center justify-between">
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs text-text-tertiary">Bot token</p>
+                  <p className="truncate font-mono text-sm text-text-primary">
+                    {slackConfig.data.botToken}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSlackEditCreds(true)}
+                  className="ml-2 shrink-0 rounded border border-border bg-surface-primary px-3 py-1 text-xs text-text-secondary hover:text-text-primary"
+                >
+                  Edit credentials
+                </button>
+              </div>
+              <div>
+                <p className="text-xs text-text-tertiary">Signing secret</p>
+                <p className="truncate font-mono text-sm text-text-primary">
+                  {slackConfig.data.signingSecret}
+                </p>
+              </div>
+            </div>
+          ) : (
+            <>
+              <input
+                value={slackBotToken}
+                onChange={(e) => setSlackBotToken(e.target.value)}
+                type="password"
+                placeholder="Bot token (xoxb-…)"
+                required
+                autoFocus={slackEditCreds}
+                className="min-h-input w-full rounded border border-border bg-surface-primary px-3 text-base text-text-primary placeholder:text-text-tertiary"
+              />
+              <input
+                value={slackSigningSecret}
+                onChange={(e) => setSlackSigningSecret(e.target.value)}
+                type="password"
+                placeholder="Signing secret"
+                required
+                className="min-h-input w-full rounded border border-border bg-surface-primary px-3 text-base text-text-primary placeholder:text-text-tertiary"
+              />
+              {slackEditCreds && slackConfig.data && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSlackEditCreds(false);
+                    setSlackBotToken('');
+                    setSlackSigningSecret('');
+                  }}
+                  className="text-xs text-text-secondary underline-offset-2 hover:text-text-primary hover:underline"
+                >
+                  Cancel — keep existing credentials
+                </button>
+              )}
+            </>
+          )}
 
           <fieldset className="space-y-2 rounded border border-border bg-surface-secondary p-3">
             <legend className="px-1 text-xs text-text-tertiary">Notifications</legend>
@@ -249,14 +327,47 @@ export function IntegrationsPage() {
             required
             className="min-h-input w-full rounded border border-border bg-surface-primary px-3 text-base text-text-primary placeholder:text-text-tertiary"
           />
-          <input
-            value={jiraApiToken}
-            onChange={(e) => setJiraApiToken(e.target.value)}
-            type="password"
-            placeholder="API token"
-            required
-            className="min-h-input w-full rounded border border-border bg-surface-primary px-3 text-base text-text-primary placeholder:text-text-tertiary"
-          />
+          {jiraConfig.data && !jiraEditCreds ? (
+            <div className="flex items-center justify-between rounded border border-border bg-surface-secondary p-3">
+              <div className="min-w-0 flex-1">
+                <p className="text-xs text-text-tertiary">API token</p>
+                <p className="truncate font-mono text-sm text-text-primary">
+                  {jiraConfig.data.apiToken}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setJiraEditCreds(true)}
+                className="ml-2 shrink-0 rounded border border-border bg-surface-primary px-3 py-1 text-xs text-text-secondary hover:text-text-primary"
+              >
+                Edit token
+              </button>
+            </div>
+          ) : (
+            <>
+              <input
+                value={jiraApiToken}
+                onChange={(e) => setJiraApiToken(e.target.value)}
+                type="password"
+                placeholder="API token"
+                required
+                autoFocus={jiraEditCreds}
+                className="min-h-input w-full rounded border border-border bg-surface-primary px-3 text-base text-text-primary placeholder:text-text-tertiary"
+              />
+              {jiraEditCreds && jiraConfig.data && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setJiraEditCreds(false);
+                    setJiraApiToken('');
+                  }}
+                  className="text-xs text-text-secondary underline-offset-2 hover:text-text-primary hover:underline"
+                >
+                  Cancel — keep existing token
+                </button>
+              )}
+            </>
+          )}
           {testJira.data ? (
             <fieldset className="rounded border border-border bg-surface-secondary p-3">
               <legend className="px-1 text-xs text-text-tertiary">

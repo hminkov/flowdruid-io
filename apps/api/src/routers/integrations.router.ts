@@ -20,21 +20,42 @@ export const integrationsRouter = router({
   }),
 
   saveSlackConfig: adminProcedure.input(saveSlackConfigSchema).mutation(async ({ ctx, input }) => {
-    const data = {
-      botToken: encrypt(input.botToken),
-      signingSecret: encrypt(input.signingSecret),
-      notifyStandup: input.notifyStandup,
-      notifyLeave: input.notifyLeave,
-      notifyBlocker: input.notifyBlocker,
-      notifyDone: input.notifyDone,
-      notifyBroadcast: input.notifyBroadcast,
-    };
-
     return ctx.prisma.$transaction(async (tx) => {
       const before = await tx.slackConfig.findUnique({ where: { orgId: ctx.user.orgId } });
+
+      // First-time save must include both secrets; updates can omit them
+      // (admin is only toggling notification flags).
+      if (!before && (!input.botToken || !input.signingSecret)) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Bot token and signing secret are required for the first Slack connection',
+        });
+      }
+
+      const data = {
+        ...(input.botToken ? { botToken: encrypt(input.botToken) } : {}),
+        ...(input.signingSecret ? { signingSecret: encrypt(input.signingSecret) } : {}),
+        notifyStandup: input.notifyStandup,
+        notifyLeave: input.notifyLeave,
+        notifyBlocker: input.notifyBlocker,
+        notifyDone: input.notifyDone,
+        notifyBroadcast: input.notifyBroadcast,
+      };
+
       const saved = await tx.slackConfig.upsert({
         where: { orgId: ctx.user.orgId },
-        create: { orgId: ctx.user.orgId, ...data },
+        // Create branch only runs when `before` is null — and we've
+        // already guaranteed the secrets are present in that case.
+        create: {
+          orgId: ctx.user.orgId,
+          botToken: encrypt(input.botToken!),
+          signingSecret: encrypt(input.signingSecret!),
+          notifyStandup: input.notifyStandup,
+          notifyLeave: input.notifyLeave,
+          notifyBlocker: input.notifyBlocker,
+          notifyDone: input.notifyDone,
+          notifyBroadcast: input.notifyBroadcast,
+        },
         update: data,
       });
       // audit() auto-redacts botToken / signingSecret by key-name match.
@@ -92,19 +113,34 @@ export const integrationsRouter = router({
   }),
 
   saveJiraConfig: adminProcedure.input(saveJiraConfigSchema).mutation(async ({ ctx, input }) => {
-    const data = {
-      baseUrl: input.baseUrl,
-      email: input.email,
-      apiToken: encrypt(input.apiToken),
-      projectKeys: input.projectKeys,
-      syncInterval: input.syncInterval,
-    };
-
     return ctx.prisma.$transaction(async (tx) => {
       const before = await tx.jiraConfig.findUnique({ where: { orgId: ctx.user.orgId } });
+
+      if (!before && !input.apiToken) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'API token is required for the first Jira connection',
+        });
+      }
+
+      const data = {
+        baseUrl: input.baseUrl,
+        email: input.email,
+        ...(input.apiToken ? { apiToken: encrypt(input.apiToken) } : {}),
+        projectKeys: input.projectKeys,
+        syncInterval: input.syncInterval,
+      };
+
       const saved = await tx.jiraConfig.upsert({
         where: { orgId: ctx.user.orgId },
-        create: { orgId: ctx.user.orgId, ...data },
+        create: {
+          orgId: ctx.user.orgId,
+          baseUrl: input.baseUrl,
+          email: input.email,
+          apiToken: encrypt(input.apiToken!),
+          projectKeys: input.projectKeys,
+          syncInterval: input.syncInterval,
+        },
         update: data,
       });
       await audit({ prisma: tx, user: ctx.user }, 'JIRA_CONFIG_UPDATED', 'JiraConfig', saved.id, {
