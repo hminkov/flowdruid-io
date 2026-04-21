@@ -140,6 +140,7 @@ const navSections: { label: string; items: NavItem[] }[] = [
       { path: '/all-teams', label: 'All teams', minRole: 'TEAM_LEAD', icon: Icon.Teams },
       { path: '/admin/users', label: 'Users & roles', minRole: 'ADMIN', icon: Icon.Users },
       { path: '/admin/integrations', label: 'Integrations', minRole: 'ADMIN', icon: Icon.Integrations },
+      { path: '/admin/activity', label: 'Activity', minRole: 'TEAM_LEAD', icon: Icon.Audit },
       { path: '/admin/audit', label: 'Audit log', minRole: 'ADMIN', icon: Icon.Audit },
     ],
   },

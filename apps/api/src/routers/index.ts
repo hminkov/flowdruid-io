@@ -11,6 +11,7 @@ import { resourcesRouter } from './resources.router';
 import { notificationsRouter } from './notifications.router';
 import { messagesRouter } from './messages.router';
 import { auditLogRouter } from './auditLog.router';
+import { activityRouter } from './activity.router';
 
 export const appRouter = router({
   auth: authRouter,
@@ -25,6 +26,7 @@ export const appRouter = router({
   notifications: notificationsRouter,
   messages: messagesRouter,
   auditLog: auditLogRouter,
+  activity: activityRouter,
 });
 
 export type AppRouter = typeof appRouter;
