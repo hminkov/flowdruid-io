@@ -15,12 +15,15 @@ export const ticketsRouter = router({
     if (input.assigneeId) {
       baseWhere.assignees = { some: { userId: input.assigneeId } };
     }
+    // Jira-project filter only makes sense alongside source=JIRA.
+    // Match on jiraKey prefix so 'PAYBIS' catches 'PAYBIS-123', etc.
+    if (input.source === 'JIRA' && input.jiraProject) {
+      baseWhere.jiraKey = { startsWith: `${input.jiraProject}-` };
+    }
 
-    // Per-column caps. A freshly-synced Jira project can drop 10k+
-    // rows on the kanban; rendering that many cards in dnd-kit
-    // locks up the browser. Each column returns its top-N most
-    // recently updated tickets; older ones stay in the DB and are
-    // reachable via search + direct links.
+    // Per-column cap keeps the kanban snappy even with a 10k+
+    // backlog. A single column shows the most recent N; older rows
+    // surface on demand via the 'See older' button.
     const OPEN_STATUSES = [
       'TODO',
       'BLOCKED',
@@ -28,8 +31,8 @@ export const ticketsRouter = router({
       'IN_REVIEW',
       'READY_FOR_VERIFICATION',
     ] as const;
-    const PER_OPEN = 100;
-    const PER_DONE = 50;
+    const PER_OPEN = 15;
+    const PER_DONE = 15;
 
     const include = {
       assignees: {

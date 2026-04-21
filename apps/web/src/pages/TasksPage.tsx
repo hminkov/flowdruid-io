@@ -27,6 +27,7 @@ export function TasksPage() {
 
   // Filters — URL-persisted so links are shareable
   const [sourceFilter, setSourceFilter] = usePersistedState('source', '');
+  const [jiraProjectFilter, setJiraProjectFilter] = usePersistedState('jiraProject', '');
   const [priorityFilter, setPriorityFilter] = usePersistedState('priority', '');
   const [assigneeFilter, setAssigneeFilter] = usePersistedState('assignee', '');
   const [mineOnly, setMineOnly] = usePersistedState('mine', '');
@@ -44,9 +45,27 @@ export function TasksPage() {
   const listArgs = {
     teamId: isAdmin ? (adminTeam || undefined) : (user?.teamId ?? undefined),
     source: (sourceFilter || undefined) as Source | undefined,
+    // jiraProject is ignored server-side unless source=JIRA, but we
+    // still gate it client-side so the value doesn't linger in a URL
+    // after the user switches to Internal.
+    jiraProject:
+      sourceFilter === 'JIRA' && jiraProjectFilter ? jiraProjectFilter : undefined,
   };
   const ticketsQuery = trpc.tickets.list.useQuery(listArgs);
   const teamsQuery = trpc.teams.list.useQuery();
+  // Pull Jira project keys from whatever is currently loaded — this
+  // avoids needing an admin-only integrations query and stays in
+  // sync with what the user can actually see.
+  const allJiraKeys = useMemo(() => {
+    const keys = new Set<string>();
+    for (const t of ticketsQuery.data ?? []) {
+      if (t.source === 'JIRA' && t.jiraKey) {
+        const prefix = t.jiraKey.split('-')[0];
+        if (prefix) keys.add(prefix);
+      }
+    }
+    return [...keys].sort();
+  }, [ticketsQuery.data]);
 
   // Per-column expansion: when a user clicks 'See older work items',
   // we fetch that status with a bigger limit and keep the result in
@@ -72,11 +91,11 @@ export function TasksPage() {
     }
   };
 
-  // Reset expansions whenever the main list args (team/source) change
-  // so the user doesn't see stale tickets from a previous scope.
+  // Reset expansions whenever the main list args change so the user
+  // doesn't see stale tickets from a previous scope.
   useEffect(() => {
     setExpandedByStatus({});
-  }, [listArgs.teamId, listArgs.source]);
+  }, [listArgs.teamId, listArgs.source, listArgs.jiraProject]);
 
   const createMutation = trpc.tickets.create.useMutation({
     onSuccess: () => {
@@ -140,6 +159,7 @@ export function TasksPage() {
 
   const hasActiveFilters =
     !!sourceFilter ||
+    !!jiraProjectFilter ||
     !!priorityFilter ||
     !!assigneeFilter ||
     mineOnly === '1' ||
@@ -149,6 +169,7 @@ export function TasksPage() {
 
   const clearAll = () => {
     setSourceFilter('');
+    setJiraProjectFilter('');
     setPriorityFilter('');
     setAssigneeFilter('');
     setMineOnly('');
@@ -192,7 +213,10 @@ export function TasksPage() {
             ].map((s) => (
               <button
                 key={s.v || 'all'}
-                onClick={() => setSourceFilter(s.v)}
+                onClick={() => {
+                  setSourceFilter(s.v);
+                  if (s.v !== 'JIRA') setJiraProjectFilter('');
+                }}
                 className={`rounded-pill px-3 py-1 text-sm transition-colors duration-fast ${
                   sourceFilter === s.v
                     ? 'bg-brand-600 text-white'
@@ -203,6 +227,23 @@ export function TasksPage() {
               </button>
             ))}
           </div>
+
+          {/* Jira project — only when Jira source is selected */}
+          {sourceFilter === 'JIRA' && allJiraKeys.length > 0 && (
+            <select
+              value={jiraProjectFilter}
+              onChange={(e) => setJiraProjectFilter(e.target.value)}
+              className="min-h-8 rounded border border-border bg-surface-primary px-3 text-sm text-text-primary"
+              title="Filter by Jira project"
+            >
+              <option value="">All Jira projects</option>
+              {allJiraKeys.map((k) => (
+                <option key={k} value={k}>
+                  {k}
+                </option>
+              ))}
+            </select>
+          )}
 
           {/* Priority */}
           <div className="flex gap-1 rounded-pill border border-border bg-surface-primary p-0.5">

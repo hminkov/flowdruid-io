@@ -21,6 +21,9 @@ export const listTicketsSchema = z.object({
   teamId: z.string().optional(),
   status: z.enum(['TODO', 'BLOCKED', 'IN_PROGRESS', 'IN_REVIEW', 'READY_FOR_VERIFICATION', 'DONE']).optional(),
   source: z.enum(['INTERNAL', 'JIRA']).optional(),
+  // Jira project-key filter, e.g. 'PAYBIS'. Only applied when
+  // source=JIRA; ignored otherwise. Matches against jiraKey prefix.
+  jiraProject: z.string().min(1).max(64).optional(),
   assigneeId: z.string().optional(),
   // Per-call override for the default per-column cap. Only honoured
   // when `status` is set (i.e. the caller is explicitly pulling a
