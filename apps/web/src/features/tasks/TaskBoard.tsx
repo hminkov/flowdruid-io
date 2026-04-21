@@ -88,8 +88,10 @@ export function TaskBoard({ tickets, listArgs, initialOpenId }: Props) {
   const byStatus = useMemo(() => {
     const map: Record<TicketStatus, Ticket[]> = {
       TODO: [],
+      BLOCKED: [],
       IN_PROGRESS: [],
       IN_REVIEW: [],
+      READY_FOR_VERIFICATION: [],
       DONE: [],
     };
     for (const t of tickets) map[t.status].push(t);

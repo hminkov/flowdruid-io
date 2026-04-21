@@ -245,9 +245,13 @@ export function DashboardPage() {
   }, [standupsTodayQuery.data]);
 
   const activeTicketsByUser = useMemo(() => {
+    // "Active" = anything a dev is working on right now: BLOCKED counts
+    // because they're still the owner, IN_REVIEW and READY_FOR_VERIFICATION
+    // because they still need to shepherd the ticket to Done.
+    const ACTIVE = new Set(['BLOCKED', 'IN_PROGRESS', 'IN_REVIEW', 'READY_FOR_VERIFICATION']);
     const map = new Map<string, NonNullable<typeof ticketsQuery.data>>();
     for (const t of ticketsQuery.data ?? []) {
-      if (t.status !== 'IN_PROGRESS' && t.status !== 'IN_REVIEW') continue;
+      if (!ACTIVE.has(t.status)) continue;
       for (const a of t.assignees) {
         const bucket = map.get(a.user.id) ?? [];
         bucket.push(t);
