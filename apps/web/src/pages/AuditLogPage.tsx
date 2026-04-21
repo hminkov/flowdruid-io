@@ -1,34 +1,36 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { trpc } from '../lib/trpc';
 import { useUserDetail } from '../hooks/useUserDetail';
 import { Avatar, EmptyState } from '../components/ui';
 import { CalendarIcon, ChevronDownIcon } from '../components/icons';
 
-const ACTION_LABELS: Record<string, string> = {
-  USER_ROLE_CHANGED: 'Role changed',
-  USER_DEACTIVATED: 'User deactivated',
-  USER_CREATED: 'User created',
-  LEAVE_APPROVED: 'Leave approved',
-  LEAVE_DENIED: 'Leave denied',
-  LEAVE_DELETED: 'Leave deleted',
-  TICKET_DELETED: 'Ticket deleted',
-  TICKET_REASSIGNED: 'Ticket reassigned',
-  QA_ENV_CREATED: 'QA env created',
-  QA_ENV_UPDATED: 'QA env updated',
-  QA_ENV_DELETED: 'QA env deleted',
-  QA_BOOKING_CREATED: 'QA booking created',
-  QA_BOOKING_UPDATED: 'QA booking updated',
-  QA_BOOKING_DELETED: 'QA booking deleted',
-  TEAM_CREATED: 'Team created',
-  TEAM_DELETED: 'Team deleted',
-  PARKING_SPOT_CREATED: 'Parking spot added',
-  PARKING_SPOT_UPDATED: 'Parking spot updated',
-  PARKING_SPOT_DELETED: 'Parking spot removed',
-  PROD_SUPPORT_DELETED: 'Prod-support entry deleted',
-  SLACK_CONFIG_UPDATED: 'Slack config updated',
-  JIRA_CONFIG_UPDATED: 'Jira config updated',
-  BROADCAST_SENT: 'Broadcast sent',
-};
+// Action names are rendered verbatim (SCREAMING_SNAKE_CASE) to match
+// the Prisma enum. Mirrors the AUDIT_ACTIONS whitelist on the API.
+const ACTIONS = [
+  'USER_ROLE_CHANGED',
+  'USER_DEACTIVATED',
+  'USER_CREATED',
+  'LEAVE_APPROVED',
+  'LEAVE_DENIED',
+  'LEAVE_DELETED',
+  'TICKET_DELETED',
+  'TICKET_REASSIGNED',
+  'QA_ENV_CREATED',
+  'QA_ENV_UPDATED',
+  'QA_ENV_DELETED',
+  'QA_BOOKING_CREATED',
+  'QA_BOOKING_UPDATED',
+  'QA_BOOKING_DELETED',
+  'TEAM_CREATED',
+  'TEAM_DELETED',
+  'PARKING_SPOT_CREATED',
+  'PARKING_SPOT_UPDATED',
+  'PARKING_SPOT_DELETED',
+  'PROD_SUPPORT_DELETED',
+  'SLACK_CONFIG_UPDATED',
+  'JIRA_CONFIG_UPDATED',
+  'BROADCAST_SENT',
+] as const;
 
 const ACTION_TONES: Record<string, string> = {
   USER_ROLE_CHANGED: 'bg-brand-50 text-brand-600',
@@ -71,8 +73,6 @@ export function AuditLogPage() {
   });
   const usersQuery = trpc.users.list.useQuery();
   const entityTypesQuery = trpc.auditLog.entityTypes.useQuery();
-
-  const actions = useMemo(() => Object.keys(ACTION_LABELS), []);
 
   const toggle = (id: string) => {
     const next = new Set(expanded);
@@ -119,9 +119,9 @@ export function AuditLogPage() {
           className="min-h-input rounded border border-border bg-surface-primary px-3 text-sm text-text-primary"
         >
           <option value="">Any action</option>
-          {actions.map((a) => (
+          {ACTIONS.map((a) => (
             <option key={a} value={a}>
-              {ACTION_LABELS[a]}
+              {a}
             </option>
           ))}
         </select>
@@ -200,7 +200,7 @@ export function AuditLogPage() {
                   <span
                     className={`shrink-0 rounded-pill px-2 py-0.5 text-[11px] font-medium ${toneFor(row.action)}`}
                   >
-                    {ACTION_LABELS[row.action] ?? row.action}
+                    {row.action}
                   </span>
                   <span className="flex min-w-0 items-center gap-1.5 text-xs text-text-tertiary">
                     <span className="font-mono text-text-secondary">{row.entityType}</span>

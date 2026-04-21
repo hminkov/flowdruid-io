@@ -30,6 +30,7 @@ import { TicketShortlinkPage } from './pages/TicketShortlinkPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { InboxPage } from './pages/InboxPage';
 import { AuditLogPage } from './pages/AuditLogPage';
+import { ActivityPage } from './pages/ActivityPage';
 
 export function App() {
   const [trpcClient] = useState(createTrpcClient);
@@ -175,6 +176,14 @@ export function App() {
                 element={
                   <ProtectedRoute requiredRole="ADMIN">
                     <Layout><AuditLogPage /></Layout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/activity"
+                element={
+                  <ProtectedRoute requiredRole="TEAM_LEAD">
+                    <Layout><ActivityPage /></Layout>
                   </ProtectedRoute>
                 }
               />
