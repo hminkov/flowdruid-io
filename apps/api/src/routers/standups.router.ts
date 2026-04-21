@@ -50,6 +50,7 @@ export const standupsRouter = router({
       teamId: input.teamId,
       userId: ctx.user.id,
       userName: ctx.user.name,
+      yesterday: input.yesterday,
       today: input.today,
       capacityPct: input.capacityPct,
       blockers: input.blockers,

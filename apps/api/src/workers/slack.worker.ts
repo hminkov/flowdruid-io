@@ -43,12 +43,56 @@ export async function processSlackJob(job: Job<SlackJobData>) {
     case 'standup.posted': {
       if (!channelId) return;
       const capacity = job.data.capacityPct as number;
-      const bar = '█'.repeat(Math.round(capacity / 10)) + '░'.repeat(10 - Math.round(capacity / 10));
-      let text = `*${job.data.userName}* posted a standup:\n> *Today:* ${job.data.today}\n> *Capacity:* ${bar} ${capacity}%`;
-      if (job.data.blockers) {
-        text += `\n> :warning: *Blocker:* ${job.data.blockers}`;
+      // Map capacity bucket to a single emoji. A single character reads
+      // the same on every Slack client, unlike Unicode block-art which
+      // renders inconsistently on narrow/mobile views.
+      const capEmoji =
+        capacity >= 90 ? ':battery:' : capacity >= 60 ? ':zap:' : capacity >= 30 ? ':hourglass_flowing_sand:' : ':red_circle:';
+      const yesterday = (job.data.yesterday as string | undefined) ?? '';
+      const today = (job.data.today as string | undefined) ?? '';
+      const blockers = job.data.blockers as string | undefined;
+      const userName = job.data.userName as string;
+
+      // Block Kit gives us proper sections, field pairs, and a context
+      // footer. `text` is still required as a fallback for notifications
+      // and legacy clients.
+      const blocks: Array<Record<string, unknown>> = [
+        {
+          type: 'section',
+          text: {
+            type: 'mrkdwn',
+            text: `:memo: *${userName}* posted a standup`,
+          },
+        },
+        {
+          type: 'section',
+          fields: [
+            { type: 'mrkdwn', text: `*Yesterday*\n${yesterday || '_—_'}` },
+            { type: 'mrkdwn', text: `*Today*\n${today || '_—_'}` },
+          ],
+        },
+        {
+          type: 'section',
+          text: { type: 'mrkdwn', text: `*Capacity*  ${capEmoji}  ${capacity}%` },
+        },
+      ];
+
+      if (blockers && blockers.trim()) {
+        blocks.push({
+          type: 'section',
+          text: { type: 'mrkdwn', text: `:warning: *Blocker*\n${blockers}` },
+        });
       }
-      await client.chat.postMessage({ channel: channelId, text });
+
+      await client.chat.postMessage({
+        channel: channelId,
+        text: `${userName} posted a standup — ${capacity}% capacity${blockers ? ' (blocker)' : ''}`,
+        // Slack's KnownBlock union is strictly typed per block kind and
+        // our locally-shaped sections don't satisfy the discriminated
+        // union. The runtime shape is correct.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        blocks: blocks as any,
+      });
       break;
     }
 
