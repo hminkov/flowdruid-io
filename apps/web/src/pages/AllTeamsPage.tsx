@@ -42,6 +42,10 @@ export function AllTeamsPage() {
   const [broadcastMsg, setBroadcastMsg] = useState('');
   const [showCreateTeam, setShowCreateTeam] = useState(false);
   const [newTeamName, setNewTeamName] = useState('');
+  const [newTeamChannel, setNewTeamChannel] = useState('');
+  // Team whose Slack channel is currently being edited inline.
+  const [editingChannelFor, setEditingChannelFor] = useState<string | null>(null);
+  const [channelDraft, setChannelDraft] = useState('');
 
   const utils = trpc.useUtils();
   const toast = useToast();
@@ -79,11 +83,36 @@ export function AllTeamsPage() {
       utils.teams.list.invalidate();
       setShowCreateTeam(false);
       setNewTeamName('');
+      setNewTeamChannel('');
       toast.push({ kind: 'success', title: 'Team created' });
     },
     onError: (err) =>
       toast.push({ kind: 'error', title: 'Create failed', message: err.message }),
   });
+
+  const updateTeamMutation = trpc.teams.update.useMutation({
+    onSuccess: () => {
+      utils.teams.list.invalidate();
+      setEditingChannelFor(null);
+      toast.push({ kind: 'success', title: 'Slack channel saved' });
+    },
+    onError: (err) =>
+      toast.push({ kind: 'error', title: 'Save failed', message: err.message }),
+  });
+
+  const startEditChannel = (teamId: string, current: string | null) => {
+    setEditingChannelFor(teamId);
+    setChannelDraft(current ?? '');
+  };
+
+  const saveChannel = (teamId: string) => {
+    const trimmed = channelDraft.trim();
+    updateTeamMutation.mutate({
+      teamId,
+      // Send null to clear the channel; otherwise the trimmed string.
+      slackChannelId: trimmed === '' ? null : trimmed,
+    });
+  };
 
   const handleBroadcast = (e: FormEvent) => {
     e.preventDefault();
@@ -211,6 +240,58 @@ export function AllTeamsPage() {
             <div className="mt-3 border-t border-border pt-3 text-xs text-text-tertiary">
               {team._count.tickets} {team._count.tickets === 1 ? 'ticket' : 'tickets'}
             </div>
+
+            {user?.role === 'ADMIN' && (
+              <div className="mt-2 border-t border-border pt-2">
+                <div className="mb-1 flex items-center justify-between text-[11px] uppercase tracking-wider text-text-tertiary">
+                  <span>Slack channel</span>
+                  {editingChannelFor !== team.id && (
+                    <button
+                      type="button"
+                      onClick={() => startEditChannel(team.id, team.slackChannelId)}
+                      className="text-[11px] text-brand-600 hover:underline"
+                    >
+                      {team.slackChannelId ? 'Edit' : 'Set'}
+                    </button>
+                  )}
+                </div>
+                {editingChannelFor === team.id ? (
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      saveChannel(team.id);
+                    }}
+                    className="flex gap-1"
+                  >
+                    <input
+                      autoFocus
+                      value={channelDraft}
+                      onChange={(e) => setChannelDraft(e.target.value)}
+                      placeholder="C0123ABCD"
+                      className="min-h-input flex-1 rounded border border-border bg-surface-primary px-2 font-mono text-xs text-text-primary placeholder:text-text-tertiary"
+                    />
+                    <button
+                      type="submit"
+                      disabled={updateTeamMutation.isPending}
+                      className="min-h-input rounded bg-brand-600 px-2 text-xs text-white hover:bg-brand-800 disabled:opacity-60"
+                    >
+                      Save
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditingChannelFor(null)}
+                      className="min-h-input rounded px-2 text-xs text-text-secondary hover:bg-surface-secondary"
+                    >
+                      Cancel
+                    </button>
+                  </form>
+                ) : (
+                  <p className="font-mono text-xs text-text-secondary">
+                    {team.slackChannelId ?? <span className="text-text-tertiary">— not set —</span>}
+                  </p>
+                )}
+              </div>
+            )}
           </div>
           );
         })}
@@ -229,7 +310,10 @@ export function AllTeamsPage() {
             <form
               onSubmit={(e) => {
                 e.preventDefault();
-                createTeamMutation.mutate({ name: newTeamName });
+                createTeamMutation.mutate({
+                  name: newTeamName,
+                  slackChannelId: newTeamChannel.trim() || undefined,
+                });
               }}
               className="space-y-3"
             >
@@ -241,6 +325,17 @@ export function AllTeamsPage() {
                 autoFocus
                 className="min-h-input w-full rounded border border-border bg-surface-primary px-3 text-base text-text-primary placeholder:text-text-tertiary"
               />
+              <div>
+                <input
+                  value={newTeamChannel}
+                  onChange={(e) => setNewTeamChannel(e.target.value)}
+                  placeholder="Slack channel ID (optional, e.g. C0123ABCD)"
+                  className="min-h-input w-full rounded border border-border bg-surface-primary px-3 font-mono text-sm text-text-primary placeholder:text-text-tertiary"
+                />
+                <p className="mt-1 text-xs text-text-tertiary">
+                  Right-click channel in Slack → Copy link → last path segment.
+                </p>
+              </div>
               <div className="flex justify-end gap-2">
                 <button
                   type="button"
