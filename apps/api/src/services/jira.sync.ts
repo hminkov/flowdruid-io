@@ -3,11 +3,23 @@ import { decrypt } from '../lib/encrypt';
 import type { TicketStatus, TicketPriority } from '@prisma/client';
 
 export function mapJiraStatus(jiraStatus: string): TicketStatus {
-  const s = jiraStatus.toLowerCase();
-  if (s === 'to do' || s === 'open' || s === 'backlog') return 'TODO';
+  const s = jiraStatus.toLowerCase().trim();
+  if (s === 'to do' || s === 'open' || s === 'open issues' || s === 'backlog') return 'TODO';
+  if (s === 'blocked' || s === 'on hold') return 'BLOCKED';
   if (s === 'in progress') return 'IN_PROGRESS';
-  if (s === 'in review' || s === 'code review') return 'IN_REVIEW';
-  if (s === 'done' || s === 'closed' || s === 'resolved') return 'DONE';
+  if (
+    s === 'in review' ||
+    s === 'code review' ||
+    s === 'developer review' ||
+    s === 'dev review'
+  ) return 'IN_REVIEW';
+  if (
+    s === 'ready for verification' ||
+    s === 'ready for qa' ||
+    s === 'in qa' ||
+    s === 'qa'
+  ) return 'READY_FOR_VERIFICATION';
+  if (s === 'done' || s === 'closed' || s === 'resolved' || s === 'verified') return 'DONE';
   return 'TODO';
 }
 

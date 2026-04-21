@@ -28,9 +28,11 @@ enum LeaveStatus {
 }
 
 enum TicketStatus {
-  TODO
+  TODO                   // display: "Open issues"
+  BLOCKED
   IN_PROGRESS
-  IN_REVIEW
+  IN_REVIEW              // display: "Developer review"
+  READY_FOR_VERIFICATION
   DONE
 }
 

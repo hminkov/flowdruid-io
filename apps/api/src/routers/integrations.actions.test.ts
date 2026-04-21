@@ -56,12 +56,16 @@ describe('integrations: testSlack / testJira / broadcastSlack', () => {
   });
 
   describe('testJira', () => {
-    it('hits /rest/api/3/project via Basic auth built from stored creds', async () => {
+    it('hits /rest/api/3/project/search via Basic auth built from stored creds', async () => {
       const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-        new Response(JSON.stringify([{ key: 'DW', name: 'Deposit Withdrawal' }]), {
-          status: 200,
-          headers: { 'content-type': 'application/json' },
-        }) as unknown as Response,
+        // Modern Jira Cloud returns a { values, total } envelope.
+        new Response(
+          JSON.stringify({ values: [{ key: 'DW', name: 'Deposit Withdrawal' }], total: 1 }),
+          {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          },
+        ) as unknown as Response,
       );
 
       const org = await createOrg(testPrisma);
@@ -80,11 +84,12 @@ describe('integrations: testSlack / testJira / broadcastSlack', () => {
       const result = await asUser(admin).integrations.testJira();
       expect(result.success).toBe(true);
       expect(result.projects).toEqual([{ key: 'DW', name: 'Deposit Withdrawal' }]);
+      expect(result.total).toBe(1);
 
       // Confirm the call was Basic-auth'd with the decrypted token.
       expect(fetchSpy).toHaveBeenCalled();
       const [url, opts] = fetchSpy.mock.calls[0]!;
-      expect(url).toBe('https://acme.atlassian.net/rest/api/3/project');
+      expect(String(url)).toMatch(/\/rest\/api\/3\/project\/search/);
       const auth = (opts as { headers: Record<string, string> }).headers.Authorization;
       expect(auth).toMatch(/^Basic /);
       const decoded = Buffer.from(auth.slice(6), 'base64').toString();

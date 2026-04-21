@@ -12,14 +12,14 @@ export const updateTicketSchema = z.object({
   ticketId: z.string(),
   title: z.string().min(1).max(500).optional(),
   description: z.string().nullable().optional(),
-  status: z.enum(['TODO', 'IN_PROGRESS', 'IN_REVIEW', 'DONE']).optional(),
+  status: z.enum(['TODO', 'BLOCKED', 'IN_PROGRESS', 'IN_REVIEW', 'READY_FOR_VERIFICATION', 'DONE']).optional(),
   priority: z.enum(['LOW', 'MEDIUM', 'HIGH']).optional(),
   complexityPoints: z.number().int().min(1).max(10).nullable().optional(),
 });
 
 export const listTicketsSchema = z.object({
   teamId: z.string().optional(),
-  status: z.enum(['TODO', 'IN_PROGRESS', 'IN_REVIEW', 'DONE']).optional(),
+  status: z.enum(['TODO', 'BLOCKED', 'IN_PROGRESS', 'IN_REVIEW', 'READY_FOR_VERIFICATION', 'DONE']).optional(),
   source: z.enum(['INTERNAL', 'JIRA']).optional(),
   assigneeId: z.string().optional(),
 });

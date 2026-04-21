@@ -1,4 +1,10 @@
-export type TicketStatus = 'TODO' | 'IN_PROGRESS' | 'IN_REVIEW' | 'DONE';
+export type TicketStatus =
+  | 'TODO'
+  | 'BLOCKED'
+  | 'IN_PROGRESS'
+  | 'IN_REVIEW'
+  | 'READY_FOR_VERIFICATION'
+  | 'DONE';
 export type TicketPriority = 'LOW' | 'MEDIUM' | 'HIGH';
 export type TicketSource = 'INTERNAL' | 'JIRA';
 
@@ -18,15 +24,19 @@ export type Ticket = {
 
 export const STATUS_COLUMNS: readonly TicketStatus[] = [
   'TODO',
+  'BLOCKED',
   'IN_PROGRESS',
   'IN_REVIEW',
+  'READY_FOR_VERIFICATION',
   'DONE',
 ] as const;
 
 export const STATUS_LABELS: Record<TicketStatus, string> = {
-  TODO: 'To do',
+  TODO: 'Open issues',
+  BLOCKED: 'Blocked',
   IN_PROGRESS: 'In progress',
-  IN_REVIEW: 'In review',
+  IN_REVIEW: 'Developer review',
+  READY_FOR_VERIFICATION: 'Ready for verification',
   DONE: 'Done',
 };
 

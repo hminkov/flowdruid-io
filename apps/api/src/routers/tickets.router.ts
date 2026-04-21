@@ -46,7 +46,11 @@ export const ticketsRouter = router({
       where: {
         ...baseWhere,
         OR: [
-          { status: { in: ['TODO', 'IN_PROGRESS', 'IN_REVIEW'] } },
+          {
+            status: {
+              in: ['TODO', 'BLOCKED', 'IN_PROGRESS', 'IN_REVIEW', 'READY_FOR_VERIFICATION'],
+            },
+          },
           { status: 'DONE', ...doneCutoffWhere },
         ],
       },

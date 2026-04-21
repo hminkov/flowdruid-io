@@ -23,8 +23,10 @@ export type LeaveStatus = (typeof LeaveStatus)[keyof typeof LeaveStatus];
 
 export const TicketStatus = {
   TODO: 'TODO',
+  BLOCKED: 'BLOCKED',
   IN_PROGRESS: 'IN_PROGRESS',
   IN_REVIEW: 'IN_REVIEW',
+  READY_FOR_VERIFICATION: 'READY_FOR_VERIFICATION',
   DONE: 'DONE',
 } as const;
 export type TicketStatus = (typeof TicketStatus)[keyof typeof TicketStatus];
