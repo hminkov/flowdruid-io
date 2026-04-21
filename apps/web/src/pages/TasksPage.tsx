@@ -32,15 +32,17 @@ export function TasksPage() {
   const [mineOnly, setMineOnly] = usePersistedState('mine', '');
   const [unassignedOnly, setUnassignedOnly] = usePersistedState('unassigned', '');
   const [search, setSearch] = usePersistedState('q', '');
-  // Admin-only: narrow the cross-org board to a single team
+  // Admin-only team picker. Admins see all teams by default (empty =
+  // whole org). Non-admins are always scoped to their own team.
   const [adminTeam, setAdminTeam] = usePersistedState('team', '');
-  const isAdminWithoutTeam = user?.role === 'ADMIN' && !user.teamId;
+  const isAdmin = user?.role === 'ADMIN';
 
   const utils = trpc.useUtils();
 
-  // List arg only sends server-side filters; everything else is client-side
+  // Admins: adminTeam (empty string = no team filter = whole org).
+  // Non-admins: always pinned to their assigned team.
   const listArgs = {
-    teamId: user?.teamId ?? (isAdminWithoutTeam && adminTeam ? adminTeam : undefined),
+    teamId: isAdmin ? (adminTeam || undefined) : (user?.teamId ?? undefined),
     source: (sourceFilter || undefined) as Source | undefined,
   };
   const ticketsQuery = trpc.tickets.list.useQuery(listArgs);
@@ -101,7 +103,7 @@ export function TasksPage() {
     mineOnly === '1' ||
     unassignedOnly === '1' ||
     !!search ||
-    (isAdminWithoutTeam && !!adminTeam);
+    (isAdmin && !!adminTeam);
 
   const clearAll = () => {
     setSourceFilter('');
@@ -110,7 +112,7 @@ export function TasksPage() {
     setMineOnly('');
     setUnassignedOnly('');
     setSearch('');
-    if (isAdminWithoutTeam) setAdminTeam('');
+    if (isAdmin) setAdminTeam('');
   };
 
   // Deep-link: ?open=<ticketId> auto-opens the modal on mount
@@ -238,8 +240,9 @@ export function TasksPage() {
             ))}
           </select>
 
-          {/* Admin-only team scope */}
-          {isAdminWithoutTeam && (
+          {/* Admin-only team scope — admins can view any team's board,
+              not just their own, so cross-team work is visible. */}
+          {isAdmin && (
             <select
               value={adminTeam}
               onChange={(e) => setAdminTeam(e.target.value)}
