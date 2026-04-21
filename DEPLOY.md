@@ -106,6 +106,9 @@ Lives in git so every deploy follows the same steps.
 ## 6. Smoke tests
 
 - [ ] `curl https://<domain>/health` → `{"status":"ok","version":"…"}`.
+- [ ] `curl https://<domain>/ready` → 200, `checks.postgres.ok = true`,
+      `checks.redis.ok = true`. This is the one a load balancer should
+      poll, not `/health` — a degraded dep makes this endpoint 503.
 - [ ] Login flow works.
 - [ ] Create a ticket, drag to DONE, reload — state persisted.
 - [ ] Request a leave, approve as admin — requester's availability
@@ -114,27 +117,41 @@ Lives in git so every deploy follows the same steps.
 - [ ] Deliberately trigger a 500 (e.g. drop a tRPC procedure input
       mid-request) and confirm it lands in Sentry.
 
-## 7. Backups
+## 7. Backups (systemd timer)
 
-- [ ] Add cron on the VPS (as root or via `crontab -e`):
+The repo includes a backup script + systemd units; install them
+rather than rolling a cron by hand:
 
-    ```
-    0 3 * * * docker exec flowdruid-postgres-1 \
-      pg_dump -U flowdruid flowdruid \
-      | gzip > /var/backups/flowdruid/$(date +\%Y-\%m-\%d).sql.gz \
-      && find /var/backups/flowdruid -mtime +14 -delete
-    ```
+```bash
+sudo install -m 755 scripts/backup-postgres.sh /usr/local/bin/flowdruid-backup
+sudo install -m 644 systemd/flowdruid-backup.service /etc/systemd/system/
+sudo install -m 644 systemd/flowdruid-backup.timer /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now flowdruid-backup.timer
+# Verify: systemctl list-timers | grep flowdruid
+```
 
-- [ ] Weekly rsync to off-host storage (S3, Backblaze B2, or another
-      VPS). Without off-host copies, VPS disk loss = total data loss.
+- [ ] Manual trigger + inspect: `sudo systemctl start flowdruid-backup`,
+      then `ls /var/backups/flowdruid/` shows today's `.sql.gz`.
+- [ ] Restore-test: `gunzip -c <latest>.sql.gz | head -50` shows
+      a valid `pg_dump` header (`PostgreSQL database dump`).
+- [ ] Weekly rsync / rclone-sync to off-host storage (S3, Backblaze B2,
+      or another VPS). Without off-host copies, VPS disk loss = total
+      data loss.
 
 ## 8. Monitoring
 
-- [ ] UptimeRobot (or similar) pinging `/health` every 5 min.
-- [ ] Sentry project receiving events.
-- [ ] Optional: `pm2` / `systemd` / docker-compose `restart: unless-stopped`
-      — all three are fine; docker-compose `restart: unless-stopped` is
-      already set in `docker-compose.prod.yml`.
+- [ ] UptimeRobot (or similar) pinging `/ready` every 5 min — not
+      `/health` (that only proves the process is alive, not that the
+      app can actually serve requests).
+- [ ] Sentry project receiving events on both API and SPA.
+- [ ] docker-compose `restart: unless-stopped` is already set in
+      `docker-compose.prod.yml` — confirm with `docker compose ps`.
+- [ ] Graceful restart check: `docker compose kill -s SIGTERM api` then
+      watch the logs. You should see `shutdown initiated` → `http
+      server closed` → `workers drained` → `prisma disconnected`
+      within a few seconds. Container then exits cleanly and
+      docker-compose brings it back.
 
 ## 9. Post-deploy hygiene
 

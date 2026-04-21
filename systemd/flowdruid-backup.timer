@@ -1,0 +1,12 @@
+[Unit]
+Description=Run Flowdruid Postgres backup nightly
+
+[Timer]
+# 03:00 UTC every day. Pick UTC so the schedule doesn't drift with DST.
+OnCalendar=*-*-* 03:00:00 UTC
+# If the VPS was off at 03:00 UTC, run as soon as it comes back up.
+Persistent=true
+RandomizedDelaySec=30min
+
+[Install]
+WantedBy=timers.target

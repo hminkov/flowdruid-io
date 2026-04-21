@@ -63,7 +63,10 @@ describe('jira.sync ADF stripping', () => {
 });
 
 describe('syncJiraTickets end-to-end', () => {
-  let fetchSpy: ReturnType<typeof vi.spyOn>;
+  // The global fetch type overloads defeat ReturnType<typeof vi.spyOn>,
+  // so type this as any-ish and narrow via mock calls below.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let fetchSpy: any;
 
   beforeEach(() => {
     fetchSpy = vi.spyOn(globalThis, 'fetch');

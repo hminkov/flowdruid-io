@@ -56,4 +56,14 @@ describe('app — HTTP bootstrap smoke', () => {
     expect(res.headers['access-control-allow-credentials']).toBe('true');
     expect(res.headers['access-control-allow-origin']).toBe('http://localhost:5173');
   });
+
+  it('/ready returns 200 + per-dependency timings when Postgres + Redis are reachable', async () => {
+    const res = await request(app).get('/ready');
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe('ok');
+    expect(res.body.checks?.postgres?.ok).toBe(true);
+    expect(res.body.checks?.redis?.ok).toBe(true);
+    expect(typeof res.body.checks.postgres.ms).toBe('number');
+    expect(typeof res.body.checks.redis.ms).toBe('number');
+  });
 });

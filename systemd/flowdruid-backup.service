@@ -1,0 +1,15 @@
+[Unit]
+Description=Flowdruid Postgres nightly backup
+Wants=docker.service
+After=docker.service network-online.target
+
+[Service]
+Type=oneshot
+# Load optional overrides from /etc/default/flowdruid-backup (retention
+# days, off-host bucket, etc.) without breaking if the file is missing.
+EnvironmentFile=-/etc/default/flowdruid-backup
+ExecStart=/usr/local/bin/flowdruid-backup
+# Don't hold the CPU hostage on a small VPS.
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7

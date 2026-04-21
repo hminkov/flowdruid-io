@@ -15,6 +15,8 @@ import { createContext, type UserPayload } from './context';
 import { slackEventsHandler } from './middleware/slack-events';
 import { createSubscriber, eventPattern } from './lib/events';
 import { httpLogger, echoRequestId } from './lib/logger';
+import { prisma } from './lib/prisma';
+import { redis } from './lib/redis';
 
 /**
  * Build the Express app with every route + middleware wired.
@@ -85,8 +87,51 @@ export function createApp(): Express {
     next();
   });
 
+  // Shallow liveness check. Always 200 if the process is alive —
+  // used by the sidebar footer to read the running API version and
+  // by cheap uptime monitors that just want "is the box up?".
   app.get('/health', (_req, res) => {
     res.json({ status: 'ok', version: VERSION, timestamp: new Date().toISOString() });
+  });
+
+  // Deep readiness check. 200 only if every dependency we need to
+  // serve real requests is actually reachable. Load balancers should
+  // route traffic based on this one, not /health, so an unready node
+  // (Postgres down, Redis unreachable) is taken out of rotation.
+  app.get('/ready', async (_req, res) => {
+    const checks: Record<string, { ok: boolean; ms?: number; error?: string }> = {};
+
+    const check = async <T>(name: string, fn: () => Promise<T>): Promise<void> => {
+      const start = Date.now();
+      try {
+        // Race against a 2 s timeout — a dependency that takes longer is
+        // effectively down for request-serving purposes.
+        await Promise.race([
+          fn(),
+          new Promise<never>((_, rej) => setTimeout(() => rej(new Error('timeout')), 2000)),
+        ]);
+        checks[name] = { ok: true, ms: Date.now() - start };
+      } catch (err) {
+        checks[name] = {
+          ok: false,
+          ms: Date.now() - start,
+          error: err instanceof Error ? err.message : String(err),
+        };
+      }
+    };
+
+    await Promise.all([
+      check('postgres', () => prisma.$queryRaw`SELECT 1`),
+      check('redis', () => redis.ping()),
+    ]);
+
+    const allOk = Object.values(checks).every((c) => c.ok);
+    res.status(allOk ? 200 : 503).json({
+      status: allOk ? 'ok' : 'degraded',
+      version: VERSION,
+      timestamp: new Date().toISOString(),
+      checks,
+    });
   });
 
   app.get('/api/events', async (req, res) => {
