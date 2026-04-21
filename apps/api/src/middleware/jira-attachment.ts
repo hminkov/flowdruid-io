@@ -85,7 +85,13 @@ export async function jiraAttachmentHandler(req: Request, res: Response) {
       redirect: 'manual',
     });
 
-    if (jiraRes.status === 302 || jiraRes.status === 301 || jiraRes.status === 307) {
+    if (
+      jiraRes.status === 301 ||
+      jiraRes.status === 302 ||
+      jiraRes.status === 303 ||
+      jiraRes.status === 307 ||
+      jiraRes.status === 308
+    ) {
       const location = jiraRes.headers.get('location');
       if (!location) {
         res.status(502).json({ error: 'redirect without Location' });
