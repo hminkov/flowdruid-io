@@ -56,30 +56,70 @@ export const resourcesRouter = router({
     });
     if (!env) throw new TRPCError({ code: 'NOT_FOUND', message: 'Environment not found' });
 
-    return ctx.prisma.qaBooking.create({
-      data: { ...input },
-      include: {
-        devOwner: { select: { id: true, name: true, initials: true } },
-        qaOwner: { select: { id: true, name: true, initials: true } },
-      },
+    return ctx.prisma.$transaction(async (tx) => {
+      const booking = await tx.qaBooking.create({
+        data: { ...input },
+        include: {
+          devOwner: { select: { id: true, name: true, initials: true } },
+          qaOwner: { select: { id: true, name: true, initials: true } },
+        },
+      });
+      await audit({ prisma: tx, user: ctx.user }, 'QA_BOOKING_CREATED', 'QaBooking', booking.id, {
+        after: {
+          environmentId: booking.environmentId,
+          service: booking.service,
+          feature: booking.feature,
+          status: booking.status,
+          devOwnerId: booking.devOwnerId,
+          qaOwnerId: booking.qaOwnerId,
+        },
+      });
+      return booking;
     });
   }),
 
   updateQaBooking: leadProcedure.input(updateQaBookingSchema).mutation(async ({ ctx, input }) => {
     const { bookingId, ...data } = input;
-    const booking = await ctx.prisma.qaBooking.findFirst({
+    const before = await ctx.prisma.qaBooking.findFirst({
       where: { id: bookingId, environment: { orgId: ctx.user.orgId } },
-      select: { id: true },
-    });
-    if (!booking) throw new TRPCError({ code: 'NOT_FOUND' });
-
-    return ctx.prisma.qaBooking.update({
-      where: { id: bookingId },
-      data,
-      include: {
-        devOwner: { select: { id: true, name: true, initials: true } },
-        qaOwner: { select: { id: true, name: true, initials: true } },
+      select: {
+        id: true,
+        environmentId: true,
+        service: true,
+        feature: true,
+        status: true,
+        devOwnerId: true,
+        qaOwnerId: true,
       },
+    });
+    if (!before) throw new TRPCError({ code: 'NOT_FOUND' });
+
+    return ctx.prisma.$transaction(async (tx) => {
+      const after = await tx.qaBooking.update({
+        where: { id: bookingId },
+        data,
+        include: {
+          devOwner: { select: { id: true, name: true, initials: true } },
+          qaOwner: { select: { id: true, name: true, initials: true } },
+        },
+      });
+      await audit({ prisma: tx, user: ctx.user }, 'QA_BOOKING_UPDATED', 'QaBooking', bookingId, {
+        before: {
+          service: before.service,
+          feature: before.feature,
+          status: before.status,
+          devOwnerId: before.devOwnerId,
+          qaOwnerId: before.qaOwnerId,
+        },
+        after: {
+          service: after.service,
+          feature: after.feature,
+          status: after.status,
+          devOwnerId: after.devOwnerId,
+          qaOwnerId: after.qaOwnerId,
+        },
+      });
+      return after;
     });
   }),
 
@@ -185,14 +225,21 @@ export const resourcesRouter = router({
   updateParkingSpot: adminProcedure
     .input(updateParkingSpotSchema)
     .mutation(async ({ ctx, input }) => {
-      const spot = await ctx.prisma.parkingSpot.findFirst({
+      const before = await ctx.prisma.parkingSpot.findFirst({
         where: { id: input.spotId, orgId: ctx.user.orgId },
-        select: { id: true },
+        select: { id: true, name: true, order: true },
       });
-      if (!spot) throw new TRPCError({ code: 'NOT_FOUND' });
+      if (!before) throw new TRPCError({ code: 'NOT_FOUND' });
 
       const { spotId, ...data } = input;
-      return ctx.prisma.parkingSpot.update({ where: { id: spotId }, data });
+      return ctx.prisma.$transaction(async (tx) => {
+        const after = await tx.parkingSpot.update({ where: { id: spotId }, data });
+        await audit({ prisma: tx, user: ctx.user }, 'PARKING_SPOT_UPDATED', 'ParkingSpot', spotId, {
+          before: { name: before.name, order: before.order },
+          after: { name: after.name, order: after.order },
+        });
+        return after;
+      });
     }),
 
   deleteParkingSpot: adminProcedure
@@ -267,14 +314,31 @@ export const resourcesRouter = router({
   updateQaEnvironment: leadProcedure
     .input(updateQaEnvironmentSchema)
     .mutation(async ({ ctx, input }) => {
-      const env = await ctx.prisma.qaEnvironment.findFirst({
+      const before = await ctx.prisma.qaEnvironment.findFirst({
         where: { id: input.environmentId, orgId: ctx.user.orgId },
-        select: { id: true },
+        select: { id: true, name: true, branch: true, description: true, order: true },
       });
-      if (!env) throw new TRPCError({ code: 'NOT_FOUND' });
+      if (!before) throw new TRPCError({ code: 'NOT_FOUND' });
 
       const { environmentId, ...data } = input;
-      return ctx.prisma.qaEnvironment.update({ where: { id: environmentId }, data });
+      return ctx.prisma.$transaction(async (tx) => {
+        const after = await tx.qaEnvironment.update({ where: { id: environmentId }, data });
+        await audit({ prisma: tx, user: ctx.user }, 'QA_ENV_UPDATED', 'QaEnvironment', environmentId, {
+          before: {
+            name: before.name,
+            branch: before.branch,
+            description: before.description,
+            order: before.order,
+          },
+          after: {
+            name: after.name,
+            branch: after.branch,
+            description: after.description,
+            order: after.order,
+          },
+        });
+        return after;
+      });
     }),
 
   deleteQaEnvironment: adminProcedure
