@@ -16,6 +16,7 @@
     "@sentry/node": "^10.49.0",
     "@slack/web-api": "^7.15.1",
     "@trpc/server": "^11.0.0-rc.648",
+    "archiver": "^7.0.1",
     "bcryptjs": "^2.4.3",
     "bullmq": "^5.25.0",
     "cookie-parser": "^1.4.7",
@@ -33,6 +34,7 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@types/archiver": "^7.0.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/cookie-parser": "^1.4.7",
     "@types/cors": "^2.8.17",

@@ -14,6 +14,7 @@ import { appRouter } from './routers';
 import { createContext, type UserPayload } from './context';
 import { slackEventsHandler } from './middleware/slack-events';
 import { jiraAttachmentHandler } from './middleware/jira-attachment';
+import { jiraAttachmentZipHandler } from './middleware/jira-attachment-zip';
 import { createSubscriber, eventPattern } from './lib/events';
 import { httpLogger, echoRequestId } from './lib/logger';
 import { prisma } from './lib/prisma';
@@ -171,6 +172,7 @@ export function createApp(): Express {
   // API so <img> tags can render embedded Jira images. Auth via JWT
   // in the query string, same pattern as /api/events.
   app.get('/api/jira/attachments/:ticketId/:attachmentId', jiraAttachmentHandler);
+  app.get('/api/jira/attachments-zip/:ticketId', jiraAttachmentZipHandler);
 
   app.get('/api/events', async (req, res) => {
     const token = (req.query.token as string | undefined) ?? '';
