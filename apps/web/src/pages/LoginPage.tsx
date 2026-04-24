@@ -27,8 +27,16 @@ export function LoginPage() {
     try {
       await login(email, password);
       navigate('/dashboard');
-    } catch {
-      setError('Invalid email or password');
+    } catch (err: unknown) {
+      // Surface the server's lockout message verbatim so the user sees
+      // the wait time; keep the generic line for plain auth failures.
+      const code = (err as { data?: { code?: string } } | null)?.data?.code;
+      const message = (err as { message?: string } | null)?.message;
+      if (code === 'TOO_MANY_REQUESTS' && message) {
+        setError(message);
+      } else {
+        setError('Invalid email or password');
+      }
     } finally {
       setLoading(false);
     }

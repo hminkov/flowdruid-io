@@ -1,7 +1,21 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterAll, beforeEach } from 'vitest';
 import { testPrisma } from '../test/setup';
 import { createOrg, createUser, TEST_PASSWORD } from '../test/fixtures';
 import { asUser } from '../test/caller';
+import { redis } from '../lib/redis';
+
+// Per-email login failures are tracked in Redis, which isn't wiped by
+// the Postgres-only beforeEach. Clear them around every test so a
+// counter from one test can't lock out another.
+beforeEach(async () => {
+  const keys = await redis.keys('login:fail:*');
+  if (keys.length) await redis.del(keys);
+});
+
+afterAll(async () => {
+  const keys = await redis.keys('login:fail:*');
+  if (keys.length) await redis.del(keys);
+});
 
 describe('auth.router', () => {
   it('login returns an access token on correct password', async () => {
@@ -24,7 +38,7 @@ describe('auth.router', () => {
     await createUser(testPrisma, { orgId: org.id, email: 'someone@acme.com' });
 
     await expect(
-      asUser().auth.login({ email: 'someone@acme.com', password: 'nope' }),
+      asUser().auth.login({ email: 'someone@acme.com', password: 'wrong-password' }),
     ).rejects.toThrow();
   });
 
@@ -32,6 +46,50 @@ describe('auth.router', () => {
     await expect(
       asUser().auth.login({ email: 'nobody@acme.com', password: TEST_PASSWORD }),
     ).rejects.toThrow();
+  });
+
+  it('locks out the account after 5 failed attempts and rejects even a correct password', async () => {
+    const org = await createOrg(testPrisma);
+    await createUser(testPrisma, { orgId: org.id, email: 'lockme@acme.com' });
+
+    for (let i = 0; i < 4; i++) {
+      await expect(
+        asUser().auth.login({ email: 'lockme@acme.com', password: 'wrong-password' }),
+      ).rejects.toThrow(/Invalid credentials/i);
+    }
+    // The 5th failure flips the lock and surfaces the wait-time message.
+    await expect(
+      asUser().auth.login({ email: 'lockme@acme.com', password: 'wrong-password' }),
+    ).rejects.toThrow(/Too many failed attempts/i);
+    // Correct password during lockout is still rejected.
+    await expect(
+      asUser().auth.login({ email: 'lockme@acme.com', password: TEST_PASSWORD }),
+    ).rejects.toThrow(/Too many failed attempts/i);
+  });
+
+  it('a successful login resets the failed-attempt counter', async () => {
+    const org = await createOrg(testPrisma);
+    await createUser(testPrisma, { orgId: org.id, email: 'reset@acme.com' });
+
+    for (let i = 0; i < 4; i++) {
+      await expect(
+        asUser().auth.login({ email: 'reset@acme.com', password: 'wrong-password' }),
+      ).rejects.toThrow(/Invalid credentials/i);
+    }
+    // Good password goes through and clears the counter.
+    const ok = await asUser().auth.login({
+      email: 'reset@acme.com',
+      password: TEST_PASSWORD,
+    });
+    expect(ok.accessToken).toBeTruthy();
+
+    // After the reset, 4 more failures should NOT trip the lock —
+    // the counter was zeroed by the successful login above.
+    for (let i = 0; i < 4; i++) {
+      await expect(
+        asUser().auth.login({ email: 'reset@acme.com', password: 'wrong-password' }),
+      ).rejects.toThrow(/Invalid credentials/i);
+    }
   });
 
   it('refuses login for a deactivated user', async () => {

@@ -5,6 +5,12 @@ import crypto from 'crypto';
 import { loginSchema } from '@flowdruid/shared';
 import { router, publicProcedure, protectedProcedure } from '../trpc';
 import type { UserPayload } from '../context';
+import { getLockState, recordFailure, resetFailures } from '../lib/login-lock';
+
+function lockoutMessage(retryAfterSec: number): string {
+  const minutes = Math.max(1, Math.ceil(retryAfterSec / 60));
+  return `Too many failed attempts. Try again in ${minutes} minute${minutes === 1 ? '' : 's'}.`;
+}
 
 const ACCESS_TOKEN_EXPIRY = '15m';
 const REFRESH_TOKEN_EXPIRY_DAYS = 7;
@@ -19,6 +25,14 @@ function generateRefreshToken(): string {
 
 export const authRouter = router({
   login: publicProcedure.input(loginSchema).mutation(async ({ ctx, input }) => {
+    const lock = await getLockState(input.email);
+    if (lock.locked) {
+      throw new TRPCError({
+        code: 'TOO_MANY_REQUESTS',
+        message: lockoutMessage(lock.retryAfterSec),
+      });
+    }
+
     const user = await ctx.prisma.user.findUnique({
       where: { email: input.email },
       include: { org: { select: { deletedAt: true } } },
@@ -30,8 +44,17 @@ export const authRouter = router({
 
     const valid = await bcrypt.compare(input.password, user.passwordHash);
     if (!valid) {
+      const failure = await recordFailure(input.email);
+      if (failure.lockedNow) {
+        throw new TRPCError({
+          code: 'TOO_MANY_REQUESTS',
+          message: lockoutMessage(failure.retryAfterSec),
+        });
+      }
       throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Invalid credentials' });
     }
+
+    await resetFailures(input.email);
 
     const payload: UserPayload = {
       id: user.id,
