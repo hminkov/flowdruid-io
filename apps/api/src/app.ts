@@ -98,28 +98,22 @@ export function createApp(): Express {
   app.use(express.json());
   app.use(cookieParser());
 
-  // Per-IP rate limit on auth endpoints. 10 attempts per 15 min window.
-  // skipSuccessfulRequests ensures a valid login doesn't count toward
-  // the quota — only failures + retries do, which is what catches
-  // credential stuffing.
+  // Per-IP rate limit for refresh/register. Login is intentionally
+  // excluded — its per-email lockout (5 fails / 10 min) is stricter
+  // and surfaces a tRPC error the UI can render with a real counter.
+  // The express limiter writes a non-tRPC JSON response that the
+  // frontend can't parse, so layering it on top would silently mask
+  // the per-email counter.
   const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     limit: 10,
     standardHeaders: 'draft-7',
     legacyHeaders: false,
-    message: { error: 'Too many login attempts, try again later.' },
+    message: { error: 'Too many requests, try again later.' },
     skipSuccessfulRequests: true,
   });
-  const authRoutes = new Set(['auth.login', 'auth.refresh', 'auth.register']);
-  app.use('/trpc/auth.login', authLimiter);
   app.use('/trpc/auth.refresh', authLimiter);
   app.use('/trpc/auth.register', authLimiter);
-  app.use((req, res, next) => {
-    if (req.path.startsWith('/trpc/') && [...authRoutes].some((r) => req.path.includes(r))) {
-      return authLimiter(req, res, next);
-    }
-    next();
-  });
 
   // Shallow liveness check. Always 200 if the process is alive —
   // used by the sidebar footer to read the running API version and
