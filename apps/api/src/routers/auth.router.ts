@@ -5,11 +5,26 @@ import crypto from 'crypto';
 import { loginSchema } from '@flowdruid/shared';
 import { router, publicProcedure, protectedProcedure } from '../trpc';
 import type { UserPayload } from '../context';
-import { getLockState, recordFailure, resetFailures } from '../lib/login-lock';
+import {
+  MAX_LOGIN_ATTEMPTS,
+  getLockState,
+  recordFailure,
+  resetFailures,
+} from '../lib/login-lock';
 
 function lockoutMessage(retryAfterSec: number): string {
   const minutes = Math.max(1, Math.ceil(retryAfterSec / 60));
   return `Too many failed attempts. Try again in ${minutes} minute${minutes === 1 ? '' : 's'}.`;
+}
+
+// Builds the "Invalid credentials. N attempts remaining." message.
+// `count` is the post-increment failure count from recordFailure;
+// if Redis was unreachable it comes back as 0 — in that case we
+// quietly drop the counter rather than show a misleading number.
+function invalidCredentialsMessage(count: number): string {
+  if (count <= 0) return 'Invalid credentials';
+  const remaining = Math.max(0, MAX_LOGIN_ATTEMPTS - count);
+  return `Invalid credentials. ${remaining} attempt${remaining === 1 ? '' : 's'} remaining.`;
 }
 
 const ACCESS_TOKEN_EXPIRY = '15m';
@@ -38,12 +53,14 @@ export const authRouter = router({
       include: { org: { select: { deletedAt: true } } },
     });
 
-    if (!user || !user.active || user.org.deletedAt) {
-      throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Invalid credentials' });
-    }
+    const eligible = !!user && user.active && !user.org.deletedAt;
+    const valid = eligible && (await bcrypt.compare(input.password, user.passwordHash));
 
-    const valid = await bcrypt.compare(input.password, user.passwordHash);
     if (!valid) {
+      // Record uniformly so unknown emails, deactivated users, and
+      // wrong passwords all surface the same counter — otherwise the
+      // presence/absence of "N attempts remaining" leaks which emails
+      // exist.
       const failure = await recordFailure(input.email);
       if (failure.lockedNow) {
         throw new TRPCError({
@@ -51,7 +68,10 @@ export const authRouter = router({
           message: lockoutMessage(failure.retryAfterSec),
         });
       }
-      throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Invalid credentials' });
+      throw new TRPCError({
+        code: 'UNAUTHORIZED',
+        message: invalidCredentialsMessage(failure.count),
+      });
     }
 
     await resetFailures(input.email);

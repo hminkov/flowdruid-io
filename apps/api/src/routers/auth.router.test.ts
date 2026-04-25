@@ -67,6 +67,25 @@ describe('auth.router', () => {
     ).rejects.toThrow(/Too many failed attempts/i);
   });
 
+  it('failed-login error includes the remaining-attempts counter', async () => {
+    const org = await createOrg(testPrisma);
+    await createUser(testPrisma, { orgId: org.id, email: 'count@acme.com' });
+
+    await expect(
+      asUser().auth.login({ email: 'count@acme.com', password: 'wrong-password' }),
+    ).rejects.toThrow(/4 attempts remaining/i);
+    await expect(
+      asUser().auth.login({ email: 'count@acme.com', password: 'wrong-password' }),
+    ).rejects.toThrow(/3 attempts remaining/i);
+    // Singular form on the last attempt before lockout.
+    await asUser()
+      .auth.login({ email: 'count@acme.com', password: 'wrong-password' })
+      .catch(() => {});
+    await expect(
+      asUser().auth.login({ email: 'count@acme.com', password: 'wrong-password' }),
+    ).rejects.toThrow(/1 attempt remaining/i);
+  });
+
   it('a successful login resets the failed-attempt counter', async () => {
     const org = await createOrg(testPrisma);
     await createUser(testPrisma, { orgId: org.id, email: 'reset@acme.com' });

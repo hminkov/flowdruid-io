@@ -28,11 +28,13 @@ export function LoginPage() {
       await login(email, password);
       navigate('/dashboard');
     } catch (err: unknown) {
-      // Surface the server's lockout message verbatim so the user sees
-      // the wait time; keep the generic line for plain auth failures.
+      // Surface the server's message verbatim — it carries the
+      // attempt counter ("N attempts remaining") and the lockout
+      // wait time. Fall back to a generic line only for unexpected
+      // errors (network, etc.) where there's no useful code.
       const code = (err as { data?: { code?: string } } | null)?.data?.code;
       const message = (err as { message?: string } | null)?.message;
-      if (code === 'TOO_MANY_REQUESTS' && message) {
+      if ((code === 'UNAUTHORIZED' || code === 'TOO_MANY_REQUESTS') && message) {
         setError(message);
       } else {
         setError('Invalid email or password');
