@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { Logo } from '../components/ui/Logo';
@@ -12,16 +12,46 @@ import {
   SpinnerIcon,
 } from '../components/icons';
 
+function formatRemaining(sec: number): string {
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  return `${m}:${s.toString().padStart(2, '0')}`;
+}
+
 export function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  // Wall-clock timestamp (ms) when the lockout ends, or null if not
+  // locked. Storing the deadline (rather than a remaining-seconds
+  // counter) means the timer keeps ticking correctly across re-renders
+  // without us having to manage drift.
+  const [lockedUntil, setLockedUntil] = useState<number | null>(null);
+  const [nowMs, setNowMs] = useState(() => Date.now());
   const { login } = useAuth();
   const navigate = useNavigate();
 
+  // 1Hz tick while locked; clears itself the instant the lockout ends.
+  useEffect(() => {
+    if (lockedUntil === null) return;
+    const tick = () => {
+      const now = Date.now();
+      setNowMs(now);
+      if (now >= lockedUntil) setLockedUntil(null);
+    };
+    tick();
+    const id = window.setInterval(tick, 1000);
+    return () => window.clearInterval(id);
+  }, [lockedUntil]);
+
+  const remainingSec =
+    lockedUntil !== null ? Math.max(0, Math.ceil((lockedUntil - nowMs) / 1000)) : 0;
+  const locked = remainingSec > 0;
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    if (locked) return;
     setError('');
     setLoading(true);
     try {
@@ -32,8 +62,12 @@ export function LoginPage() {
       // attempt counter ("N attempts remaining") and the lockout
       // wait time. Fall back to a generic line only for unexpected
       // errors (network, etc.) where there's no useful code.
-      const code = (err as { data?: { code?: string } } | null)?.data?.code;
+      const data = (err as { data?: { code?: string; retryAfterSec?: number } } | null)?.data;
+      const code = data?.code;
       const message = (err as { message?: string } | null)?.message;
+      if (code === 'TOO_MANY_REQUESTS' && typeof data?.retryAfterSec === 'number') {
+        setLockedUntil(Date.now() + data.retryAfterSec * 1000);
+      }
       if ((code === 'UNAUTHORIZED' || code === 'TOO_MANY_REQUESTS') && message) {
         setError(message);
       } else {
@@ -129,11 +163,21 @@ export function LoginPage() {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
-              {error && (
+              {locked ? (
                 <div className="flex items-start gap-2 rounded border border-danger-text/20 bg-danger-bg p-3 text-sm text-danger-text">
                   <AlertIcon className="mt-0.5 h-4 w-4 shrink-0" />
-                  <span>{error}</span>
+                  <span>
+                    Too many failed attempts. Try again in{' '}
+                    <span className="font-mono">{formatRemaining(remainingSec)}</span>.
+                  </span>
                 </div>
+              ) : (
+                error && (
+                  <div className="flex items-start gap-2 rounded border border-danger-text/20 bg-danger-bg p-3 text-sm text-danger-text">
+                    <AlertIcon className="mt-0.5 h-4 w-4 shrink-0" />
+                    <span>{error}</span>
+                  </div>
+                )
               )}
 
               <div>
@@ -146,8 +190,9 @@ export function LoginPage() {
                     onChange={(e) => setEmail(e.target.value)}
                     required
                     autoFocus
+                    disabled={locked}
                     placeholder={emailPlaceholder()}
-                    className="min-h-input w-full rounded border border-border bg-surface-primary pl-10 pr-3 text-base text-text-primary placeholder:text-text-tertiary"
+                    className="min-h-input w-full rounded border border-border bg-surface-primary pl-10 pr-3 text-base text-text-primary placeholder:text-text-tertiary disabled:cursor-not-allowed disabled:opacity-60"
                   />
                 </div>
               </div>
@@ -161,18 +206,26 @@ export function LoginPage() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
+                    disabled={locked}
                     placeholder="••••••••"
-                    className="min-h-input w-full rounded border border-border bg-surface-primary pl-10 pr-3 text-base text-text-primary placeholder:text-text-tertiary"
+                    className="min-h-input w-full rounded border border-border bg-surface-primary pl-10 pr-3 text-base text-text-primary placeholder:text-text-tertiary disabled:cursor-not-allowed disabled:opacity-60"
                   />
                 </div>
               </div>
 
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || locked}
                 className="group flex min-h-input w-full items-center justify-center gap-2 rounded bg-brand-600 px-4 text-base text-white transition-all duration-fast hover:bg-brand-800 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {loading ? (
+                {locked ? (
+                  <>
+                    <LockIcon className="h-4 w-4" />
+                    <span>
+                      Locked — <span className="font-mono">{formatRemaining(remainingSec)}</span>
+                    </span>
+                  </>
+                ) : loading ? (
                   <>
                     <SpinnerIcon className="h-4 w-4" />
                     <span>Signing in…</span>

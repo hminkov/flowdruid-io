@@ -17,6 +17,16 @@ function lockoutMessage(retryAfterSec: number): string {
   return `Too many failed attempts. Try again in ${minutes} minute${minutes === 1 ? '' : 's'}.`;
 }
 
+// Builds a TRPCError whose `cause` carries retryAfterSec so the
+// errorFormatter can pass it through to the client for the countdown.
+function lockoutError(retryAfterSec: number): TRPCError {
+  return new TRPCError({
+    code: 'TOO_MANY_REQUESTS',
+    message: lockoutMessage(retryAfterSec),
+    cause: { retryAfterSec },
+  });
+}
+
 // Builds the "Invalid credentials. N attempts remaining." message.
 // `count` is the post-increment failure count from recordFailure;
 // if Redis was unreachable it comes back as 0 — in that case we
@@ -42,10 +52,7 @@ export const authRouter = router({
   login: publicProcedure.input(loginSchema).mutation(async ({ ctx, input }) => {
     const lock = await getLockState(input.email);
     if (lock.locked) {
-      throw new TRPCError({
-        code: 'TOO_MANY_REQUESTS',
-        message: lockoutMessage(lock.retryAfterSec),
-      });
+      throw lockoutError(lock.retryAfterSec);
     }
 
     const user = await ctx.prisma.user.findUnique({
@@ -63,10 +70,7 @@ export const authRouter = router({
       // exist.
       const failure = await recordFailure(input.email);
       if (failure.lockedNow) {
-        throw new TRPCError({
-          code: 'TOO_MANY_REQUESTS',
-          message: lockoutMessage(failure.retryAfterSec),
-        });
+        throw lockoutError(failure.retryAfterSec);
       }
       throw new TRPCError({
         code: 'UNAUTHORIZED',

@@ -5,6 +5,21 @@ import { hit as rateLimitHit } from './lib/rate-limit';
 
 const t = initTRPC.context<Context>().create({
   transformer: superjson,
+  // Surface optional `retryAfterSec` from a TRPCError's cause into
+  // error.data so the client can run a precise countdown timer
+  // instead of parsing it back out of the message string.
+  errorFormatter({ shape, error }) {
+    const cause = error.cause as { retryAfterSec?: unknown } | null | undefined;
+    const retryAfterSec =
+      cause && typeof cause.retryAfterSec === 'number' ? cause.retryAfterSec : undefined;
+    return {
+      ...shape,
+      data: {
+        ...shape.data,
+        ...(retryAfterSec !== undefined ? { retryAfterSec } : {}),
+      },
+    };
+  },
 });
 
 export const router = t.router;

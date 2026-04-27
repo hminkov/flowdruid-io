@@ -86,6 +86,24 @@ describe('auth.router', () => {
     ).rejects.toThrow(/1 attempt remaining/i);
   });
 
+  it('lockout error carries retryAfterSec so the UI can run a countdown', async () => {
+    const org = await createOrg(testPrisma);
+    await createUser(testPrisma, { orgId: org.id, email: 'timer@acme.com' });
+
+    let caught: unknown;
+    for (let i = 0; i < 5; i++) {
+      try {
+        await asUser().auth.login({ email: 'timer@acme.com', password: 'wrong-password' });
+      } catch (e) {
+        caught = e;
+      }
+    }
+    const cause = (caught as { cause?: { retryAfterSec?: number } } | null)?.cause;
+    expect(typeof cause?.retryAfterSec).toBe('number');
+    expect(cause?.retryAfterSec).toBeGreaterThan(0);
+    expect(cause?.retryAfterSec).toBeLessThanOrEqual(10 * 60);
+  });
+
   it('a successful login resets the failed-attempt counter', async () => {
     const org = await createOrg(testPrisma);
     await createUser(testPrisma, { orgId: org.id, email: 'reset@acme.com' });
