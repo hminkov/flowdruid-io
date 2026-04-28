@@ -256,6 +256,23 @@ describe('auth.router', () => {
       expect(ok.accessToken).toBeTruthy();
     });
 
+    it('writes an audit-log row when the password changes', async () => {
+      const org = await createOrg(testPrisma);
+      const user = await createUser(testPrisma, { orgId: org.id, email: 'pw-audit@acme.com' });
+
+      await asUser(user, { cookies: { refreshToken: 'this-session' } }).auth.changePassword({
+        currentPassword: TEST_PASSWORD,
+        newPassword: 'a-fresh-passw0rd',
+      });
+
+      const rows = await testPrisma.auditLog.findMany({
+        where: { action: 'USER_PASSWORD_CHANGED', entityId: user.id },
+      });
+      expect(rows).toHaveLength(1);
+      expect(rows[0]?.actorId).toBe(user.id);
+      expect(rows[0]?.entityType).toBe('User');
+    });
+
     it('rate-limits per user — 6th attempt in the window is rejected with retryAfterSec', async () => {
       const org = await createOrg(testPrisma);
       const user = await createUser(testPrisma, { orgId: org.id, email: 'pw-rate@acme.com' });

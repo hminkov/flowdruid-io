@@ -12,6 +12,7 @@ import {
   resetFailures,
 } from '../lib/login-lock';
 import { hit as rateLimitHit } from '../lib/rate-limit';
+import { audit } from '../lib/audit';
 
 function lockoutMessage(retryAfterSec: number): string {
   const minutes = Math.max(1, Math.ceil(retryAfterSec / 60));
@@ -223,12 +224,19 @@ export const authRouter = router({
           where: { id: user.id },
           data: { passwordHash: newHash },
         });
-        await tx.refreshToken.deleteMany({
+        const revoked = await tx.refreshToken.deleteMany({
           where: {
             userId: user.id,
             ...(currentRefresh ? { NOT: { token: currentRefresh } } : {}),
           },
         });
+        await audit(
+          { prisma: tx, user: ctx.user },
+          'USER_PASSWORD_CHANGED',
+          'User',
+          user.id,
+          { after: { sessionsRevoked: revoked.count } },
+        );
       });
       await resetFailures(user.email);
 
