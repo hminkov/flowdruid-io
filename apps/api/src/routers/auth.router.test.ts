@@ -1,8 +1,13 @@
 import { describe, it, expect, afterAll, beforeEach } from 'vitest';
+import crypto from 'crypto';
 import { testPrisma } from '../test/setup';
 import { createOrg, createUser, TEST_PASSWORD } from '../test/fixtures';
 import { asUser } from '../test/caller';
 import { redis } from '../lib/redis';
+
+function hashResetToken(token: string): string {
+  return crypto.createHash('sha256').update(token).digest('hex');
+}
 
 // Per-email login failures and per-user change-password rate limits
 // live in Redis, which isn't wiped by the Postgres-only beforeEach.
@@ -12,6 +17,7 @@ beforeEach(async () => {
   const keys = [
     ...(await redis.keys('login:fail:*')),
     ...(await redis.keys('rl:change-password:*')),
+    ...(await redis.keys('rl:password-reset-request:*')),
   ];
   if (keys.length) await redis.del(keys);
 });
@@ -20,6 +26,7 @@ afterAll(async () => {
   const keys = [
     ...(await redis.keys('login:fail:*')),
     ...(await redis.keys('rl:change-password:*')),
+    ...(await redis.keys('rl:password-reset-request:*')),
   ];
   if (keys.length) await redis.del(keys);
 });
@@ -327,6 +334,131 @@ describe('auth.router', () => {
         select: { token: true },
       });
       expect(survivors).toEqual([{ token: 'this-session' }]);
+    });
+  });
+
+  describe('password reset', () => {
+    it('requestPasswordReset creates a row for an existing user', async () => {
+      const org = await createOrg(testPrisma);
+      const user = await createUser(testPrisma, { orgId: org.id, email: 'reset-me@acme.com' });
+
+      const result = await asUser().auth.requestPasswordReset({ email: 'reset-me@acme.com' });
+      expect(result.success).toBe(true);
+
+      const tokens = await testPrisma.passwordResetToken.findMany({
+        where: { userId: user.id },
+      });
+      expect(tokens).toHaveLength(1);
+      expect(tokens[0]?.usedAt).toBeNull();
+      expect(tokens[0]?.expiresAt.getTime()).toBeGreaterThan(Date.now());
+    });
+
+    it('requestPasswordReset silently succeeds for an unknown email (no enumeration leak)', async () => {
+      const result = await asUser().auth.requestPasswordReset({ email: 'nobody@acme.com' });
+      expect(result.success).toBe(true);
+
+      const tokens = await testPrisma.passwordResetToken.findMany();
+      expect(tokens).toHaveLength(0);
+    });
+
+    it('resetPassword swaps the password hash and the new password works', async () => {
+      const org = await createOrg(testPrisma);
+      const user = await createUser(testPrisma, { orgId: org.id, email: 'reset-flow@acme.com' });
+
+      const plaintext = 'a'.repeat(64);
+      const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
+      await testPrisma.passwordResetToken.create({
+        data: { tokenHash: hashResetToken(plaintext), userId: user.id, expiresAt },
+      });
+
+      await asUser().auth.resetPassword({
+        token: plaintext,
+        newPassword: 'a-fresh-passw0rd',
+      });
+
+      const ok = await asUser().auth.login({
+        email: 'reset-flow@acme.com',
+        password: 'a-fresh-passw0rd',
+      });
+      expect(ok.accessToken).toBeTruthy();
+    });
+
+    it('resetPassword burns the token so it cannot be replayed', async () => {
+      const org = await createOrg(testPrisma);
+      const user = await createUser(testPrisma, { orgId: org.id, email: 'replay@acme.com' });
+      const plaintext = 'b'.repeat(64);
+      await testPrisma.passwordResetToken.create({
+        data: {
+          tokenHash: hashResetToken(plaintext),
+          userId: user.id,
+          expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+        },
+      });
+
+      await asUser().auth.resetPassword({ token: plaintext, newPassword: 'first-passw0rd' });
+      await expect(
+        asUser().auth.resetPassword({ token: plaintext, newPassword: 'second-passw0rd' }),
+      ).rejects.toThrow(/invalid or has expired/i);
+    });
+
+    it('resetPassword rejects an expired token', async () => {
+      const org = await createOrg(testPrisma);
+      const user = await createUser(testPrisma, { orgId: org.id, email: 'stale@acme.com' });
+      const plaintext = 'c'.repeat(64);
+      await testPrisma.passwordResetToken.create({
+        data: {
+          tokenHash: hashResetToken(plaintext),
+          userId: user.id,
+          expiresAt: new Date(Date.now() - 1_000),
+        },
+      });
+
+      await expect(
+        asUser().auth.resetPassword({ token: plaintext, newPassword: 'a-fresh-passw0rd' }),
+      ).rejects.toThrow(/invalid or has expired/i);
+    });
+
+    it('resetPassword revokes every refresh token + clears the failed-login lock', async () => {
+      const org = await createOrg(testPrisma);
+      const user = await createUser(testPrisma, { orgId: org.id, email: 'unlock@acme.com' });
+
+      // Pre-existing session + a tripped lockout from prior failures.
+      const inFuture = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+      await testPrisma.refreshToken.create({
+        data: { token: 'old-session', userId: user.id, expiresAt: inFuture },
+      });
+      for (let i = 0; i < 5; i++) {
+        await asUser()
+          .auth.login({ email: 'unlock@acme.com', password: 'wrong-password' })
+          .catch(() => {});
+      }
+
+      const plaintext = 'd'.repeat(64);
+      await testPrisma.passwordResetToken.create({
+        data: {
+          tokenHash: hashResetToken(plaintext),
+          userId: user.id,
+          expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+        },
+      });
+      await asUser().auth.resetPassword({ token: plaintext, newPassword: 'a-fresh-passw0rd' });
+
+      // Old session is gone.
+      const sessions = await testPrisma.refreshToken.findMany({ where: { userId: user.id } });
+      expect(sessions).toHaveLength(0);
+
+      // Login lockout cleared — the new password works immediately.
+      const ok = await asUser().auth.login({
+        email: 'unlock@acme.com',
+        password: 'a-fresh-passw0rd',
+      });
+      expect(ok.accessToken).toBeTruthy();
+
+      // Audit row written.
+      const audits = await testPrisma.auditLog.findMany({
+        where: { action: 'USER_PASSWORD_RESET', entityId: user.id },
+      });
+      expect(audits).toHaveLength(1);
     });
   });
 

@@ -2,7 +2,12 @@ import { TRPCError } from '@trpc/server';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
-import { loginSchema, changePasswordSchema } from '@flowdruid/shared';
+import {
+  loginSchema,
+  changePasswordSchema,
+  requestPasswordResetSchema,
+  resetPasswordSchema,
+} from '@flowdruid/shared';
 import { router, publicProcedure, protectedProcedure } from '../trpc';
 import type { UserPayload } from '../context';
 import {
@@ -13,6 +18,23 @@ import {
 } from '../lib/login-lock';
 import { hit as rateLimitHit } from '../lib/rate-limit';
 import { audit } from '../lib/audit';
+import { logger } from '../lib/logger';
+
+const PASSWORD_RESET_TTL_MIN = 60;
+
+function hashResetToken(token: string): string {
+  return crypto.createHash('sha256').update(token).digest('hex');
+}
+
+// Until SMTP/SES is wired up, log the reset link to the server log
+// at `info` level so a developer can copy it out during testing.
+// Production: swap this for a real email send. The signature stays
+// the same so no caller needs to change.
+function deliverPasswordResetLink(email: string, token: string): void {
+  const base = process.env.APP_URL ?? 'http://localhost:5173';
+  const url = `${base}/reset-password?token=${token}`;
+  logger.info({ email, url }, '[password-reset] link generated');
+}
 
 function lockoutMessage(retryAfterSec: number): string {
   const minutes = Math.max(1, Math.ceil(retryAfterSec / 60));
@@ -166,6 +188,100 @@ export const authRouter = router({
 
     return { accessToken, user: payload };
   }),
+
+  requestPasswordReset: publicProcedure
+    .input(requestPasswordResetSchema)
+    .mutation(async ({ ctx, input }) => {
+      // Per-email rate limit so the endpoint can't be used to flood a
+      // user with reset emails / log spam. 3 in 15 min is plenty for
+      // the legit "I keep mistyping my password" case.
+      const limit = await rateLimitHit(input.email.toLowerCase().trim(), {
+        scope: 'password-reset-request',
+        limit: 3,
+        windowSec: 15 * 60,
+      });
+      if (!limit.allowed) {
+        // Match the silent-success behaviour below — even when
+        // throttled we don't reveal whether the email is registered.
+        return { success: true };
+      }
+
+      const user = await ctx.prisma.user.findUnique({
+        where: { email: input.email },
+        include: { org: { select: { deletedAt: true } } },
+      });
+
+      if (user && user.active && !user.org.deletedAt) {
+        const token = crypto.randomBytes(32).toString('hex');
+        const tokenHash = hashResetToken(token);
+        const expiresAt = new Date(Date.now() + PASSWORD_RESET_TTL_MIN * 60 * 1000);
+        await ctx.prisma.passwordResetToken.create({
+          data: { tokenHash, userId: user.id, expiresAt },
+        });
+        deliverPasswordResetLink(user.email, token);
+      }
+
+      // Always reply success so an attacker can't tell whether an
+      // email is registered by watching the response.
+      return { success: true };
+    }),
+
+  resetPassword: publicProcedure
+    .input(resetPasswordSchema)
+    .mutation(async ({ ctx, input }) => {
+      const tokenHash = hashResetToken(input.token);
+      const stored = await ctx.prisma.passwordResetToken.findUnique({
+        where: { tokenHash },
+        include: { user: { include: { org: { select: { deletedAt: true } } } } },
+      });
+
+      if (
+        !stored ||
+        stored.usedAt !== null ||
+        stored.expiresAt < new Date() ||
+        !stored.user.active ||
+        stored.user.org.deletedAt
+      ) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'This reset link is invalid or has expired. Request a new one.',
+        });
+      }
+
+      const newHash = await bcrypt.hash(input.newPassword, 10);
+      await ctx.prisma.$transaction(async (tx) => {
+        await tx.user.update({
+          where: { id: stored.userId },
+          data: { passwordHash: newHash },
+        });
+        // Burn this token + every other outstanding reset token for
+        // this user so an older email floating around in someone's
+        // inbox can't be reused.
+        await tx.passwordResetToken.update({
+          where: { id: stored.id },
+          data: { usedAt: new Date() },
+        });
+        await tx.passwordResetToken.updateMany({
+          where: { userId: stored.userId, usedAt: null, id: { not: stored.id } },
+          data: { usedAt: new Date() },
+        });
+        // Anyone still holding a refresh token for this account loses
+        // it — a reset implies "the old credentials are compromised".
+        const revoked = await tx.refreshToken.deleteMany({
+          where: { userId: stored.userId },
+        });
+        await audit(
+          { prisma: tx, user: { id: stored.userId, orgId: stored.user.orgId } },
+          'USER_PASSWORD_RESET',
+          'User',
+          stored.userId,
+          { after: { sessionsRevoked: revoked.count } },
+        );
+      });
+      await resetFailures(stored.user.email);
+
+      return { success: true };
+    }),
 
   changePassword: protectedProcedure
     .input(changePasswordSchema)

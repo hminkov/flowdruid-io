@@ -144,6 +144,7 @@ model User {
   standups                Standup[]
   assignedTickets         TicketAssignment[]
   refreshTokens           RefreshToken[]
+  passwordResetTokens     PasswordResetToken[]
   suggestionsFor          AssignmentSuggestion[] @relation("SuggestionsFor")
   suggestionsRequestedBy  AssignmentSuggestion[] @relation("SuggestionsBy")
   qaBookingsAsDev         QaBooking[]            @relation("QaDevOwner")
@@ -168,6 +169,24 @@ model RefreshToken {
   createdAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// Password-reset tokens for the forgot-password flow. We only ever
+// store a SHA-256 hash of the plaintext token so a database leak
+// can't be used to take over accounts. The user-facing link contains
+// the plaintext; the API hashes the input and looks it up here.
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  tokenHash String    @unique
+  userId    String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 model LeaveRequest {
@@ -465,6 +484,7 @@ enum AuditAction {
   USER_DEACTIVATED
   USER_CREATED
   USER_PASSWORD_CHANGED
+  USER_PASSWORD_RESET
   LEAVE_APPROVED
   LEAVE_DENIED
   LEAVE_DELETED

@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { Logo } from '../components/ui/Logo';
 import { APP_BRAND, emailPlaceholder } from '../config/brand';
@@ -211,6 +211,15 @@ export function LoginPage() {
                     className="min-h-input w-full rounded border border-border bg-surface-primary pl-10 pr-3 text-base text-text-primary placeholder:text-text-tertiary disabled:cursor-not-allowed disabled:opacity-60"
                   />
                 </div>
+              </div>
+
+              <div className="flex justify-end">
+                <Link
+                  to="/forgot-password"
+                  className="text-sm text-text-tertiary hover:text-text-secondary"
+                >
+                  Forgot password?
+                </Link>
               </div>
 
               <button
