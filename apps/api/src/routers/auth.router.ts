@@ -2,7 +2,7 @@ import { TRPCError } from '@trpc/server';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
-import { loginSchema } from '@flowdruid/shared';
+import { loginSchema, changePasswordSchema } from '@flowdruid/shared';
 import { router, publicProcedure, protectedProcedure } from '../trpc';
 import type { UserPayload } from '../context';
 import {
@@ -164,6 +164,59 @@ export const authRouter = router({
 
     return { accessToken, user: payload };
   }),
+
+  changePassword: protectedProcedure
+    .input(changePasswordSchema)
+    .mutation(async ({ ctx, input }) => {
+      const user = await ctx.prisma.user.findUnique({
+        where: { id: ctx.user.id },
+        select: { id: true, email: true, passwordHash: true },
+      });
+      if (!user) {
+        throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Not authenticated' });
+      }
+
+      const valid = await bcrypt.compare(input.currentPassword, user.passwordHash);
+      if (!valid) {
+        throw new TRPCError({
+          code: 'UNAUTHORIZED',
+          message: 'Current password is incorrect',
+        });
+      }
+
+      // Reject reusing the same password — surfaces the mistake
+      // instead of silently no-op'ing.
+      const sameAsOld = await bcrypt.compare(input.newPassword, user.passwordHash);
+      if (sameAsOld) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'New password must be different from the current one',
+        });
+      }
+
+      const newHash = await bcrypt.hash(input.newPassword, 10);
+
+      // Revoke every refresh token *except* the one this request rode
+      // in on, so other browsers/devices get logged out but the user
+      // stays signed in here. Then clear any failed-login counter so
+      // a forgotten-password reset can't leave the account locked.
+      const currentRefresh = ctx.req.cookies?.refreshToken;
+      await ctx.prisma.$transaction(async (tx) => {
+        await tx.user.update({
+          where: { id: user.id },
+          data: { passwordHash: newHash },
+        });
+        await tx.refreshToken.deleteMany({
+          where: {
+            userId: user.id,
+            ...(currentRefresh ? { NOT: { token: currentRefresh } } : {}),
+          },
+        });
+      });
+      await resetFailures(user.email);
+
+      return { success: true };
+    }),
 
   logout: protectedProcedure.mutation(async ({ ctx }) => {
     const token = ctx.req.cookies?.refreshToken;

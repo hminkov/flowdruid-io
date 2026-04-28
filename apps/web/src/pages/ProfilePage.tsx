@@ -60,6 +60,17 @@ export function ProfilePage() {
       toast.push({ kind: 'error', title: 'Update failed', message: err.message }),
   });
 
+  const changePassword = trpc.auth.changePassword.useMutation({
+    onSuccess: () => {
+      toast.push({ kind: 'success', title: 'Password updated' });
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setPasswordError(null);
+    },
+    onError: (err) => setPasswordError(err.message),
+  });
+
   if (!user) return null;
 
   const role = user.role;
@@ -80,15 +91,7 @@ export function ProfilePage() {
       setPasswordError('Passwords do not match');
       return;
     }
-    // UI-only for now — backend endpoint wired in a later phase.
-    toast.push({
-      kind: 'info',
-      title: 'Password change ready',
-      message: 'Backend wiring lands in Phase 5',
-    });
-    setCurrentPassword('');
-    setNewPassword('');
-    setConfirmPassword('');
+    changePassword.mutate({ currentPassword, newPassword });
   };
 
   return (
@@ -275,10 +278,11 @@ export function ProfilePage() {
           <div>
             <button
               type="submit"
-              className="flex min-h-input items-center gap-1.5 rounded bg-brand-600 px-3 text-base text-white hover:bg-brand-800"
+              disabled={changePassword.isPending}
+              className="flex min-h-input items-center gap-1.5 rounded bg-brand-600 px-3 text-base text-white hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <CheckIcon className="h-4 w-4" />
-              Update password
+              {changePassword.isPending ? 'Updating…' : 'Update password'}
             </button>
           </div>
         </form>

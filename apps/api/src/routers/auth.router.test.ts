@@ -175,6 +175,108 @@ describe('auth.router', () => {
     expect(rows).toHaveLength(0);
   });
 
+  describe('changePassword', () => {
+    it('rotates the password hash when the current password is correct', async () => {
+      const org = await createOrg(testPrisma);
+      const user = await createUser(testPrisma, { orgId: org.id, email: 'pw@acme.com' });
+
+      await asUser(user).auth.changePassword({
+        currentPassword: TEST_PASSWORD,
+        newPassword: 'a-fresh-passw0rd',
+      });
+
+      // Old password no longer logs in; new one does.
+      await expect(
+        asUser().auth.login({ email: 'pw@acme.com', password: TEST_PASSWORD }),
+      ).rejects.toThrow(/Invalid credentials/i);
+      const ok = await asUser().auth.login({
+        email: 'pw@acme.com',
+        password: 'a-fresh-passw0rd',
+      });
+      expect(ok.accessToken).toBeTruthy();
+    });
+
+    it('rejects an incorrect current password', async () => {
+      const org = await createOrg(testPrisma);
+      const user = await createUser(testPrisma, { orgId: org.id, email: 'pw2@acme.com' });
+
+      await expect(
+        asUser(user).auth.changePassword({
+          currentPassword: 'not-my-password',
+          newPassword: 'a-fresh-passw0rd',
+        }),
+      ).rejects.toThrow(/Current password is incorrect/i);
+    });
+
+    it('rejects reusing the same password', async () => {
+      const org = await createOrg(testPrisma);
+      const user = await createUser(testPrisma, { orgId: org.id, email: 'pw3@acme.com' });
+
+      await expect(
+        asUser(user).auth.changePassword({
+          currentPassword: TEST_PASSWORD,
+          newPassword: TEST_PASSWORD,
+        }),
+      ).rejects.toThrow(/different from the current/i);
+    });
+
+    it('clears the failed-login counter so a reset unlocks the account', async () => {
+      const org = await createOrg(testPrisma);
+      const user = await createUser(testPrisma, { orgId: org.id, email: 'pw4@acme.com' });
+
+      // Trip the lockout via 5 wrong-password attempts.
+      for (let i = 0; i < 5; i++) {
+        await asUser()
+          .auth.login({ email: 'pw4@acme.com', password: 'wrong-password' })
+          .catch(() => {});
+      }
+      // Sanity-check we're locked.
+      await expect(
+        asUser().auth.login({ email: 'pw4@acme.com', password: TEST_PASSWORD }),
+      ).rejects.toThrow(/Too many failed attempts/i);
+
+      // Change password — this should clear the lock.
+      await asUser(user).auth.changePassword({
+        currentPassword: TEST_PASSWORD,
+        newPassword: 'a-fresh-passw0rd',
+      });
+
+      // Now the new password works immediately, no waiting.
+      const ok = await asUser().auth.login({
+        email: 'pw4@acme.com',
+        password: 'a-fresh-passw0rd',
+      });
+      expect(ok.accessToken).toBeTruthy();
+    });
+
+    it('revokes other refresh tokens but keeps the current session alive', async () => {
+      const org = await createOrg(testPrisma);
+      const user = await createUser(testPrisma, { orgId: org.id, email: 'pw5@acme.com' });
+
+      const inFuture = new Date();
+      inFuture.setDate(inFuture.getDate() + 7);
+      // Two refresh tokens: one that this request is riding on, one
+      // representing a session on another device.
+      await testPrisma.refreshToken.create({
+        data: { token: 'this-session', userId: user.id, expiresAt: inFuture },
+      });
+      await testPrisma.refreshToken.create({
+        data: { token: 'other-device', userId: user.id, expiresAt: inFuture },
+      });
+
+      await asUser(user, { cookies: { refreshToken: 'this-session' } }).auth.changePassword({
+        currentPassword: TEST_PASSWORD,
+        newPassword: 'a-fresh-passw0rd',
+      });
+
+      const survivors = await testPrisma.refreshToken.findMany({
+        where: { userId: user.id },
+        select: { token: true },
+      });
+      expect(survivors).toEqual([{ token: 'this-session' }]);
+    });
+  });
+
   describe('refresh', () => {
     it('rotates the refresh token and issues a fresh access token', async () => {
       const org = await createOrg(testPrisma);
