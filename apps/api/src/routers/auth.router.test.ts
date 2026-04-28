@@ -4,16 +4,23 @@ import { createOrg, createUser, TEST_PASSWORD } from '../test/fixtures';
 import { asUser } from '../test/caller';
 import { redis } from '../lib/redis';
 
-// Per-email login failures are tracked in Redis, which isn't wiped by
-// the Postgres-only beforeEach. Clear them around every test so a
-// counter from one test can't lock out another.
+// Per-email login failures and per-user change-password rate limits
+// live in Redis, which isn't wiped by the Postgres-only beforeEach.
+// Clear them around every test so state from one test can't bleed
+// into another.
 beforeEach(async () => {
-  const keys = await redis.keys('login:fail:*');
+  const keys = [
+    ...(await redis.keys('login:fail:*')),
+    ...(await redis.keys('rl:change-password:*')),
+  ];
   if (keys.length) await redis.del(keys);
 });
 
 afterAll(async () => {
-  const keys = await redis.keys('login:fail:*');
+  const keys = [
+    ...(await redis.keys('login:fail:*')),
+    ...(await redis.keys('rl:change-password:*')),
+  ];
   if (keys.length) await redis.del(keys);
 });
 
@@ -247,6 +254,35 @@ describe('auth.router', () => {
         password: 'a-fresh-passw0rd',
       });
       expect(ok.accessToken).toBeTruthy();
+    });
+
+    it('rate-limits per user — 6th attempt in the window is rejected with retryAfterSec', async () => {
+      const org = await createOrg(testPrisma);
+      const user = await createUser(testPrisma, { orgId: org.id, email: 'pw-rate@acme.com' });
+
+      // 5 wrong-currentPassword attempts use up the budget.
+      for (let i = 0; i < 5; i++) {
+        await asUser(user)
+          .auth.changePassword({
+            currentPassword: 'not-my-password',
+            newPassword: 'a-fresh-passw0rd',
+          })
+          .catch(() => {});
+      }
+      // 6th attempt — even with the correct current password — is
+      // rate-limited, and carries retryAfterSec for the UI countdown.
+      let caught: unknown;
+      try {
+        await asUser(user).auth.changePassword({
+          currentPassword: TEST_PASSWORD,
+          newPassword: 'a-fresh-passw0rd',
+        });
+      } catch (e) {
+        caught = e;
+      }
+      const err = caught as { message?: string; cause?: { retryAfterSec?: number } } | undefined;
+      expect(err?.message).toMatch(/Too many password-change attempts/i);
+      expect(typeof err?.cause?.retryAfterSec).toBe('number');
     });
 
     it('revokes other refresh tokens but keeps the current session alive', async () => {

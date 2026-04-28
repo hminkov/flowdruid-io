@@ -11,6 +11,7 @@ import {
   recordFailure,
   resetFailures,
 } from '../lib/login-lock';
+import { hit as rateLimitHit } from '../lib/rate-limit';
 
 function lockoutMessage(retryAfterSec: number): string {
   const minutes = Math.max(1, Math.ceil(retryAfterSec / 60));
@@ -168,6 +169,22 @@ export const authRouter = router({
   changePassword: protectedProcedure
     .input(changePasswordSchema)
     .mutation(async ({ ctx, input }) => {
+      // Per-user rate limit so a stolen access token can't be used to
+      // brute-force the current password — the login lockout doesn't
+      // apply here since the request is already authenticated.
+      const limit = await rateLimitHit(ctx.user.id, {
+        scope: 'change-password',
+        limit: 5,
+        windowSec: 600,
+      });
+      if (!limit.allowed) {
+        throw new TRPCError({
+          code: 'TOO_MANY_REQUESTS',
+          message: `Too many password-change attempts. Try again in ${Math.ceil(limit.retryAfterSec / 60)} minute${limit.retryAfterSec > 60 ? 's' : ''}.`,
+          cause: { retryAfterSec: limit.retryAfterSec },
+        });
+      }
+
       const user = await ctx.prisma.user.findUnique({
         where: { id: ctx.user.id },
         select: { id: true, email: true, passwordHash: true },
