@@ -18,6 +18,13 @@ export default defineConfig({
         target: 'http://localhost:3001',
         changeOrigin: true,
       },
+      // /auth/* is the OAuth (Google) redirect flow — needs to land
+      // on the API, not the SPA, otherwise Vite serves index.html
+      // and the browser tries to render the OAuth callback as React.
+      '/auth': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+      },
     },
   },
 });

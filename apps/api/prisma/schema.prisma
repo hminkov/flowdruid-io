@@ -129,7 +129,14 @@ model User {
   email        String             @unique
   name         String
   initials     String             @db.VarChar(3)
-  passwordHash String
+  // Nullable so a Google-only user can exist without a local
+  // password. The password flows (login, change, reset) all guard
+  // against null before calling bcrypt.
+  passwordHash String?
+  // Google `sub` claim — opaque, stable Google account ID. Set on
+  // first Google sign-in; lets us recognise the same account even
+  // if the user later changes their email in Google Workspace.
+  googleSub    String?            @unique
   role         Role               @default(DEVELOPER)
   orgId        String
   teamId       String?

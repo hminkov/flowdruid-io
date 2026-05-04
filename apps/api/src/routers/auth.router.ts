@@ -85,7 +85,14 @@ export const authRouter = router({
     });
 
     const eligible = !!user && user.active && !user.org.deletedAt;
-    const valid = eligible && (await bcrypt.compare(input.password, user.passwordHash));
+    // A null passwordHash means the user only ever signed in via
+    // Google — no local credential to compare against. Treat as
+    // "not eligible for password login" so the response shape stays
+    // identical to a wrong password (no enumeration leak).
+    const valid =
+      eligible &&
+      user.passwordHash !== null &&
+      (await bcrypt.compare(input.password, user.passwordHash));
 
     if (!valid) {
       // Record uniformly so unknown emails, deactivated users, and
@@ -308,6 +315,15 @@ export const authRouter = router({
       });
       if (!user) {
         throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Not authenticated' });
+      }
+      if (user.passwordHash === null) {
+        // Google-only account — no current password to verify.
+        // Direct them to the reset flow, which will set one for them.
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message:
+            'This account uses Google sign-in. Use "Forgot password" to set a local password.',
+        });
       }
 
       const valid = await bcrypt.compare(input.currentPassword, user.passwordHash);

@@ -15,6 +15,7 @@ import { createContext, type UserPayload } from './context';
 import { slackEventsHandler } from './middleware/slack-events';
 import { jiraAttachmentHandler } from './middleware/jira-attachment';
 import { jiraAttachmentZipHandler } from './middleware/jira-attachment-zip';
+import { googleOAuthStart, googleOAuthCallback } from './routes/google-oauth';
 import { createSubscriber, eventPattern } from './lib/events';
 import { httpLogger, echoRequestId } from './lib/logger';
 import { prisma } from './lib/prisma';
@@ -114,6 +115,12 @@ export function createApp(): Express {
   });
   app.use('/trpc/auth.refresh', authLimiter);
   app.use('/trpc/auth.register', authLimiter);
+
+  // Google OAuth — start kicks off the consent flow, callback verifies
+  // the ID token and hands the browser a refresh-token cookie. The
+  // SPA picks the session up via its standard mount-time refresh.
+  app.get('/auth/google/start', googleOAuthStart);
+  app.get('/auth/google/callback', googleOAuthCallback);
 
   // Shallow liveness check. Always 200 if the process is alive —
   // used by the sidebar footer to read the running API version and
