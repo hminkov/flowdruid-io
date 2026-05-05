@@ -399,11 +399,15 @@ export const authRouter = router({
         orgId: true,
         teamId: true,
         availability: true,
+        // Onboarding state piggybacks on /me so the SPA can decide
+        // where to send the user without a second round trip.
+        org: { select: { onboardedAt: true } },
       },
     });
     if (!user) {
       throw new TRPCError({ code: 'UNAUTHORIZED', message: 'User not found' });
     }
-    return user;
+    const { org, ...rest } = user;
+    return { ...rest, orgOnboarded: org.onboardedAt !== null };
   }),
 });

@@ -1,5 +1,6 @@
 import { router } from '../trpc';
 import { authRouter } from './auth.router';
+import { orgRouter } from './org.router';
 import { usersRouter } from './users.router';
 import { teamsRouter } from './teams.router';
 import { ticketsRouter } from './tickets.router';
@@ -15,6 +16,7 @@ import { activityRouter } from './activity.router';
 
 export const appRouter = router({
   auth: authRouter,
+  org: orgRouter,
   users: usersRouter,
   teams: teamsRouter,
   tickets: ticketsRouter,

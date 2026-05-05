@@ -96,6 +96,11 @@ model Organisation {
   // user belongs to a non-deleted org. The auth middleware enforces
   // the second case; manual checks handle the first.
   deletedAt DateTime?
+  // Null = freshly auto-provisioned via Google sign-in and the admin
+  // hasn't set the workspace up yet. The frontend redirects admins
+  // of un-onboarded orgs to /onboarding so the first impression
+  // isn't an empty dashboard.
+  onboardedAt DateTime?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 

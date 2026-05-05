@@ -1,4 +1,4 @@
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import type { ReactNode } from 'react';
 
@@ -9,6 +9,7 @@ interface Props {
 
 export function ProtectedRoute({ children, requiredRole }: Props) {
   const { user, isLoading } = useAuth();
+  const location = useLocation();
 
   if (isLoading) {
     return (
@@ -20,6 +21,17 @@ export function ProtectedRoute({ children, requiredRole }: Props) {
 
   if (!user) {
     return <Navigate to="/login" replace />;
+  }
+
+  // Admin of a freshly auto-provisioned (Google) workspace lands on
+  // /onboarding instead of /dashboard until they finish setup. The
+  // /onboarding route itself is exempt so we don't loop.
+  if (
+    user.role === 'ADMIN' &&
+    user.orgOnboarded === false &&
+    location.pathname !== '/onboarding'
+  ) {
+    return <Navigate to="/onboarding" replace />;
   }
 
   if (requiredRole) {

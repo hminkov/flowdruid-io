@@ -1,4 +1,5 @@
 export * from './schemas/auth';
+export * from './schemas/orgs';
 export * from './schemas/users';
 export * from './schemas/teams';
 export * from './schemas/tickets';

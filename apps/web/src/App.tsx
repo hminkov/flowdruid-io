@@ -16,6 +16,7 @@ import { ToastProvider, ConfirmProvider, RouteErrorBoundary } from './components
 import { LoginPage } from './pages/LoginPage';
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
 import { ResetPasswordPage } from './pages/ResetPasswordPage';
+import { OnboardingPage } from './pages/OnboardingPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { TasksPage } from './pages/TasksPage';
 import { StandupPage } from './pages/StandupPage';
@@ -63,6 +64,14 @@ export function App() {
                 }
               />
 
+              <Route
+                path="/onboarding"
+                element={
+                  <ProtectedRoute>
+                    <OnboardingPage />
+                  </ProtectedRoute>
+                }
+              />
               <Route
                 path="/me"
                 element={

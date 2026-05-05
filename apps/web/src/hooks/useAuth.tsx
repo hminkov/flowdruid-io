@@ -10,6 +10,10 @@ interface User {
   orgId: string;
   teamId: string | null;
   availability?: 'AVAILABLE' | 'BUSY' | 'REMOTE' | 'ON_LEAVE';
+  // True once the org has finished its first-run setup. Refresh /
+  // login responses don't carry it (we only fetch from /me), so
+  // treat undefined as "not yet known" — same as `isLoading`.
+  orgOnboarded?: boolean;
 }
 
 interface AuthContextType {
