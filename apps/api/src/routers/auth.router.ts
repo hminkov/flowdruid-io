@@ -18,7 +18,7 @@ import {
 } from '../lib/login-lock';
 import { hit as rateLimitHit } from '../lib/rate-limit';
 import { audit } from '../lib/audit';
-import { logger } from '../lib/logger';
+import { sendEmail, passwordResetEmail } from '../lib/email';
 
 const PASSWORD_RESET_TTL_MIN = 60;
 
@@ -26,14 +26,15 @@ function hashResetToken(token: string): string {
   return crypto.createHash('sha256').update(token).digest('hex');
 }
 
-// Until SMTP/SES is wired up, log the reset link to the server log
-// at `info` level so a developer can copy it out during testing.
-// Production: swap this for a real email send. The signature stays
-// the same so no caller needs to change.
-function deliverPasswordResetLink(email: string, token: string): void {
+// Send the reset link via Resend (or fall back to a structured log
+// when RESEND_API_KEY is unset — see lib/email.ts). Awaited fire-
+// and-forget: provider errors don't fail the mutation, but they do
+// surface in the logs.
+async function deliverPasswordResetLink(email: string, token: string): Promise<void> {
   const base = process.env.APP_URL ?? 'http://localhost:5173';
   const url = `${base}/reset-password?token=${token}`;
-  logger.info({ email, url }, '[password-reset] link generated');
+  const tpl = passwordResetEmail(url);
+  await sendEmail({ to: email, subject: tpl.subject, html: tpl.html, text: tpl.text });
 }
 
 function lockoutMessage(retryAfterSec: number): string {
@@ -225,7 +226,7 @@ export const authRouter = router({
         await ctx.prisma.passwordResetToken.create({
           data: { tokenHash, userId: user.id, expiresAt },
         });
-        deliverPasswordResetLink(user.email, token);
+        await deliverPasswordResetLink(user.email, token);
       }
 
       // Always reply success so an attacker can't tell whether an
