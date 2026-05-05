@@ -54,7 +54,11 @@ export function LoginPage() {
   // without us having to manage drift.
   const [lockedUntil, setLockedUntil] = useState<number | null>(null);
   const [nowMs, setNowMs] = useState(() => Date.now());
-  const { login } = useAuth();
+  // Set when password verify succeeds but the account requires a
+  // TOTP code. Switches the form into step-2 mode.
+  const [partialToken, setPartialToken] = useState<string | null>(null);
+  const [totpCode, setTotpCode] = useState('');
+  const { login, loginVerify2FA } = useAuth();
   const navigate = useNavigate();
 
   // 1Hz tick while locked; clears itself the instant the lockout ends.
@@ -80,7 +84,12 @@ export function LoginPage() {
     setError('');
     setLoading(true);
     try {
-      await login(email, password);
+      const result = await login(email, password);
+      if (result.requires2FA) {
+        setPartialToken(result.partialToken);
+        setLoading(false);
+        return;
+      }
       navigate('/dashboard');
     } catch (err: unknown) {
       // Surface the server's message verbatim — it carries the
@@ -98,6 +107,22 @@ export function LoginPage() {
       } else {
         setError('Invalid email or password');
       }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerify2FA = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!partialToken) return;
+    setError('');
+    setLoading(true);
+    try {
+      await loginVerify2FA(partialToken, totpCode);
+      navigate('/dashboard');
+    } catch (err: unknown) {
+      const message = (err as { message?: string } | null)?.message;
+      setError(message || 'Invalid verification code');
     } finally {
       setLoading(false);
     }
@@ -180,6 +205,72 @@ export function LoginPage() {
           </div>
 
           <div className="rounded-lg border border-border bg-surface-primary p-6">
+            {partialToken ? (
+              <>
+                <div className="mb-6">
+                  <h1 className="text-xl text-text-primary">Two-factor verification</h1>
+                  <p className="mt-1 text-base text-text-secondary">
+                    Enter the 6-digit code from your authenticator app.
+                  </p>
+                </div>
+
+                <form onSubmit={handleVerify2FA} className="space-y-4">
+                  {error && (
+                    <div className="flex items-start gap-2 rounded border border-danger-text/20 bg-danger-bg p-3 text-sm text-danger-text">
+                      <AlertIcon className="mt-0.5 h-4 w-4 shrink-0" />
+                      <span>{error}</span>
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="mb-1 block text-sm text-text-secondary">Code</label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      autoComplete="one-time-code"
+                      autoFocus
+                      maxLength={7}
+                      value={totpCode}
+                      onChange={(e) => setTotpCode(e.target.value)}
+                      placeholder="123456"
+                      className="min-h-input w-full rounded border border-border bg-surface-primary px-3 text-center font-mono text-lg tracking-widest text-text-primary placeholder:text-text-tertiary"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={loading || totpCode.replace(/\s/g, '').length !== 6}
+                    className="group flex min-h-input w-full items-center justify-center gap-2 rounded bg-brand-600 px-4 text-base text-white transition-all duration-fast hover:bg-brand-800 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {loading ? (
+                      <>
+                        <SpinnerIcon className="h-4 w-4" />
+                        <span>Verifying…</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>Verify and continue</span>
+                        <ArrowRightIcon className="h-4 w-4 transition-transform duration-fast group-hover:translate-x-0.5" />
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPartialToken(null);
+                      setTotpCode('');
+                      setError('');
+                    }}
+                    className="block w-full text-center text-sm text-text-tertiary hover:text-text-secondary"
+                  >
+                    Cancel
+                  </button>
+                </form>
+              </>
+            ) : (
+              <>
             <div className="mb-6">
               <h1 className="text-xl text-text-primary">Welcome back</h1>
               <p className="mt-1 text-base text-text-secondary">
@@ -286,6 +377,8 @@ export function LoginPage() {
                 )}
               </button>
             </form>
+              </>
+            )}
           </div>
 
           <p className="mt-5 text-center text-xs text-text-tertiary">

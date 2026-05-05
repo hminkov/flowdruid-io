@@ -16,10 +16,17 @@ interface User {
   orgOnboarded?: boolean;
 }
 
+// Result of step 1 login: either we're done (full session) or we
+// need a 6-digit code for step 2.
+export type LoginResult =
+  | { requires2FA: false }
+  | { requires2FA: true; partialToken: string };
+
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<LoginResult>;
+  loginVerify2FA: (partialToken: string, code: string) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -66,13 +73,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loginMutation = trpc.auth.login.useMutation();
+  const loginVerify2FAMutation = trpc.auth.loginVerify2FA.useMutation();
   const logoutMutation = trpc.auth.logout.useMutation();
 
-  const login = useCallback(async (email: string, password: string) => {
-    const result = await loginMutation.mutateAsync({ email, password });
-    setAuthToken(result.accessToken);
-    setUser(result.user);
-  }, [loginMutation]);
+  const login = useCallback(
+    async (email: string, password: string): Promise<LoginResult> => {
+      const result = await loginMutation.mutateAsync({ email, password });
+      if ('requires2FA' in result) {
+        return { requires2FA: true, partialToken: result.partialToken };
+      }
+      setAuthToken(result.accessToken);
+      setUser(result.user);
+      return { requires2FA: false };
+    },
+    [loginMutation],
+  );
+
+  const loginVerify2FA = useCallback(
+    async (partialToken: string, code: string) => {
+      const result = await loginVerify2FAMutation.mutateAsync({ partialToken, code });
+      setAuthToken(result.accessToken);
+      setUser(result.user);
+    },
+    [loginVerify2FAMutation],
+  );
 
   const logout = useCallback(async () => {
     await logoutMutation.mutateAsync();
@@ -81,7 +105,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [logoutMutation]);
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, logout }}>
+    <AuthContext.Provider value={{ user, isLoading, login, loginVerify2FA, logout }}>
       {children}
     </AuthContext.Provider>
   );

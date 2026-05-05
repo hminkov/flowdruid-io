@@ -7,7 +7,14 @@ import {
   changePasswordSchema,
   requestPasswordResetSchema,
   resetPasswordSchema,
+  totpEnrollConfirmSchema,
+  totpDisableSchema,
+  loginVerify2faSchema,
 } from '@flowdruid/shared';
+import { encrypt, decrypt } from '../lib/encrypt';
+import { generateSecret, verifyCode, qrDataUri } from '../lib/totp';
+import type { Response } from 'express';
+import type { PrismaClient } from '@prisma/client';
 import { router, publicProcedure, protectedProcedure } from '../trpc';
 import type { UserPayload } from '../context';
 import {
@@ -73,6 +80,71 @@ function generateRefreshToken(): string {
   return crypto.randomBytes(40).toString('hex');
 }
 
+// Short-lived token issued between password verification and TOTP
+// verification. Lets the server stay stateless across the two-step
+// login while still binding the partial credential to a single user
+// for a bounded window.
+const PARTIAL_LOGIN_TTL = '5m';
+function generatePartialLoginToken(userId: string): string {
+  return jwt.sign({ uid: userId, purpose: 'totp_login' }, process.env.JWT_SECRET!, {
+    expiresIn: PARTIAL_LOGIN_TTL,
+  });
+}
+function verifyPartialLoginToken(token: string): string | null {
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as {
+      uid?: string;
+      purpose?: string;
+    };
+    if (decoded.purpose !== 'totp_login' || !decoded.uid) return null;
+    return decoded.uid;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Issue an access + refresh token pair for an authenticated user and
+ * set the refresh-token cookie. Returns the shape both `login` (no
+ * 2FA branch) and `loginVerify2FA` resolve to so the SPA's auth
+ * machinery sees a single payload regardless of the step count.
+ */
+async function issueSession(
+  ctx: { prisma: PrismaClient; res: Response },
+  user: {
+    id: string;
+    email: string;
+    name: string;
+    role: UserPayload['role'];
+    orgId: string;
+    teamId: string | null;
+  },
+): Promise<{ accessToken: string; user: UserPayload }> {
+  const payload: UserPayload = {
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    role: user.role,
+    orgId: user.orgId,
+    teamId: user.teamId,
+  };
+  const accessToken = generateAccessToken(payload);
+  const refreshToken = generateRefreshToken();
+  const expiresAt = new Date();
+  expiresAt.setDate(expiresAt.getDate() + REFRESH_TOKEN_EXPIRY_DAYS);
+  await ctx.prisma.refreshToken.create({
+    data: { token: refreshToken, userId: user.id, expiresAt },
+  });
+  ctx.res.cookie('refreshToken', refreshToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: REFRESH_TOKEN_EXPIRY_DAYS * 24 * 60 * 60 * 1000,
+    path: '/',
+  });
+  return { accessToken, user: payload };
+}
+
 export const authRouter = router({
   login: publicProcedure.input(loginSchema).mutation(async ({ ctx, input }) => {
     const lock = await getLockState(input.email);
@@ -112,35 +184,172 @@ export const authRouter = router({
 
     await resetFailures(input.email);
 
-    const payload: UserPayload = {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      role: user.role,
-      orgId: user.orgId,
-      teamId: user.teamId,
-    };
+    // 2FA gate: if the user has finished TOTP enrollment we don't
+    // hand back a real access token here. Instead we return a short-
+    // lived partial token; the SPA presents a code-entry screen and
+    // calls loginVerify2FA to finish the exchange.
+    if (user.totpEnabledAt) {
+      return {
+        requires2FA: true as const,
+        partialToken: generatePartialLoginToken(user.id),
+      };
+    }
 
-    const accessToken = generateAccessToken(payload);
-    const refreshToken = generateRefreshToken();
-
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + REFRESH_TOKEN_EXPIRY_DAYS);
-
-    await ctx.prisma.refreshToken.create({
-      data: { token: refreshToken, userId: user.id, expiresAt },
-    });
-
-    ctx.res.cookie('refreshToken', refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: REFRESH_TOKEN_EXPIRY_DAYS * 24 * 60 * 60 * 1000,
-      path: '/',
-    });
-
-    return { accessToken, user: payload };
+    return issueSession(ctx, user);
   }),
+
+  loginVerify2FA: publicProcedure
+    .input(loginVerify2faSchema)
+    .mutation(async ({ ctx, input }) => {
+      const userId = verifyPartialLoginToken(input.partialToken);
+      if (!userId) {
+        throw new TRPCError({
+          code: 'UNAUTHORIZED',
+          message: 'Verification session expired. Sign in again.',
+        });
+      }
+
+      // Independent rate limit for the TOTP step so brute-forcing
+      // the 6-digit code can't ride past the per-email login lockout
+      // by burning through codes after a successful password verify.
+      const limit = await rateLimitHit(userId, {
+        scope: 'totp-verify',
+        limit: 5,
+        windowSec: 600,
+      });
+      if (!limit.allowed) {
+        throw new TRPCError({
+          code: 'TOO_MANY_REQUESTS',
+          message: `Too many verification attempts. Try again in ${Math.ceil(limit.retryAfterSec / 60)} minute${limit.retryAfterSec > 60 ? 's' : ''}.`,
+          cause: { retryAfterSec: limit.retryAfterSec },
+        });
+      }
+
+      const user = await ctx.prisma.user.findUnique({
+        where: { id: userId },
+        include: { org: { select: { deletedAt: true } } },
+      });
+      if (
+        !user ||
+        !user.active ||
+        user.org.deletedAt ||
+        !user.totpEnabledAt ||
+        !user.totpSecret
+      ) {
+        throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Verification failed' });
+      }
+
+      let secret: string;
+      try {
+        secret = decrypt(user.totpSecret);
+      } catch {
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'TOTP secret unreadable' });
+      }
+      if (!verifyCode(secret, input.code)) {
+        throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Invalid verification code' });
+      }
+
+      return issueSession(ctx, user);
+    }),
+
+  totpEnrollStart: protectedProcedure.mutation(async ({ ctx }) => {
+    const user = await ctx.prisma.user.findUnique({
+      where: { id: ctx.user.id },
+      select: { id: true, email: true, totpEnabledAt: true },
+    });
+    if (!user) {
+      throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Not authenticated' });
+    }
+    if (user.totpEnabledAt) {
+      throw new TRPCError({
+        code: 'BAD_REQUEST',
+        message: '2FA is already enabled. Disable it first if you want to re-enrol.',
+      });
+    }
+    const secret = generateSecret();
+    await ctx.prisma.user.update({
+      where: { id: user.id },
+      data: { totpSecret: encrypt(secret) },
+    });
+    const qr = await qrDataUri(secret, user.email);
+    return { secret, qr };
+  }),
+
+  totpEnrollConfirm: protectedProcedure
+    .input(totpEnrollConfirmSchema)
+    .mutation(async ({ ctx, input }) => {
+      const user = await ctx.prisma.user.findUnique({
+        where: { id: ctx.user.id },
+        select: { id: true, totpSecret: true, totpEnabledAt: true },
+      });
+      if (!user) {
+        throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Not authenticated' });
+      }
+      if (user.totpEnabledAt) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: '2FA is already enabled',
+        });
+      }
+      if (!user.totpSecret) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Start enrolment first',
+        });
+      }
+      const secret = decrypt(user.totpSecret);
+      if (!verifyCode(secret, input.code)) {
+        throw new TRPCError({
+          code: 'UNAUTHORIZED',
+          message: 'Invalid verification code',
+        });
+      }
+      await ctx.prisma.user.update({
+        where: { id: user.id },
+        data: { totpEnabledAt: new Date() },
+      });
+      return { success: true };
+    }),
+
+  totpDisable: protectedProcedure
+    .input(totpDisableSchema)
+    .mutation(async ({ ctx, input }) => {
+      const user = await ctx.prisma.user.findUnique({
+        where: { id: ctx.user.id },
+        select: {
+          id: true,
+          passwordHash: true,
+          totpSecret: true,
+          totpEnabledAt: true,
+        },
+      });
+      if (!user) {
+        throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Not authenticated' });
+      }
+      // Idempotent: nothing to do if 2FA isn't on.
+      if (!user.totpEnabledAt) {
+        return { success: true };
+      }
+
+      let authorized = false;
+      if (input.code && user.totpSecret) {
+        authorized = verifyCode(decrypt(user.totpSecret), input.code);
+      }
+      if (!authorized && input.password && user.passwordHash) {
+        authorized = await bcrypt.compare(input.password, user.passwordHash);
+      }
+      if (!authorized) {
+        throw new TRPCError({
+          code: 'UNAUTHORIZED',
+          message: 'Provide a current 6-digit code or your password to disable 2FA',
+        });
+      }
+      await ctx.prisma.user.update({
+        where: { id: user.id },
+        data: { totpSecret: null, totpEnabledAt: null },
+      });
+      return { success: true };
+    }),
 
   refresh: publicProcedure.mutation(async ({ ctx }) => {
     const token = ctx.req.cookies?.refreshToken;
@@ -399,6 +608,7 @@ export const authRouter = router({
         orgId: true,
         teamId: true,
         availability: true,
+        totpEnabledAt: true,
         // Onboarding state piggybacks on /me so the SPA can decide
         // where to send the user without a second round trip.
         org: { select: { onboardedAt: true } },
@@ -407,7 +617,11 @@ export const authRouter = router({
     if (!user) {
       throw new TRPCError({ code: 'UNAUTHORIZED', message: 'User not found' });
     }
-    const { org, ...rest } = user;
-    return { ...rest, orgOnboarded: org.onboardedAt !== null };
+    const { org, totpEnabledAt, ...rest } = user;
+    return {
+      ...rest,
+      orgOnboarded: org.onboardedAt !== null,
+      twoFactorEnabled: totpEnabledAt !== null,
+    };
   }),
 });

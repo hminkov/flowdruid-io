@@ -4,9 +4,20 @@ import { testPrisma } from '../test/setup';
 import { createOrg, createUser, TEST_PASSWORD } from '../test/fixtures';
 import { asUser } from '../test/caller';
 import { redis } from '../lib/redis';
+import { authenticator } from 'otplib';
+import { decrypt } from '../lib/encrypt';
 
 function hashResetToken(token: string): string {
   return crypto.createHash('sha256').update(token).digest('hex');
+}
+
+// `auth.login` is a discriminated union (full session vs. partial-2FA
+// step). All the tests in this file use accounts without TOTP, so
+// the second arm is unreachable — but TS still needs help narrowing.
+type LoginResult = Awaited<ReturnType<ReturnType<typeof asUser>['auth']['login']>>;
+function asSession(r: LoginResult): Extract<LoginResult, { accessToken: string }> {
+  if (!('accessToken' in r)) throw new Error('expected full session, got 2FA challenge');
+  return r;
 }
 
 // Per-email login failures and per-user change-password rate limits
@@ -18,6 +29,7 @@ beforeEach(async () => {
     ...(await redis.keys('login:fail:*')),
     ...(await redis.keys('rl:change-password:*')),
     ...(await redis.keys('rl:password-reset-request:*')),
+    ...(await redis.keys('rl:totp-verify:*')),
   ];
   if (keys.length) await redis.del(keys);
 });
@@ -27,6 +39,7 @@ afterAll(async () => {
     ...(await redis.keys('login:fail:*')),
     ...(await redis.keys('rl:change-password:*')),
     ...(await redis.keys('rl:password-reset-request:*')),
+    ...(await redis.keys('rl:totp-verify:*')),
   ];
   if (keys.length) await redis.del(keys);
 });
@@ -43,8 +56,8 @@ describe('auth.router', () => {
       email: 'someone@acme.com',
       password: TEST_PASSWORD,
     });
-    expect(result.accessToken).toBeTruthy();
-    expect(result.user?.id).toBe(user.id);
+    expect(asSession(result).accessToken).toBeTruthy();
+    expect(asSession(result).user?.id).toBe(user.id);
   });
 
   it('login rejects on wrong password', async () => {
@@ -132,7 +145,7 @@ describe('auth.router', () => {
       email: 'reset@acme.com',
       password: TEST_PASSWORD,
     });
-    expect(ok.accessToken).toBeTruthy();
+    expect(asSession(ok).accessToken).toBeTruthy();
 
     // After the reset, 4 more failures should NOT trip the lock —
     // the counter was zeroed by the successful login above.
@@ -207,7 +220,7 @@ describe('auth.router', () => {
         email: 'pw@acme.com',
         password: 'a-fresh-passw0rd',
       });
-      expect(ok.accessToken).toBeTruthy();
+      expect(asSession(ok).accessToken).toBeTruthy();
     });
 
     it('rejects an incorrect current password', async () => {
@@ -260,7 +273,7 @@ describe('auth.router', () => {
         email: 'pw4@acme.com',
         password: 'a-fresh-passw0rd',
       });
-      expect(ok.accessToken).toBeTruthy();
+      expect(asSession(ok).accessToken).toBeTruthy();
     });
 
     it('writes an audit-log row when the password changes', async () => {
@@ -380,7 +393,7 @@ describe('auth.router', () => {
         email: 'reset-flow@acme.com',
         password: 'a-fresh-passw0rd',
       });
-      expect(ok.accessToken).toBeTruthy();
+      expect(asSession(ok).accessToken).toBeTruthy();
     });
 
     it('resetPassword burns the token so it cannot be replayed', async () => {
@@ -452,13 +465,139 @@ describe('auth.router', () => {
         email: 'unlock@acme.com',
         password: 'a-fresh-passw0rd',
       });
-      expect(ok.accessToken).toBeTruthy();
+      expect(asSession(ok).accessToken).toBeTruthy();
 
       // Audit row written.
       const audits = await testPrisma.auditLog.findMany({
         where: { action: 'USER_PASSWORD_RESET', entityId: user.id },
       });
       expect(audits).toHaveLength(1);
+    });
+  });
+
+  describe('TOTP 2FA', () => {
+    it('enrolment: start returns secret + QR, confirm flips totpEnabledAt', async () => {
+      const org = await createOrg(testPrisma);
+      const user = await createUser(testPrisma, { orgId: org.id, email: 'totp1@acme.com' });
+
+      const start = await asUser(user).auth.totpEnrollStart();
+      expect(typeof start.secret).toBe('string');
+      expect(start.qr.startsWith('data:image/')).toBe(true);
+
+      // Generate the same code the authenticator app would produce.
+      const code = authenticator.generate(start.secret);
+      const result = await asUser(user).auth.totpEnrollConfirm({ code });
+      expect(result.success).toBe(true);
+
+      const refreshed = await testPrisma.user.findUnique({ where: { id: user.id } });
+      expect(refreshed?.totpEnabledAt).not.toBeNull();
+      // Stored secret must round-trip via encrypt/decrypt and match
+      // the plaintext we received from start.
+      expect(refreshed?.totpSecret).toBeTruthy();
+      expect(decrypt(refreshed!.totpSecret!)).toBe(start.secret);
+    });
+
+    it('enrolment refuses an invalid code', async () => {
+      const org = await createOrg(testPrisma);
+      const user = await createUser(testPrisma, { orgId: org.id, email: 'totp2@acme.com' });
+      await asUser(user).auth.totpEnrollStart();
+
+      await expect(
+        asUser(user).auth.totpEnrollConfirm({ code: '000000' }),
+      ).rejects.toThrow(/Invalid verification code/i);
+
+      const refreshed = await testPrisma.user.findUnique({ where: { id: user.id } });
+      expect(refreshed?.totpEnabledAt).toBeNull();
+    });
+
+    it('login with TOTP enabled returns a partial token, then loginVerify2FA finishes the exchange', async () => {
+      const org = await createOrg(testPrisma);
+      const user = await createUser(testPrisma, { orgId: org.id, email: 'totp3@acme.com' });
+      const start = await asUser(user).auth.totpEnrollStart();
+      await asUser(user).auth.totpEnrollConfirm({
+        code: authenticator.generate(start.secret),
+      });
+
+      // Step 1: password — partial result, no access token yet.
+      const partial = await asUser().auth.login({
+        email: 'totp3@acme.com',
+        password: TEST_PASSWORD,
+      });
+      expect('requires2FA' in partial && partial.requires2FA).toBe(true);
+      const partialToken = 'partialToken' in partial ? partial.partialToken : '';
+
+      // Step 2: TOTP code — full session.
+      const result = await asUser().auth.loginVerify2FA({
+        partialToken,
+        code: authenticator.generate(start.secret),
+      });
+      expect(asSession(result).accessToken).toBeTruthy();
+    });
+
+    it('loginVerify2FA rejects a wrong code', async () => {
+      const org = await createOrg(testPrisma);
+      const user = await createUser(testPrisma, { orgId: org.id, email: 'totp4@acme.com' });
+      const start = await asUser(user).auth.totpEnrollStart();
+      await asUser(user).auth.totpEnrollConfirm({
+        code: authenticator.generate(start.secret),
+      });
+
+      const partial = await asUser().auth.login({
+        email: 'totp4@acme.com',
+        password: TEST_PASSWORD,
+      });
+      const partialToken = 'partialToken' in partial ? partial.partialToken : '';
+
+      await expect(
+        asUser().auth.loginVerify2FA({ partialToken, code: '000000' }),
+      ).rejects.toThrow(/Invalid verification code/i);
+    });
+
+    it('totpDisable accepts a valid code', async () => {
+      const org = await createOrg(testPrisma);
+      const user = await createUser(testPrisma, { orgId: org.id, email: 'totp5@acme.com' });
+      const start = await asUser(user).auth.totpEnrollStart();
+      await asUser(user).auth.totpEnrollConfirm({
+        code: authenticator.generate(start.secret),
+      });
+
+      await asUser(user).auth.totpDisable({
+        code: authenticator.generate(start.secret),
+      });
+
+      const refreshed = await testPrisma.user.findUnique({ where: { id: user.id } });
+      expect(refreshed?.totpEnabledAt).toBeNull();
+      expect(refreshed?.totpSecret).toBeNull();
+    });
+
+    it('totpDisable accepts the user password as fallback (lost-device path)', async () => {
+      const org = await createOrg(testPrisma);
+      const user = await createUser(testPrisma, { orgId: org.id, email: 'totp6@acme.com' });
+      const start = await asUser(user).auth.totpEnrollStart();
+      await asUser(user).auth.totpEnrollConfirm({
+        code: authenticator.generate(start.secret),
+      });
+
+      await asUser(user).auth.totpDisable({ password: TEST_PASSWORD });
+
+      const refreshed = await testPrisma.user.findUnique({ where: { id: user.id } });
+      expect(refreshed?.totpEnabledAt).toBeNull();
+    });
+
+    it('totpDisable refuses without a valid code or password', async () => {
+      const org = await createOrg(testPrisma);
+      const user = await createUser(testPrisma, { orgId: org.id, email: 'totp7@acme.com' });
+      const start = await asUser(user).auth.totpEnrollStart();
+      await asUser(user).auth.totpEnrollConfirm({
+        code: authenticator.generate(start.secret),
+      });
+
+      await expect(asUser(user).auth.totpDisable({})).rejects.toThrow(
+        /6-digit code or your password/i,
+      );
+      await expect(
+        asUser(user).auth.totpDisable({ code: '000000', password: 'nope' }),
+      ).rejects.toThrow();
     });
   });
 
@@ -476,8 +615,8 @@ describe('auth.router', () => {
       });
 
       const result = await asUser(undefined, { cookies: { refreshToken: oldToken } }).auth.refresh();
-      expect(result.accessToken).toBeTruthy();
-      expect(result.user?.id).toBe(user.id);
+      expect(asSession(result).accessToken).toBeTruthy();
+      expect(asSession(result).user?.id).toBe(user.id);
 
       // Old token is revoked, a new one replaces it.
       const survivors = await testPrisma.refreshToken.findMany({ where: { userId: user.id } });
